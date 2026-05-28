@@ -194,7 +194,7 @@ function requiredMissingFields(data) {
     ["interestRate", "Korko"],
     ["loanYears", "Laina-aika"],
     ["repaymentType", "Lyhennystyyppi"],
-    ["collateralValuePct", "Pankin antama vakuusarvoprosentti ostokohteelle"],
+    ["collateralValuePct", "Pankin antama vakuusarvo ostokohteelle"],
     ["locationDemand", "Vuokrakysyntä"],
     ["locationRisk", "Sijaintiriski"],
     ["condition", "Asunnon kunto"],
@@ -253,6 +253,21 @@ function monthlyLoanPayment(principal, annualRate, years, repaymentType = "annui
   return principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
 }
 
+
+function estimatePrincipalReduction(monthlyPayment, principal, annualRate, repaymentType = "annuity") {
+  if (principal <= 0) return 0;
+  const monthlyInterest = principal * (annualRate / 100 / 12);
+  if (repaymentType === "interest_only") return 0;
+  return Math.max(0, monthlyPayment - monthlyInterest);
+}
+
+function estimateHousingCompanyLoanPrincipalReduction(debtShare, financingFee) {
+  if (debtShare <= 0 || financingFee <= 0) return 0;
+  const assumedAnnualRate = 4.0;
+  const estimatedMonthlyInterest = debtShare * (assumedAnnualRate / 100 / 12);
+  return Math.max(0, financingFee - estimatedMonthlyInterest);
+}
+
 function scoreFromYield(yieldPct) {
   if (yieldPct >= 8) return 100;
   if (yieldPct >= 7) return 85;
@@ -303,7 +318,9 @@ function analyzeCore(rawData) {
   const adjustedDebtFreePrice = data.debtFreePrice + data.ghostDebt + renovationReserve.total;
   const loanAmount = Math.max(0, purchasePrice - data.ownCapital);
   const loanPayment = monthlyLoanPayment(loanAmount, data.interestRate, data.loanYears, data.repaymentType);
+  const bankLoanPrincipalReduction = estimatePrincipalReduction(loanPayment, loanAmount, data.interestRate, data.repaymentType);
   const activeFinancingFee = data.hasDebtShare === "yes" ? data.financingFee : 0;
+  const housingCompanyLoanPrincipalReduction = data.hasDebtShare === "yes" ? estimateHousingCompanyLoanPrincipalReduction(data.debtShare, activeFinancingFee) : 0;
   const monthlyCosts = data.maintenanceFee + activeFinancingFee + loanPayment;
   const cashflow = data.rent - monthlyCosts;
   const grossYield = adjustedDebtFreePrice > 0 ? ((data.rent * 12) / adjustedDebtFreePrice) * 100 : 0;
@@ -378,7 +395,7 @@ function analyzeCore(rawData) {
   if (data.locationDemand >= 5) positives.push("Vahva vuokrakysyntä parantaa kohteen kannattavuus- ja tyhjäkäyntiriskiä.");
   if (data.locationDemand <= 2) warnings.push("Heikko vuokrakysyntä voi kasvattaa tyhjäkäyntiriskiä ja heikentää todellista kassavirtaa.");
 
-  if (data.repaymentType === "interest_only") warnings.push("Lainasta maksetaan vain korkoa, jolloin lainapääoma ei lyhene ja kassavirta voi näyttää todellisuutta paremmalta.");
+  if (data.repaymentType === "interest_only") warnings.push("Pankkilainan pääoma ei lyhene, koska valittuna on maksetaan vain korkoa -vaihtoehto. Kassavirta voi näyttää lyhyellä aikavälillä todellisuutta paremmalta.");
 
   if (data.heatingType === "geothermal") positives.push("Maalämpö tukee pisteytystä ja voi parantaa pitkän aikavälin kulutehokkuutta.");
   if (data.heatingType === "district") positives.push("Kaukolämpö tukee pisteytystä ennustettavuuden ja vuokrattavuuden näkökulmasta.");
@@ -402,9 +419,13 @@ function analyzeCore(rawData) {
     requiredOwnCashOrExtraCollateral,
     loanAmount,
     loanPayment,
+    bankLoanPrincipalReduction,
+    housingCompanyLoanPrincipalReduction,
     monthlyCosts,
     cashflow,
     grossYield,
+    leverageRatio: adjustedDebtFreePrice > 0 ? (((loanAmount + data.debtShare) / adjustedDebtFreePrice) * 100) : 0,
+    monthlyPrincipalReduction: Math.max(monthlyLoanPayment - monthlyInterestOnlyPayment, 0),
     netYield,
     scores: { cashflow: cashflowScore, company: Math.round(companyScore), condition: Math.round(conditionScore), location: Math.round(locationScore), finance: Math.round(financeScore), total },
     positives,
@@ -447,7 +468,13 @@ function buildRiskProfile(rawData, base) {
   if (data.buildYear < 1994) add("info", "Mahdollinen asbestiriski rakennusvuoden perusteella.");
   if (isLowRise(data) && data.buildYear >= 1960 && data.buildYear <= 1985) add("info", "Mahdollinen valesokkeli-/piilosokkeliriski.");
 
-  base.renovationReserve.items.forEach((item) => add(item.key.includes("pipe") ? "critical" : "warning", `${item.label}: karkea arvio noin ${eur(item.estimatedShare)} tälle huoneistolle (${item.eurPerM2} €/m²).`));
+  base.renovationReserve.items.forEach((item) => {
+    if (item.estimatedShare > 0) {
+      add(item.key.includes("pipe") ? "critical" : "warning", `${item.label}: karkea arvio noin ${eur(item.estimatedShare)} tälle huoneistolle (${item.eurPerM2} €/m²).`);
+    } else {
+      add(item.key.includes("pipe") ? "critical" : "warning", `${item.label}: tarkista kustannusarvio taloyhtiön asiakirjoista. Euromääräistä arviota ei muodostettu, koska pinta-ala tai kustannusperuste puuttuu.`);
+    }
+  });
 
   return { items, dealbreakers };
 }
@@ -505,10 +532,46 @@ function findOfferForTargets(data, targetCashflow, targetNetYield) {
   return matches[matches.length - 1];
 }
 
+function netYieldTone(value) {
+  if (value >= 12) return "good";
+  if (value >= 8) return "good";
+  if (value >= 6) return "warn";
+  if (value >= 4) return "warn";
+  return "bad";
+}
+
 function scoreCardTone(score) {
   if (score >= 80) return "border-emerald-200 bg-emerald-50 text-emerald-900";
   if (score >= 60) return "border-amber-200 bg-amber-50 text-amber-900";
   return "border-rose-200 bg-rose-50 text-rose-900";
+}
+
+function normalizeRiskText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[0-9]+\s*€/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqueTextItems(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = normalizeRiskText(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function uniqueRiskItems(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = `${item.severity}:${normalizeRiskText(item.text)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function riskSeverityTone(severity) {
@@ -531,6 +594,15 @@ export default function HomePage() {
   const missingFields = requiredMissingFields(data);
   const canAnalyze = missingFields.length === 0;
   const result = useMemo(() => analyze(data), [data]);
+  const displayRiskItems = useMemo(() => uniqueRiskItems(displayRiskItems), [displayRiskItems]);
+  const displayDealbreakers = useMemo(() => {
+    const riskKeys = new Set(displayRiskItems.map((item) => normalizeRiskText(item.text)));
+    return uniqueTextItems(displayDealbreakers).filter((item) => !riskKeys.has(normalizeRiskText(item)));
+  }, [displayDealbreakers, displayRiskItems]);
+  const displayWarnings = useMemo(() => {
+    const riskKeys = new Set(displayRiskItems.map((item) => normalizeRiskText(item.text)));
+    return uniqueTextItems(displayWarnings).filter((item) => !riskKeys.has(normalizeRiskText(item)));
+  }, [displayWarnings, displayRiskItems]);
 
   const updateUrlField = (value) => {
     setData((prev) => ({
@@ -722,9 +794,9 @@ export default function HomePage() {
     doc.text("Riskit ja huomiot", 10, 210);
 
     const riskLines = [
-      ...result.dealbreakers.map((t) => ["KRIITTINEN", t, "bad"]),
-      ...result.riskProfile.items.slice(0, 6).map((item) => [item.severity === "critical" ? "KRIITTINEN" : item.severity === "warning" ? "VAROITUS" : "HUOMIO", item.text, item.severity === "critical" ? "bad" : item.severity === "warning" ? "warn" : "normal"]),
-      ...result.warnings.slice(0, 3).map((t) => ["VAROITUS", t, "warn"]),
+      ...displayDealbreakers.map((t) => ["KRIITTINEN", t, "bad"]),
+      ...displayRiskItems.slice(0, 6).map((item) => [item.severity === "critical" ? "KRIITTINEN" : item.severity === "warning" ? "VAROITUS" : "HUOMIO", item.text, item.severity === "critical" ? "bad" : item.severity === "warning" ? "warn" : "normal"]),
+      ...displayWarnings.slice(0, 3).map((t) => ["VAROITUS", t, "warn"]),
     ].slice(0, 7);
 
     y = 216;
@@ -868,11 +940,11 @@ export default function HomePage() {
     row("Kassavirta / kk", eur(result.cashflow), 108, y);
     y += 19;
     row("Nettovuokratuotto", pct(result.netYield), 10, y);
-    row("Bruttovuokratuotto", pct(result.grossYield), 108, y);
+    row("Bruttovuokratuotto", eur(result.bankLoanPrincipalReduction || 0), 108, y);
     y += 24;
 
     y = sectionTitle("Vakuus ja omarahoitus", y);
-    row("Pankin vakuusarvo", eur(result.collateralValue), 10, y);
+    row("Pankin antama vakuusarvo", eur(result.collateralValue), 10, y);
     row("Vaadittu oma raha / lisävakuus", eur(result.requiredOwnCashOrExtraCollateral), 108, y);
     y += 22;
 
@@ -1000,7 +1072,7 @@ export default function HomePage() {
                 <SelectField label="Omistuspohja" help="Jos omistuspohja ei ole tiedossa, valitse normaali. Keskittynyt omistuspohja tarkoittaa tilannetta, jossa yksi tai muutama omistaja omistaa suuren osan huoneistoista." value={data.ownershipConcentration} onChange={(v) => update("ownershipConcentration", v)} placeholder="Valitse omistuspohja" requiredMissing={isRequiredMissing(data, "ownershipConcentration")} options={[["normal", "Hajautunut / normaali"], ["high", "Keskittynyt"]]} />
                 <SelectField label="Tontti" help="Oma tontti on yleensä ennustettavin. Vuokratontissa kannattaa tarkistaa vuokra-aika ja uusimisehdot." value={data.landType} onChange={(v) => update("landType", v)} placeholder="Valitse tonttityyppi" requiredMissing={isRequiredMissing(data, "landType")} options={[["own", "Oma tontti"], ["leased_city", "Vuokratontti: kaupunki/kunta"], ["leased_private", "Vuokratontti: yksityinen"]]} />
                 {data.landType !== "own" && <NumberField label="Vuosia tontinvuokran uusimiseen" help="Mitä lähempänä uusiminen on, sitä suurempi riski vastikkeen tai tontinvuokran nousulle." value={data.yearsToLandLeaseRenewal} onChange={(v) => update("yearsToLandLeaseRenewal", v)} placeholder="Syötä vuosimäärä" requiredMissing={isRequiredMissing(data, "yearsToLandLeaseRenewal")} />}
-                <SelectField label="Vanha vuokratalo?" help="Vanha vuokratalo voi vaikuttaa jälleenmyytävyyteen ja ostajakysyntään joillakin alueilla." value={data.oldRentalBuilding} onChange={(v) => update("oldRentalBuilding", v)} placeholder="Valitse" requiredMissing={isRequiredMissing(data, "oldRentalBuilding")} options={[["no", "Ei"], ["yes", "Kyllä"]]} />
+                <SelectField label="Onko kyseessä vanha vuokratalo?" help="Vanha vuokratalo voi vaikuttaa jälleenmyytävyyteen ja ostajakysyntään joillakin alueilla." value={data.oldRentalBuilding} onChange={(v) => update("oldRentalBuilding", v)} placeholder="Valitse" requiredMissing={isRequiredMissing(data, "oldRentalBuilding")} options={[["no", "Ei"], ["yes", "Kyllä"]]} />
               </Grid>
 
               <SectionTitle icon={<ShieldAlert className="h-5 w-5" />} title="Remonttivarat" />
@@ -1065,9 +1137,10 @@ export default function HomePage() {
                   <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Tuotto & kassavirta</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Metric label="Kassavirta / kk" value={eur(result.cashflow)} emphasis={cashflowTone} />
-                    <Metric label="Nettovuokratuotto" value={pct(result.netYield)} />
-                    <Metric label="Bruttovuokratuotto" value={pct(result.grossYield)} />
-                    <Metric label="Kulut yhteensä / kk" value={eur(result.monthlyCosts)} />
+                    <Metric label="Pankkilainan pääoma lyhenee / kk" value={eur(result.bankLoanPrincipalReduction || 0)} />
+                    <Metric label="Nettovuokratuotto" value={pct(result.netYield)} emphasis={netYieldTone(result.netYield)} />
+                    <Metric label="Velkavipu" value={`${Math.round(result.leverageRatio || 0)} %`} emphasis={(result.leverageRatio || 0) > 90 ? "bad" : (result.leverageRatio || 0) > 75 ? "warn" : "good"} />
+                    {normalizedData(data).debtShare > 0 && <Metric label="Yhtiölainan pääoma lyhenee / kk" value={eur(result.housingCompanyLoanPrincipalReduction || 0)} />}
                   </div>
                 </div>
 
@@ -1086,7 +1159,7 @@ export default function HomePage() {
                   <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Rahoitus</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Metric label="Lainan kuukausierä" value={eur(result.loanPayment)} />
-                    <Metric label="Pankin antama vakuusarvoprosentti ostokohteelle" value={eur(result.collateralValue)} />
+                    <Metric label="Pankin antama vakuusarvo ostokohteelle" value={eur(result.collateralValue)} />
                     <Metric label="Vaadittu oma raha / lisävakuus" value={eur(result.requiredOwnCashOrExtraCollateral)} emphasis={result.requiredOwnCashOrExtraCollateral > normalizedData(data).ownCapital ? "bad" : "good"} />
                   </div>
                 </div>
@@ -1191,13 +1264,13 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {(result.dealbreakers.length > 0 || result.riskProfile.items.filter((item) => item.severity === "critical").length > 0) && (
+                    {(displayDealbreakers.length > 0 || displayRiskItems.filter((item) => item.severity === "critical").length > 0) && (
                       <div className="space-y-3">
                         <div className="font-semibold text-rose-900">Kriittiset riskit</div>
-                        {result.dealbreakers.map((item, i) => (
+                        {displayDealbreakers.map((item, i) => (
                           <div key={`deal-${i}`} className="flex gap-2 rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item}</div>
                         ))}
-                        {result.riskProfile.items.filter((item) => item.severity === "critical").map((item, i) => (
+                        {displayRiskItems.filter((item) => item.severity === "critical").map((item, i) => (
                           <div key={`critical-${i}`} className={`rounded-2xl border p-3 text-sm ${riskSeverityTone(item.severity)}`}>
                             <div className="mb-1 text-xs font-bold uppercase tracking-wide">{riskSeverityLabel(item.severity)}</div>
                             <div className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item.text}</div>
@@ -1206,10 +1279,10 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {result.riskProfile.items.filter((item) => item.severity === "info").length > 0 && (
+                    {displayRiskItems.filter((item) => item.severity === "info").length > 0 && (
                       <div className="space-y-3">
                         <div className="font-semibold text-slate-900">Huomiot</div>
-                        {result.riskProfile.items.filter((item) => item.severity === "info").map((item, i) => (
+                        {displayRiskItems.filter((item) => item.severity === "info").map((item, i) => (
                           <div key={`info-${i}`} className={`rounded-2xl border p-3 text-sm ${riskSeverityTone(item.severity)}`}>
                             <div className="mb-1 text-xs font-bold uppercase tracking-wide">{riskSeverityLabel(item.severity)}</div>
                             <div className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item.text}</div>
@@ -1218,16 +1291,16 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {(result.riskProfile.items.filter((item) => item.severity === "warning").length > 0 || result.warnings.length > 0) && (
+                    {(displayRiskItems.filter((item) => item.severity === "warning").length > 0 || displayWarnings.length > 0) && (
                       <div className="space-y-3">
                         <div className="font-semibold text-amber-900">Varoitukset</div>
-                        {result.riskProfile.items.filter((item) => item.severity === "warning").map((item, i) => (
+                        {displayRiskItems.filter((item) => item.severity === "warning").map((item, i) => (
                           <div key={`warning-risk-${i}`} className={`rounded-2xl border p-3 text-sm ${riskSeverityTone(item.severity)}`}>
                             <div className="mb-1 text-xs font-bold uppercase tracking-wide">{riskSeverityLabel(item.severity)}</div>
                             <div className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item.text}</div>
                           </div>
                         ))}
-                        {result.warnings.map((item, i) => (
+                        {displayWarnings.map((item, i) => (
                           <div key={`warning-${i}`} className="flex gap-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle className="h-5 w-5 shrink-0" /> {item}</div>
                         ))}
                       </div>
@@ -1284,7 +1357,7 @@ function Label({ children, help, requiredMissing = false }) {
 }
 
 function Grid({ children }) {
-  return <div className="grid gap-4 md:grid-cols-2">{children}</div>;
+  return <div className="space-y-4">{children}</div>;
 }
 
 function SectionTitle({ icon, title }) {

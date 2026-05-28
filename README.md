@@ -38,3 +38,11 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 18: parseri poimii rakennusvuoden Vuosi/Rakennusvuosi-kentästä, kohdenumero mukaan, PDF-nimet osoitteella+neliöillä, taloyhtiön kokoluokat korjattu ja PDF-siistimistä.
 
 - Build 19: sijoitusarvio siirretty headerista analyysiosioon ja HUOM-container täysleveäksi.
+
+- Build 20: vuokratalo-selite, hinnat & arvostus selkeytetty, bruttotuotto poistettu, velkavipu + lainan lyhennys lisätty ja arviointikortit pystylayoutiin.
+
+- Build 21: pankkilainan pääoman lyheneminen eritelty, yhtiölainan arvioitu pääoman lyheneminen lisätty ehdollisesti ja velkavipu säilytetty.
+
+- Build 22: nettovuokratuotto väritetty tuottotason mukaan ja pankin vakuusarvo eurokenttänä nimetty selkeämmin.
+
+- Build 23: riskilippujen duplikaatit poistettu ja 0 € remonttivara-arviot korvattu järkevämmällä varoituksella.
