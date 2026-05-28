@@ -50,3 +50,5 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 24: korjattu build-virhe undefined monthlyInterestOnlyPayment -> bankLoanPrincipalReduction.
 
 - Build 25: debugattu ja korjattu build-virhe: displayRiskItems/displayWarnings/displayDealbreakers eivät enää viittaa itseensä ennen alustusta. npm run build menee läpi.
+
+- Build 26: laskenta-auditin korjaukset: yhtiölainan huomioiva vakuusarvo palautettu, rahoitusscore käyttää kokonaisvelkavipua, vakuusarvoprosentin tooltip täsmennetty.

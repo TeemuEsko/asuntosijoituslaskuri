@@ -133,7 +133,6 @@ function requiredFieldKeys(data) {
     "pipeStatus",
     "roofStatus",
     "facadeStatus",
-    "balconyStatus",
     "windowStatus",
     "debtFreePrice",
     "maintenanceFee",
@@ -194,7 +193,7 @@ function requiredMissingFields(data) {
     ["interestRate", "Korko"],
     ["loanYears", "Laina-aika"],
     ["repaymentType", "Lyhennystyyppi"],
-    ["collateralValuePct", "Pankin antama vakuusarvo ostokohteelle"],
+    ["collateralValuePct", "Pankin antama vakuusarvoprosentti ostokohteelle"],
     ["locationDemand", "Vuokrakysyntä"],
     ["locationRisk", "Sijaintiriski"],
     ["condition", "Asunnon kunto"],
@@ -216,6 +215,10 @@ function requiredMissingFields(data) {
 
   if (!isLowRise(data) && !isFilled(data.elevatorStatus)) {
     missing.push("Hissi");
+  }
+
+  if (!isLowRise(data) && !isFilled(data.balconyStatus)) {
+    missing.push("Parveke");
   }
 
   return missing;
@@ -356,6 +359,12 @@ function analyzeCore(rawData) {
   if (renovationReserve.total > 0) companyScore -= Math.min(25, Math.round(renovationReserve.total / 3000));
   companyScore = clamp(companyScore);
 
+  const collateralValueRaw = data.hasDebtShare === "yes"
+    ? (data.debtFreePrice * (data.collateralValuePct / 100)) - data.debtShare
+    : data.debtFreePrice * (data.collateralValuePct / 100);
+  const collateralValue = Math.max(0, collateralValueRaw);
+  const requiredOwnCashOrExtraCollateral = Math.max(0, purchasePrice - collateralValue);
+
   const conditionScore = clamp(data.condition * 18 + (data.condition >= 4 ? 10 : 0));
   let locationScore = clamp(data.locationDemand * 22 + data.liquidity * 8);
   if (data.locationDemand <= 2) locationScore -= 18;
@@ -367,19 +376,20 @@ function analyzeCore(rawData) {
   locationScore = clamp(locationScore);
 
   let financeScore = 70;
-  const leverage = purchasePrice > 0 ? loanAmount / purchasePrice : 0;
-  if (leverage > 0.8) financeScore -= 18;
-  if (leverage < 0.6) financeScore += 8;
+  const totalDebt = loanAmount + data.debtShare;
+  const leverageRatio = adjustedDebtFreePrice > 0 ? totalDebt / adjustedDebtFreePrice : 0;
+  if (leverageRatio > 0.9) financeScore -= 24;
+  else if (leverageRatio > 0.8) financeScore -= 18;
+  else if (leverageRatio > 0.75) financeScore -= 10;
+  if (leverageRatio < 0.6) financeScore += 8;
   if (data.interestRate > 5) financeScore -= 12;
+  if (requiredOwnCashOrExtraCollateral > data.ownCapital) financeScore -= 10;
   if (cashflow < 0) financeScore -= 18;
   if (cashflow >= 100) financeScore += 8;
   financeScore = clamp(financeScore);
 
   let total = Math.round(cashflowScore * 0.35 + companyScore * 0.25 + conditionScore * 0.15 + locationScore * 0.15 + financeScore * 0.1);
   total = clamp(total + heatingScoreAdjustment(data.heatingType));
-
-  const collateralValue = purchasePrice * (data.collateralValuePct / 100);
-  const requiredOwnCashOrExtraCollateral = Math.max(0, purchasePrice - collateralValue);
 
   const positives = [];
   const warnings = [];
@@ -424,8 +434,7 @@ function analyzeCore(rawData) {
     monthlyCosts,
     cashflow,
     grossYield,
-    leverageRatio: adjustedDebtFreePrice > 0 ? (((loanAmount + data.debtShare) / adjustedDebtFreePrice) * 100) : 0,
-    monthlyPrincipalReduction: bankLoanPrincipalReduction,
+    leverageRatio: leverageRatio * 100,
     netYield,
     scores: { cashflow: cashflowScore, company: Math.round(companyScore), condition: Math.round(conditionScore), location: Math.round(locationScore), finance: Math.round(financeScore), total },
     positives,
@@ -673,8 +682,10 @@ export default function HomePage() {
       setData((prev) => {
         const originalDebtFreePrice = parsed.debtFreePrice ?? prev.originalDebtFreePrice;
         const next = { ...prev, ...parsed, originalDebtFreePrice, url, dataSource: "url-parser", parsedNotice: formatFoundFields(Object.keys(parsed)) };
-        if (next.buildingType === "terraced" || next.buildingType === "semi_detached") next.elevatorStatus = "not_applicable";
-        next.balconyStatus = "not_applicable";
+        if (next.buildingType === "terraced" || next.buildingType === "semi_detached") {
+          next.elevatorStatus = "not_applicable";
+          next.balconyStatus = "not_applicable";
+        }
         const currentYear = new Date().getFullYear();
         const age = Number(next.buildYear) > 0 ? currentYear - Number(next.buildYear) : null;
         if (age !== null && age <= 20) {
@@ -1107,7 +1118,7 @@ export default function HomePage() {
                 <NumberField label="Pankkilainan kokonaiskorko %" help="Arvio lainan kokonaiskorosta." value={data.interestRate} onChange={(v) => update("interestRate", v)} step="0.1" placeholder="Syötä korko" requiredMissing={isRequiredMissing(data, "interestRate")} />
                 <NumberField label="Laina-aika vuosina" help="Laina-aika vaikuttaa kuukausierään ja kassavirtaan." value={data.loanYears} onChange={(v) => update("loanYears", v)} placeholder="Syötä laina-aika" requiredMissing={isRequiredMissing(data, "loanYears")} />
                 <SelectField label="Lyhennystyyppi" help="Annuiteetti: maksuerä pysyy pääosin samana. Tasalyhennys: laina lyhenee nopeammin ja alkuerä on usein suurempi. Kiinteä tasaerä: kuukausierä pysyy samana, laina-aika voi muuttua korkojen mukana. Maksetaan vain korkoa: lainapääoma ei lyhene." value={data.repaymentType} onChange={(v) => update("repaymentType", v)} placeholder="Valitse lyhennystyyppi" requiredMissing={isRequiredMissing(data, "repaymentType")} options={[["annuity", "Annuiteetti"], ["equal_principal", "Tasalyhennys"], ["fixed_payment", "Kiinteä tasaerä"], ["interest_only", "Maksetaan vain korkoa"]]} />
-                <SelectField label="Pankin antama vakuusarvoprosentti ostokohteelle" help="Arvio siitä, kuinka suuren osuuden ostokohteesta pankki hyväksyy vakuudeksi." value={String(data.collateralValuePct)} onChange={(v) => update("collateralValuePct", v)} placeholder="Valitse vakuusarvo" requiredMissing={isRequiredMissing(data, "collateralValuePct")} options={[["70", "70 %"], ["80", "80 %"], ["90", "90 %"]]} />
+                <SelectField label="Pankin antama vakuusarvoprosentti ostokohteelle" help="Syötä arvio pankin käyttämästä vakuusarvoprosentista. Esimerkiksi 70–80 % velattomasta hinnasta. Huomioithan, että yhtiölaina vähentää pankin todellista vakuusarvoa ja voi kasvattaa oman rahan tai lisävakuuksien tarvetta." value={String(data.collateralValuePct)} onChange={(v) => update("collateralValuePct", v)} placeholder="Valitse vakuusarvo" requiredMissing={isRequiredMissing(data, "collateralValuePct")} options={[["70", "70 %"], ["80", "80 %"], ["90", "90 %"]]} />
               </Grid>
 
               <SectionTitle icon={<TrendingUp className="h-5 w-5" />} title="Sijainti ja exit" />
