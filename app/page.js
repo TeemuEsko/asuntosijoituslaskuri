@@ -317,7 +317,7 @@ function analyzeCore(rawData) {
   if (data.housingCompanyFinancials === "good") companyScore += 10;
   if (data.oldRentalBuilding === "yes") companyScore -= 10;
 
-  const statusEffects = { recent: 8, older: 2, not_done: -7, not_renewed: -7, coming: -18, none: 0 };
+  const statusEffects = { recent: 8, older: 2, not_done: -7, not_renewed: -7, coming: -18, not_relevant: 4, none: 0 };
   [data.pipeStatus, data.roofStatus, data.facadeStatus, data.balconyStatus, data.windowStatus].forEach((status) => {
     companyScore += statusEffects[status] || 0;
   });
@@ -335,7 +335,9 @@ function analyzeCore(rawData) {
   companyScore = clamp(companyScore);
 
   const conditionScore = clamp(data.condition * 18 + (data.condition >= 4 ? 10 : 0));
-  let locationScore = clamp(data.locationDemand * 17 + data.liquidity * 10);
+  let locationScore = clamp(data.locationDemand * 22 + data.liquidity * 8);
+  if (data.locationDemand <= 2) locationScore -= 18;
+  if (data.locationDemand >= 5) locationScore += 8;
   if (data.locationRisk === "high") locationScore -= 28;
   if (data.locationRisk === "low") locationScore += 8;
   locationScore = clamp(locationScore);
@@ -365,6 +367,9 @@ function analyzeCore(rawData) {
   if (netYield >= 6 && cashflow >= 0) positives.push("Nettovuokratuotto on asuntosijoittajan näkökulmasta vahva.");
   else if (netYield >= 6 && cashflow < 0) warnings.push("Nettovuokratuotto näyttää vahvalta, mutta kassavirta on negatiivinen valituilla rahoitusoletuksilla.");
   else if (netYield < 4.5) warnings.push("Nettovuokratuotto on matala suhteessa todelliseen arvioituun velattomaan hintaan.");
+
+  if (data.locationDemand >= 5) positives.push("Vahva vuokrakysyntä parantaa kohteen kannattavuus- ja tyhjäkäyntiriskiä.");
+  if (data.locationDemand <= 2) warnings.push("Heikko vuokrakysyntä voi kasvattaa tyhjäkäyntiriskiä ja heikentää todellista kassavirtaa.");
 
   if (data.heatingType === "geothermal") positives.push("Maalämpö tukee pisteytystä ja voi parantaa pitkän aikavälin kulutehokkuutta.");
   if (data.heatingType === "district") positives.push("Kaukolämpö tukee pisteytystä ennustettavuuden ja vuokrattavuuden näkökulmasta.");
@@ -424,6 +429,7 @@ function buildRiskProfile(rawData, base) {
   }
   if (base.cashflow < 0 && base.netYield < 4.5) add("critical", "Negatiivinen kassavirta ja matala nettovuokratuotto heikentävät kohteen sijoituslogiikkaa.");
   if (data.locationRisk === "high") add("critical", "Korkea sijaintiriski.");
+  if (data.locationDemand <= 2) add("warning", "Vuokrakysyntä on arvioitu heikoksi, mikä voi kasvattaa tyhjäkäyntiriskiä.");
   if (data.housingCompanyFinancials === "weak") add("critical", "Taloyhtiön talous vaikuttaa heikolta.");
   if (base.requiredOwnCashOrExtraCollateral > data.ownCapital) add("warning", `Sijoitettu oma pääoma ei välttämättä riitä. Vaadittu oma raha tai lisävakuus on arviolta ${eur(base.requiredOwnCashOrExtraCollateral)}.`);
   if (data.heatingType === "electric") add("warning", "Suora sähkölämmitys voi heikentää vuokrattavuutta käyttökulujen vuoksi.");
@@ -489,6 +495,12 @@ function findOfferForTargets(data, targetCashflow, targetNetYield) {
   return matches[matches.length - 1];
 }
 
+function scoreCardTone(score) {
+  if (score >= 80) return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (score >= 60) return "border-amber-200 bg-amber-50 text-amber-900";
+  return "border-rose-200 bg-rose-50 text-rose-900";
+}
+
 function riskSeverityTone(severity) {
   if (severity === "critical") return "border-rose-200 bg-rose-50 text-rose-900";
   if (severity === "warning") return "border-amber-200 bg-amber-50 text-amber-900";
@@ -534,6 +546,19 @@ export default function HomePage() {
       if (key === "buildingType" && value !== "terraced" && value !== "semi_detached" && next.elevatorStatus === "not_applicable") {
         next.elevatorStatus = "";
       }
+
+      if (key === "buildYear") {
+        const currentYear = new Date().getFullYear();
+        const age = Number(value) > 0 ? currentYear - Number(value) : null;
+        if (age !== null && age <= 20) {
+          next.pipeStatus = next.pipeStatus || "not_relevant";
+          next.roofStatus = next.roofStatus || "not_relevant";
+          next.facadeStatus = next.facadeStatus || "not_relevant";
+          next.balconyStatus = next.balconyStatus || "not_relevant";
+          next.windowStatus = next.windowStatus || "not_relevant";
+          if (!isLowRise(next)) next.elevatorStatus = next.elevatorStatus || "not_relevant";
+        }
+      }
       return next;
     });
   };
@@ -553,6 +578,17 @@ export default function HomePage() {
         const originalDebtFreePrice = parsed.debtFreePrice ?? prev.originalDebtFreePrice;
         const next = { ...prev, ...parsed, originalDebtFreePrice, url, dataSource: "url-parser", parsedNotice: formatFoundFields(Object.keys(parsed)) };
         if (next.buildingType === "terraced" || next.buildingType === "semi_detached") next.elevatorStatus = "not_applicable";
+        const currentYear = new Date().getFullYear();
+        const age = Number(next.buildYear) > 0 ? currentYear - Number(next.buildYear) : null;
+        if (age !== null && age <= 20) {
+          next.pipeStatus = next.pipeStatus || "not_relevant";
+          next.roofStatus = next.roofStatus || "not_relevant";
+          next.facadeStatus = next.facadeStatus || "not_relevant";
+          next.balconyStatus = next.balconyStatus || "not_relevant";
+          next.windowStatus = next.windowStatus || "not_relevant";
+          if (!isLowRise(next)) next.elevatorStatus = next.elevatorStatus || "not_relevant";
+          next.parsedNotice = `${next.parsedNotice} Rakennusvuoden perusteella isot peruskorjaukset on alustavasti merkitty ei ajankohtaisiksi.`;
+        }
         return next;
       });
     } catch (error) {
@@ -637,12 +673,12 @@ export default function HomePage() {
 
               <SectionTitle icon={<ShieldAlert className="h-5 w-5" />} title="Remonttivarat" />
               <Grid>
-                <SelectField label={pipeLabel(data)} help="Valitse remontin todellinen tila. Tulossa lähivuosina lisää karkean remonttivaran todelliseen velattomaan hintaan." value={data.pipeStatus} onChange={(v) => update("pipeStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "pipeStatus")} options={[["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Katto" help="Kattoremontin tila vaikuttaa taloyhtiöriskiin ja mahdolliseen remonttivaraan." value={data.roofStatus} onChange={(v) => update("roofStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "roofStatus")} options={[["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Julkisivu" help="Julkisivuremontti on monissa vanhemmissa yhtiöissä iso kuluerä." value={data.facadeStatus} onChange={(v) => update("facadeStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "facadeStatus")} options={[["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Parveke" help="Valitse ei parveketta, jos kohteessa ei ole parveketta." value={data.balconyStatus} onChange={(v) => update("balconyStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "balconyStatus")} options={[["none", "Ei parveketta"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Ikkunat" help="Ikkunaremontti voi vaikuttaa asumismukavuuteen, energiatehokkuuteen ja yhtiön kustannuksiin." value={data.windowStatus} onChange={(v) => update("windowStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "windowStatus")} options={[["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                {!isLowRise(data) && <SelectField label="Hissi" help="Valitse ei hissiä, jos yhtiössä ei ole hissiä. Rivitaloissa ja paritaloissa hissivalinta piilotetaan." value={data.elevatorStatus} onChange={(v) => update("elevatorStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "elevatorStatus")} options={[["no_elevator", "Ei hissiä"], ["not_modernized", "Ei modernisoitu"], ["modernized_old", "Modernisoitu yli 20 vuotta sitten"], ["modernized_recent", "Modernisoitu viimeisen 20 vuoden aikana"], ["new_planned", "Hissien rakentaminen suunnitteilla"]]} />}
+                <SelectField label={pipeLabel(data)} help="Valitse remontin todellinen tila. Tulossa lähivuosina lisää karkean remonttivaran todelliseen velattomaan hintaan." value={data.pipeStatus} onChange={(v) => update("pipeStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "pipeStatus")} options={[["not_relevant", "Ei ajankohtainen"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                <SelectField label="Katto" help="Kattoremontin tila vaikuttaa taloyhtiöriskiin ja mahdolliseen remonttivaraan." value={data.roofStatus} onChange={(v) => update("roofStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "roofStatus")} options={[["not_relevant", "Ei ajankohtainen"], ["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                <SelectField label="Julkisivu" help="Julkisivuremontti on monissa vanhemmissa yhtiöissä iso kuluerä." value={data.facadeStatus} onChange={(v) => update("facadeStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "facadeStatus")} options={[["not_relevant", "Ei ajankohtainen"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                <SelectField label="Parveke" help="Valitse ei parveketta, jos kohteessa ei ole parveketta." value={data.balconyStatus} onChange={(v) => update("balconyStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "balconyStatus")} options={[["none", "Ei parveketta"], ["not_relevant", "Ei ajankohtainen"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                <SelectField label="Ikkunat" help="Ikkunaremontti voi vaikuttaa asumismukavuuteen, energiatehokkuuteen ja yhtiön kustannuksiin." value={data.windowStatus} onChange={(v) => update("windowStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "windowStatus")} options={[["not_relevant", "Ei ajankohtainen"], ["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                {!isLowRise(data) && <SelectField label="Hissi" help="Valitse ei hissiä, jos yhtiössä ei ole hissiä. Rivitaloissa ja paritaloissa hissivalinta piilotetaan." value={data.elevatorStatus} onChange={(v) => update("elevatorStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "elevatorStatus")} options={[["no_elevator", "Ei hissiä"], ["not_relevant", "Ei ajankohtainen"], ["not_modernized", "Ei modernisoitu"], ["modernized_old", "Modernisoitu yli 20 vuotta sitten"], ["modernized_recent", "Modernisoitu viimeisen 20 vuoden aikana"], ["new_planned", "Hissien rakentaminen suunnitteilla"]]} />}
                 <NumberField label="Jyvittämätön remonttiosuus" help="Lisää tähän tiedossa oleva tai arvioitu tuleva remonttiosuus, jota ei vielä näy velattomassa hinnassa." value={data.ghostDebt} onChange={(v) => update("ghostDebt", v)} placeholder="Syötä euroina, jos tiedossa" />
               </Grid>
 
@@ -672,7 +708,7 @@ export default function HomePage() {
 
               <SectionTitle icon={<TrendingUp className="h-5 w-5" />} title="Sijainti ja exit" />
               <SelectField label="Sijaintiriski" help="Matala: haluttu sijainti, isot työllistäjät tai oppilaitokset lähellä. Keskitaso: elinvoimainen pieni tai keskisuuri kunta. Korkea: muuttotappiopaikkakunta tai yhden suuren työnantajan varassa." value={data.locationRisk} onChange={(v) => update("locationRisk", v)} placeholder="Valitse sijaintiriski" requiredMissing={isRequiredMissing(data, "locationRisk")} options={[["low", "Matala – haluttu sijainti"], ["medium", "Keskitaso – elinvoimainen pieni/keskisuuri kunta"], ["high", "Korkea – muuttotappio tai yhden työllistäjän riski"]]} />
-              <SliderField label="Asunnon kunto" help="Arvioi asunnon nykykuntoa vuokrauksen ja mahdollisen remonttitarpeen näkökulmasta." value={data.condition} onChange={(v) => update("condition", v)} left="Heikko" right="Erinomainen" requiredMissing={isRequiredMissing(data, "condition")} />
+              <SliderField label="Asunnon kunto" help="1 Heikko: vaatii täydellisen remontin. 2 Tyydyttävä: asuttava, mutta selvä päivitystarve. 3 Kohtalainen: pinnat pääosin ok, kylpyhuone tai keittiö voi vaatia päivitystä. 4 Hyvä: siisti ja toimiva. 5 Erinomainen: remontoitu tai lähes uudenveroinen." value={data.condition} onChange={(v) => update("condition", v)} left="Heikko" right="Erinomainen" requiredMissing={isRequiredMissing(data, "condition")} />
               <SliderField label="Jälleenmyytävyys / likviditeetti" help="Arvioi kuinka nopeasti ja helposti kohde olisi myytävissä eteenpäin." value={data.liquidity} onChange={(v) => update("liquidity", v)} left="Hidas" right="Nopea" requiredMissing={isRequiredMissing(data, "liquidity")} />
             </div>
           </Card>
@@ -681,19 +717,37 @@ export default function HomePage() {
             <Card>
               <div className="flex items-center gap-2 text-xl font-semibold"><TrendingUp className="h-5 w-5" /> Talousluvut</div>
               {!canAnalyze && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Talousluvut päivittyvät suuntaa-antavasti. Täydennä kaikki vaaditut kentät ennen tulkintaa.</div>}
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <Metric label="Kassavirta / kk" value={eur(result.cashflow)} emphasis={cashflowTone} />
-                <Metric label="Nettovuokratuotto" value={pct(result.netYield)} />
-                <Metric label="Bruttovuokratuotto" value={pct(result.grossYield)} />
-                <Metric label="Myyntihinta" value={eur(result.purchasePrice)} />
-                {isFilled(data.originalDebtFreePrice) && Number(data.originalDebtFreePrice) !== normalizedData(data).debtFreePrice && <Metric label="Alkuperäinen ilmoituksen velaton hinta" value={eur(data.originalDebtFreePrice)} />}
-                <Metric label="Syötetty velaton tarjoushinta" value={eur(normalizedData(data).debtFreePrice)} />
-                <Metric label="Todellinen arvioitu velaton hinta" value={eur(result.adjustedDebtFreePrice)} emphasis={result.adjustedDebtFreePrice > normalizedData(data).debtFreePrice ? "warn" : undefined} />
-                <Metric label="Remonttivara" value={eur(result.renovationReserve.total)} emphasis={result.renovationReserve.total > 0 ? "warn" : undefined} />
-                <Metric label="Lainan kuukausierä" value={eur(result.loanPayment)} />
-                <Metric label="Kulut yhteensä / kk" value={eur(result.monthlyCosts)} />
-                <Metric label="Pankin vakuusarvo" value={eur(result.collateralValue)} />
-                <Metric label="Vaadittu oma raha / lisävakuus" value={eur(result.requiredOwnCashOrExtraCollateral)} emphasis={result.requiredOwnCashOrExtraCollateral > normalizedData(data).ownCapital ? "bad" : "good"} />
+
+              <div className="mt-5 space-y-6">
+                <div>
+                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Tuotto & kassavirta</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Metric label="Kassavirta / kk" value={eur(result.cashflow)} emphasis={cashflowTone} />
+                    <Metric label="Nettovuokratuotto" value={pct(result.netYield)} />
+                    <Metric label="Bruttovuokratuotto" value={pct(result.grossYield)} />
+                    <Metric label="Kulut yhteensä / kk" value={eur(result.monthlyCosts)} />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Hinnat & arvostus</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Metric label="Myyntihinta" value={eur(result.purchasePrice)} />
+                    {isFilled(data.originalDebtFreePrice) && Number(data.originalDebtFreePrice) !== normalizedData(data).debtFreePrice && <Metric label="Alkuperäinen ilmoituksen velaton hinta" value={eur(data.originalDebtFreePrice)} />}
+                    <Metric label="Syötetty velaton tarjoushinta" value={eur(normalizedData(data).debtFreePrice)} />
+                    <Metric label="Todellinen arvioitu velaton hinta" value={eur(result.adjustedDebtFreePrice)} emphasis={result.adjustedDebtFreePrice > normalizedData(data).debtFreePrice ? "warn" : undefined} />
+                    <Metric label="Remonttivara" value={eur(result.renovationReserve.total)} emphasis={result.renovationReserve.total > 0 ? "warn" : undefined} />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Rahoitus</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Metric label="Lainan kuukausierä" value={eur(result.loanPayment)} />
+                    <Metric label="Pankin vakuusarvo" value={eur(result.collateralValue)} />
+                    <Metric label="Vaadittu oma raha / lisävakuus" value={eur(result.requiredOwnCashOrExtraCollateral)} emphasis={result.requiredOwnCashOrExtraCollateral > normalizedData(data).ownCapital ? "bad" : "good"} />
+                  </div>
+                </div>
               </div>
             </Card>
 
@@ -724,7 +778,10 @@ export default function HomePage() {
                   <Metric label="Tarjottava velaton hinta enintään" value={eur(offerSimulation.price)} emphasis="good" />
                   <Metric label="Kassavirta tällä hinnalla" value={eur(offerSimulation.result.cashflow)} />
                   <Metric label="Nettotuotto tällä hinnalla" value={pct(offerSimulation.result.netYield)} />
-                  <Metric label="Sijoitusarvio tällä hinnalla" value={`${offerSimulation.result.scores.total}/100`} />
+                  <div className={`rounded-2xl border p-4 ${scoreCardTone(offerSimulation.result.scores.total)}`}>
+                    <div className="text-xs uppercase tracking-wide opacity-80">Sijoitusarvio tällä hinnalla</div>
+                    <div className="mt-1 text-2xl font-bold">{offerSimulation.result.scores.total}/100</div>
+                  </div>
                 </div>
               )}
               {offerSimulation === null && <p className="mt-3 text-sm text-slate-500">Tulos näyttää korkeimman velattoman hinnan valitun tavoitteen perusteella.</p>}
@@ -908,3 +965,5 @@ function ScoreBar({ label, value, weight }) {
     </div>
   );
 }
+
+// Layout optimized for single-column investment analysis flow.

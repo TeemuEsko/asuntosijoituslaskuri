@@ -18,3 +18,7 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 06: analyysiliput järjestetty, vanha tarjoushintasimulaattori poistettu ja tavoitesimulaattori toimii yhdellä valitulla tavoitteella.
 
 - Build 08: tumma vihreä teema, kassavirta/tuottolipun korjaus, alkuperäinen ilmoitushinta erotettu syötetystä tarjoushinnasta.
+
+- Build 09: talousluvut ryhmitelty, vuokrakysyntää painotettu, uusiin kohteisiin automaattinen ei ajankohtainen remonttioletus, simuloidun scorekortin värit ja asunnon kunnon selitteet.
+
+- Build 10: siirretty yksipalstaiseen ylhäältä-alas analyysivirtaan UX:n selkeyttämiseksi.
