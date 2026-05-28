@@ -1079,11 +1079,70 @@ function SelectField({ label, value, onChange, options, help, placeholder, requi
 }
 
 function SliderField({ label, value, onChange, left, right, help, requiredMissing = false }) {
+  const numericValue = Number(value);
+  const isSelected = (n) => numericValue === n;
+
+  let options = [
+    [1, left || "1"],
+    [2, "2"],
+    [3, "3"],
+    [4, "4"],
+    [5, right || "5"],
+  ];
+
+  if (label.includes("Asunnon kunto")) {
+    options = [
+      [1, "1 Heikko", "Vaatii täydellisen remontin"],
+      [2, "2 Tyydyttävä", "Asuttava, mutta selvä päivitystarve"],
+      [3, "3 Kohtalainen", "Pinnat ok, kph/keittiö voi vaatia päivitystä"],
+      [4, "4 Hyvä", "Siisti ja toimiva"],
+      [5, "5 Erinomainen", "Remontoitu tai lähes uudenveroinen"],
+    ];
+  } else if (label.includes("Vuokrakysyntä")) {
+    options = [
+      [1, "1 Heikko", "Paljon tyhjäkäyntiriskiä"],
+      [2, "2 Melko heikko", "Vuokraus voi kestää"],
+      [3, "3 Normaali", "Tavanomainen kysyntä"],
+      [4, "4 Hyvä", "Hyvä vuokrattavuus"],
+      [5, "5 Vahva", "Erittäin hyvä kysyntä"],
+    ];
+  } else if (label.includes("Jälleenmyytävyys")) {
+    options = [
+      [1, "1 Hidas", "Yli 200 päivää"],
+      [2, "2 Melko hidas", "Noin 150 päivää"],
+      [3, "3 Normaali", "Noin 100 päivää"],
+      [4, "4 Hyvä", "Noin 50 päivää"],
+      [5, "5 Nopea", "Alle 15 päivää"],
+    ];
+  }
+
   return (
     <div className={`space-y-3 rounded-2xl border p-4 ${requiredMissing ? "border-rose-300 bg-rose-50" : "bg-white"}`}>
-      <div className="flex items-center justify-between"><Label help={help} requiredMissing={requiredMissing}>{label}</Label><span className={`rounded-full px-3 py-1 text-sm font-semibold ${requiredMissing ? "bg-rose-100 text-rose-700" : "bg-slate-100"}`}>{value || "–"}/5</span></div>
-      <input type="range" value={value || 3} min={1} max={5} step={1} onChange={(e) => onChange(Number(e.target.value))} className="w-full" />
-      <div className="flex justify-between text-xs text-slate-500"><span>{left}</span><span>{right}</span></div>
+      <div className="flex items-center justify-between gap-3">
+        <Label help={help} requiredMissing={requiredMissing}>{label}</Label>
+        <span className={`rounded-full px-3 py-1 text-sm font-semibold ${requiredMissing ? "bg-rose-100 text-rose-700" : "bg-slate-100"}`}>
+          {value || "–"}/5
+        </span>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-5">
+        {options.map(([n, title, desc]) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(n)}
+            className={`rounded-xl border p-3 text-left text-sm transition ${
+              isSelected(n)
+                ? "border-[#1F4D3A] bg-[#EAF4EF] text-[#173A2C] ring-2 ring-[#1F4D3A]/20"
+                : "border-slate-200 bg-white hover:border-[#1F4D3A]/40"
+            }`}
+          >
+            <div className="font-semibold">{title}</div>
+            {desc && <div className="mt-1 text-xs leading-4 text-slate-500">{desc}</div>}
+          </button>
+        ))}
+      </div>
+
       {requiredMissing && <p className="text-xs font-medium text-rose-600">Pakollinen arvio puuttuu.</p>}
     </div>
   );
@@ -1103,4 +1162,3 @@ function ScoreBar({ label, value, weight }) {
   );
 }
 
-// TODO_CARD_SELECTORS: sliderit korvataan seuraavassa UI-päivityksessä 1-5 valintakorteilla.

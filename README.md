@@ -28,3 +28,5 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 13: PDF-raportin latausnappi palautettu yksipalstaiseen analyysiosioon.
 
 - Build 14: rahoituskenttien selkeytys, vakuusarvo-tooltip, likviditeetin myyntiaikaselitteet ja laajemmat käyttöohje-tooltipit.
+
+- Build 15: sliderit korvattu 1–5 valintakorteilla ja PDF-raporttinappi palautettu näkyviin.
