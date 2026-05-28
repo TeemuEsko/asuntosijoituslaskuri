@@ -12,3 +12,5 @@ Mukana:
 - käyttöehdot ja tietosuojasivu
 
 Upload GitHubiin ja deploy Vercelissä.
+
+- Build 05: punainen korostus puuttuville pakollisille kentille, taloyhtiön koko -selitteet ja omistuspohjan ohjeteksti.

@@ -118,6 +118,55 @@ function normalizedData(data) {
   };
 }
 
+function requiredFieldKeys(data) {
+  const keys = [
+    "buildingType",
+    "buildYear",
+    "heatingType",
+    "housingCompanySize",
+    "housingCompanyFinancials",
+    "ownershipConcentration",
+    "landType",
+    "oldRentalBuilding",
+    "pipeStatus",
+    "roofStatus",
+    "facadeStatus",
+    "balconyStatus",
+    "windowStatus",
+    "debtFreePrice",
+    "maintenanceFee",
+    "hasDebtShare",
+    "rent",
+    "ownCapital",
+    "interestRate",
+    "loanYears",
+    "repaymentType",
+    "collateralValuePct",
+    "locationDemand",
+    "locationRisk",
+    "condition",
+    "liquidity",
+  ];
+
+  if (data.hasDebtShare === "yes") {
+    keys.push("debtShare", "financingFee");
+  }
+
+  if (data.landType && data.landType !== "own") {
+    keys.push("yearsToLandLeaseRenewal");
+  }
+
+  if (!isLowRise(data)) {
+    keys.push("elevatorStatus");
+  }
+
+  return keys;
+}
+
+function isRequiredMissing(data, key) {
+  return requiredFieldKeys(data).includes(key) && !isFilled(data[key]);
+}
+
 function requiredMissingFields(data) {
   const missing = [];
   const req = [
@@ -569,56 +618,56 @@ export default function HomePage() {
 
               <SectionTitle icon={<Building2 className="h-5 w-5" />} title="Rakennus ja taloyhtiö" />
               <Grid>
-                <SelectField label="Talotyyppi" help="Valitse ostokohteen tyyppi. Talotyyppi vaikuttaa remonttiriskeihin, kulurakenteeseen ja jälleenmyytävyyteen." value={data.buildingType} onChange={(v) => update("buildingType", v)} placeholder="Valitse talotyyppi" options={[["apartment", "Kerrostalo"], ["terraced", "Rivitalo"], ["semi_detached", "Paritalo"], ["loft", "Luhtitalo"]]} />
-                <NumberField label="Rakennusvuosi" help="Rakennusvuosi auttaa arvioimaan tulevia remontteja, rakennusteknisiä riskejä ja asbestiriskiä." value={data.buildYear} onChange={(v) => update("buildYear", v)} placeholder="Syötä rakennusvuosi" />
-                <SelectField label="Lämmitys" help="Maalämpö ja kaukolämpö nostavat pisteytystä. Suora sähkö ja öljy laskevat pisteytystä." value={data.heatingType} onChange={(v) => update("heatingType", v)} placeholder="Valitse lämmitysmuoto" options={[["electric", "Suora sähkö"], ["district", "Kaukolämpö"], ["geothermal", "Maalämpö"], ["exhaust_air", "Poistoilmalämpöpumppu"], ["oil", "Öljylämmitys"]]} />
-                <SelectField label="Taloyhtiön koko" help="Pienessä yhtiössä isot remontit voivat kohdistua harvemmille osakkaille. Iso yhtiö voi hajauttaa riskiä." value={data.housingCompanySize} onChange={(v) => update("housingCompanySize", v)} placeholder="Valitse koko" options={[["small", "Pieni"], ["medium", "Keskikokoinen"], ["large", "Iso"]]} />
-                <SelectField label="Taloyhtiön talous" help="Arvio taloyhtiön maksuvalmiudesta, vastikepaineesta ja yleisestä taloudellisesta tilanteesta." value={data.housingCompanyFinancials} onChange={(v) => update("housingCompanyFinancials", v)} placeholder="Valitse arvio" options={[["good", "Hyvä"], ["average", "Kohtalainen / ei tiedossa"], ["weak", "Heikko"]]} />
-                <SelectField label="Omistuspohja" help="Keskittynyt omistuspohja voi lisätä päätöksenteko- ja vastikeriskiä." value={data.ownershipConcentration} onChange={(v) => update("ownershipConcentration", v)} placeholder="Valitse omistuspohja" options={[["normal", "Hajautunut / normaali"], ["high", "Keskittynyt"]]} />
-                <SelectField label="Tontti" help="Oma tontti on yleensä ennustettavin. Vuokratontissa kannattaa tarkistaa vuokra-aika ja uusimisehdot." value={data.landType} onChange={(v) => update("landType", v)} placeholder="Valitse tonttityyppi" options={[["own", "Oma tontti"], ["leased_city", "Vuokratontti: kaupunki/kunta"], ["leased_private", "Vuokratontti: yksityinen"]]} />
-                {data.landType !== "own" && <NumberField label="Vuosia tontinvuokran uusimiseen" help="Mitä lähempänä uusiminen on, sitä suurempi riski vastikkeen tai tontinvuokran nousulle." value={data.yearsToLandLeaseRenewal} onChange={(v) => update("yearsToLandLeaseRenewal", v)} placeholder="Syötä vuosimäärä" />}
-                <SelectField label="Vanha vuokratalo?" help="Vanha vuokratalo voi vaikuttaa jälleenmyytävyyteen ja ostajakysyntään joillakin alueilla." value={data.oldRentalBuilding} onChange={(v) => update("oldRentalBuilding", v)} placeholder="Valitse" options={[["no", "Ei"], ["yes", "Kyllä"]]} />
+                <SelectField label="Talotyyppi" help="Valitse ostokohteen tyyppi. Talotyyppi vaikuttaa remonttiriskeihin, kulurakenteeseen ja jälleenmyytävyyteen." value={data.buildingType} onChange={(v) => update("buildingType", v)} placeholder="Valitse talotyyppi" requiredMissing={isRequiredMissing(data, "buildingType")} options={[["apartment", "Kerrostalo"], ["terraced", "Rivitalo"], ["semi_detached", "Paritalo"], ["loft", "Luhtitalo"]]} />
+                <NumberField label="Rakennusvuosi" help="Rakennusvuosi auttaa arvioimaan tulevia remontteja, rakennusteknisiä riskejä ja asbestiriskiä." value={data.buildYear} onChange={(v) => update("buildYear", v)} placeholder="Syötä rakennusvuosi" requiredMissing={isRequiredMissing(data, "buildYear")} />
+                <SelectField label="Lämmitys" help="Maalämpö ja kaukolämpö nostavat pisteytystä. Suora sähkö ja öljy laskevat pisteytystä." value={data.heatingType} onChange={(v) => update("heatingType", v)} placeholder="Valitse lämmitysmuoto" requiredMissing={isRequiredMissing(data, "heatingType")} options={[["electric", "Suora sähkö"], ["district", "Kaukolämpö"], ["geothermal", "Maalämpö"], ["exhaust_air", "Poistoilmalämpöpumppu"], ["oil", "Öljylämmitys"]]} />
+                <SelectField label="Taloyhtiön koko" help="Pienessä yhtiössä isot remontit voivat kohdistua harvemmille osakkaille. Iso yhtiö voi hajauttaa riskiä." value={data.housingCompanySize} onChange={(v) => update("housingCompanySize", v)} placeholder="Valitse koko" requiredMissing={isRequiredMissing(data, "housingCompanySize")} options={[["small", "Pieni (0–5 asuntoa)"], ["medium", "Keskikokoinen (10–30 asuntoa)"], ["large", "Iso (+30 asuntoa)"]]} />
+                <SelectField label="Taloyhtiön talous" help="Arvio taloyhtiön maksuvalmiudesta, vastikepaineesta ja yleisestä taloudellisesta tilanteesta." value={data.housingCompanyFinancials} onChange={(v) => update("housingCompanyFinancials", v)} placeholder="Valitse arvio" requiredMissing={isRequiredMissing(data, "housingCompanyFinancials")} options={[["good", "Hyvä"], ["average", "Kohtalainen / ei tiedossa"], ["weak", "Heikko"]]} />
+                <SelectField label="Omistuspohja" help="Jos omistuspohja ei ole tiedossa, valitse normaali. Keskittynyt omistuspohja tarkoittaa tilannetta, jossa yksi tai muutama omistaja omistaa suuren osan huoneistoista." value={data.ownershipConcentration} onChange={(v) => update("ownershipConcentration", v)} placeholder="Valitse omistuspohja" requiredMissing={isRequiredMissing(data, "ownershipConcentration")} options={[["normal", "Hajautunut / normaali"], ["high", "Keskittynyt"]]} />
+                <SelectField label="Tontti" help="Oma tontti on yleensä ennustettavin. Vuokratontissa kannattaa tarkistaa vuokra-aika ja uusimisehdot." value={data.landType} onChange={(v) => update("landType", v)} placeholder="Valitse tonttityyppi" requiredMissing={isRequiredMissing(data, "landType")} options={[["own", "Oma tontti"], ["leased_city", "Vuokratontti: kaupunki/kunta"], ["leased_private", "Vuokratontti: yksityinen"]]} />
+                {data.landType !== "own" && <NumberField label="Vuosia tontinvuokran uusimiseen" help="Mitä lähempänä uusiminen on, sitä suurempi riski vastikkeen tai tontinvuokran nousulle." value={data.yearsToLandLeaseRenewal} onChange={(v) => update("yearsToLandLeaseRenewal", v)} placeholder="Syötä vuosimäärä" requiredMissing={isRequiredMissing(data, "yearsToLandLeaseRenewal")} />}
+                <SelectField label="Vanha vuokratalo?" help="Vanha vuokratalo voi vaikuttaa jälleenmyytävyyteen ja ostajakysyntään joillakin alueilla." value={data.oldRentalBuilding} onChange={(v) => update("oldRentalBuilding", v)} placeholder="Valitse" requiredMissing={isRequiredMissing(data, "oldRentalBuilding")} options={[["no", "Ei"], ["yes", "Kyllä"]]} />
               </Grid>
 
               <SectionTitle icon={<ShieldAlert className="h-5 w-5" />} title="Remonttivarat" />
               <Grid>
-                <SelectField label={pipeLabel(data)} help="Valitse remontin todellinen tila. Tulossa lähivuosina lisää karkean remonttivaran todelliseen velattomaan hintaan." value={data.pipeStatus} onChange={(v) => update("pipeStatus", v)} placeholder="Valitse tila" options={[["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Katto" help="Kattoremontin tila vaikuttaa taloyhtiöriskiin ja mahdolliseen remonttivaraan." value={data.roofStatus} onChange={(v) => update("roofStatus", v)} placeholder="Valitse tila" options={[["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Julkisivu" help="Julkisivuremontti on monissa vanhemmissa yhtiöissä iso kuluerä." value={data.facadeStatus} onChange={(v) => update("facadeStatus", v)} placeholder="Valitse tila" options={[["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Parveke" help="Valitse ei parveketta, jos kohteessa ei ole parveketta." value={data.balconyStatus} onChange={(v) => update("balconyStatus", v)} placeholder="Valitse tila" options={[["none", "Ei parveketta"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Ikkunat" help="Ikkunaremontti voi vaikuttaa asumismukavuuteen, energiatehokkuuteen ja yhtiön kustannuksiin." value={data.windowStatus} onChange={(v) => update("windowStatus", v)} placeholder="Valitse tila" options={[["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                {!isLowRise(data) && <SelectField label="Hissi" help="Valitse ei hissiä, jos yhtiössä ei ole hissiä. Rivitaloissa ja paritaloissa hissivalinta piilotetaan." value={data.elevatorStatus} onChange={(v) => update("elevatorStatus", v)} placeholder="Valitse tila" options={[["no_elevator", "Ei hissiä"], ["not_modernized", "Ei modernisoitu"], ["modernized_old", "Modernisoitu yli 20 vuotta sitten"], ["modernized_recent", "Modernisoitu viimeisen 20 vuoden aikana"], ["new_planned", "Hissien rakentaminen suunnitteilla"]]} />}
+                <SelectField label={pipeLabel(data)} help="Valitse remontin todellinen tila. Tulossa lähivuosina lisää karkean remonttivaran todelliseen velattomaan hintaan." value={data.pipeStatus} onChange={(v) => update("pipeStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "pipeStatus")} options={[["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                <SelectField label="Katto" help="Kattoremontin tila vaikuttaa taloyhtiöriskiin ja mahdolliseen remonttivaraan." value={data.roofStatus} onChange={(v) => update("roofStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "roofStatus")} options={[["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                <SelectField label="Julkisivu" help="Julkisivuremontti on monissa vanhemmissa yhtiöissä iso kuluerä." value={data.facadeStatus} onChange={(v) => update("facadeStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "facadeStatus")} options={[["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                <SelectField label="Parveke" help="Valitse ei parveketta, jos kohteessa ei ole parveketta." value={data.balconyStatus} onChange={(v) => update("balconyStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "balconyStatus")} options={[["none", "Ei parveketta"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                <SelectField label="Ikkunat" help="Ikkunaremontti voi vaikuttaa asumismukavuuteen, energiatehokkuuteen ja yhtiön kustannuksiin." value={data.windowStatus} onChange={(v) => update("windowStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "windowStatus")} options={[["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                {!isLowRise(data) && <SelectField label="Hissi" help="Valitse ei hissiä, jos yhtiössä ei ole hissiä. Rivitaloissa ja paritaloissa hissivalinta piilotetaan." value={data.elevatorStatus} onChange={(v) => update("elevatorStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "elevatorStatus")} options={[["no_elevator", "Ei hissiä"], ["not_modernized", "Ei modernisoitu"], ["modernized_old", "Modernisoitu yli 20 vuotta sitten"], ["modernized_recent", "Modernisoitu viimeisen 20 vuoden aikana"], ["new_planned", "Hissien rakentaminen suunnitteilla"]]} />}
                 <NumberField label="Jyvittämätön remonttiosuus" help="Lisää tähän tiedossa oleva tai arvioitu tuleva remonttiosuus, jota ei vielä näy velattomassa hinnassa." value={data.ghostDebt} onChange={(v) => update("ghostDebt", v)} placeholder="Syötä euroina, jos tiedossa" />
               </Grid>
 
               <SectionTitle icon={<Banknote className="h-5 w-5" />} title="Talous" />
               <Grid>
-                <NumberField label="Velaton tarjoushinta" help="Hinta, jolla arvioit kohdetta. Voit testata eri tarjoushintoja ja nähdä vaikutuksen kassavirtaan." value={data.debtFreePrice} onChange={(v) => update("debtFreePrice", v)} placeholder="Syötä velaton hinta" />
-                <SelectField label="Onko velkaosuutta?" help="Valitse kyllä, jos huoneistolla on taloyhtiölainaa tai rahoitusvastiketta." value={data.hasDebtShare} onChange={(v) => update("hasDebtShare", v)} placeholder="Valitse" options={[["yes", "Kyllä"], ["no", "Ei"]]} />
-                {data.hasDebtShare === "yes" && <NumberField label="Velkaosuus" help="Huoneistolle kohdistuva taloyhtiölainan osuus." value={data.debtShare} onChange={(v) => update("debtShare", v)} placeholder="Syötä velkaosuus" />}
-                <NumberField label="Hoitovastike / kk" help="Taloyhtiölle maksettava hoitovastike. Tämä vähennetään vuokratuotosta." value={data.maintenanceFee} onChange={(v) => update("maintenanceFee", v)} placeholder="Syötä hoitovastike" />
-                {data.hasDebtShare === "yes" && <NumberField label="Rahoitusvastike / kk" help="Taloyhtiölainasta maksettava kuukausittainen rahoitusvastike." value={data.financingFee} onChange={(v) => update("financingFee", v)} placeholder="Syötä rahoitusvastike" />}
+                <NumberField label="Velaton tarjoushinta" help="Hinta, jolla arvioit kohdetta. Voit testata eri tarjoushintoja ja nähdä vaikutuksen kassavirtaan." value={data.debtFreePrice} onChange={(v) => update("debtFreePrice", v)} placeholder="Syötä velaton hinta" requiredMissing={isRequiredMissing(data, "debtFreePrice")} />
+                <SelectField label="Onko velkaosuutta?" help="Valitse kyllä, jos huoneistolla on taloyhtiölainaa tai rahoitusvastiketta." value={data.hasDebtShare} onChange={(v) => update("hasDebtShare", v)} placeholder="Valitse" requiredMissing={isRequiredMissing(data, "hasDebtShare")} options={[["yes", "Kyllä"], ["no", "Ei"]]} />
+                {data.hasDebtShare === "yes" && <NumberField label="Velkaosuus" help="Huoneistolle kohdistuva taloyhtiölainan osuus." value={data.debtShare} onChange={(v) => update("debtShare", v)} placeholder="Syötä velkaosuus" requiredMissing={isRequiredMissing(data, "debtShare")} />}
+                <NumberField label="Hoitovastike / kk" help="Taloyhtiölle maksettava hoitovastike. Tämä vähennetään vuokratuotosta." value={data.maintenanceFee} onChange={(v) => update("maintenanceFee", v)} placeholder="Syötä hoitovastike" requiredMissing={isRequiredMissing(data, "maintenanceFee")} />
+                {data.hasDebtShare === "yes" && <NumberField label="Rahoitusvastike / kk" help="Taloyhtiölainasta maksettava kuukausittainen rahoitusvastike." value={data.financingFee} onChange={(v) => update("financingFee", v)} placeholder="Syötä rahoitusvastike" requiredMissing={isRequiredMissing(data, "financingFee")} />}
               </Grid>
 
               <SectionTitle icon={<TrendingUp className="h-5 w-5" />} title="Vuokraus" />
               <Grid>
-                <NumberField label="Vuokra / kk" help="Lisää tähän vain varsinainen vuokra ilman vesimaksuja, sähköä tai muita läpilaskutettavia eriä." value={data.rent} onChange={(v) => update("rent", v)} placeholder="Syötä vuokra" />
-                <SliderField label="Vuokrakysyntä alueella" help="Arvioi kuinka helposti asunto löytyy vuokralaiselle realistisella vuokratasolla." value={data.locationDemand} onChange={(v) => update("locationDemand", v)} left="Heikko" right="Vahva" />
+                <NumberField label="Vuokra / kk" help="Lisää tähän vain varsinainen vuokra ilman vesimaksuja, sähköä tai muita läpilaskutettavia eriä." value={data.rent} onChange={(v) => update("rent", v)} placeholder="Syötä vuokra" requiredMissing={isRequiredMissing(data, "rent")} />
+                <SliderField label="Vuokrakysyntä alueella" help="Arvioi kuinka helposti asunto löytyy vuokralaiselle realistisella vuokratasolla." value={data.locationDemand} onChange={(v) => update("locationDemand", v)} left="Heikko" right="Vahva" requiredMissing={isRequiredMissing(data, "locationDemand")} />
               </Grid>
 
               <SectionTitle icon={<Banknote className="h-5 w-5" />} title="Rahoitus" />
               <Grid>
-                <NumberField label="Sijoitettu oma pääoma" help="Oma raha, jonka aiot sijoittaa tähän kohteeseen." value={data.ownCapital} onChange={(v) => update("ownCapital", v)} placeholder="Syötä oma pääoma" />
-                <NumberField label="Korko %" help="Arvio lainan kokonaiskorosta." value={data.interestRate} onChange={(v) => update("interestRate", v)} step="0.1" placeholder="Syötä korko" />
-                <NumberField label="Laina-aika vuosina" help="Laina-aika vaikuttaa kuukausierään ja kassavirtaan." value={data.loanYears} onChange={(v) => update("loanYears", v)} placeholder="Syötä laina-aika" />
-                <SelectField label="Lyhennystyyppi" help="Annuiteetti on yleinen lainamalli. Korot vain -vaihtoehto näyttää kassavirran lyhennysvapaan aikana." value={data.repaymentType} onChange={(v) => update("repaymentType", v)} placeholder="Valitse lyhennystyyppi" options={[["annuity", "Annuiteetti"], ["equal_principal", "Tasalyhennys"], ["interest_only", "Korot vain"]]} />
-                <SelectField label="Pankin vakuusarvo" help="Arvio siitä, kuinka suuren osuuden ostokohteesta pankki hyväksyy vakuudeksi." value={String(data.collateralValuePct)} onChange={(v) => update("collateralValuePct", v)} placeholder="Valitse vakuusarvo" options={[["70", "70 %"], ["80", "80 %"], ["90", "90 %"]]} />
+                <NumberField label="Sijoitettu oma pääoma" help="Oma raha, jonka aiot sijoittaa tähän kohteeseen." value={data.ownCapital} onChange={(v) => update("ownCapital", v)} placeholder="Syötä oma pääoma" requiredMissing={isRequiredMissing(data, "ownCapital")} />
+                <NumberField label="Korko %" help="Arvio lainan kokonaiskorosta." value={data.interestRate} onChange={(v) => update("interestRate", v)} step="0.1" placeholder="Syötä korko" requiredMissing={isRequiredMissing(data, "interestRate")} />
+                <NumberField label="Laina-aika vuosina" help="Laina-aika vaikuttaa kuukausierään ja kassavirtaan." value={data.loanYears} onChange={(v) => update("loanYears", v)} placeholder="Syötä laina-aika" requiredMissing={isRequiredMissing(data, "loanYears")} />
+                <SelectField label="Lyhennystyyppi" help="Annuiteetti on yleinen lainamalli. Korot vain -vaihtoehto näyttää kassavirran lyhennysvapaan aikana." value={data.repaymentType} onChange={(v) => update("repaymentType", v)} placeholder="Valitse lyhennystyyppi" requiredMissing={isRequiredMissing(data, "repaymentType")} options={[["annuity", "Annuiteetti"], ["equal_principal", "Tasalyhennys"], ["interest_only", "Korot vain"]]} />
+                <SelectField label="Pankin vakuusarvo" help="Arvio siitä, kuinka suuren osuuden ostokohteesta pankki hyväksyy vakuudeksi." value={String(data.collateralValuePct)} onChange={(v) => update("collateralValuePct", v)} placeholder="Valitse vakuusarvo" requiredMissing={isRequiredMissing(data, "collateralValuePct")} options={[["70", "70 %"], ["80", "80 %"], ["90", "90 %"]]} />
               </Grid>
 
               <SectionTitle icon={<TrendingUp className="h-5 w-5" />} title="Sijainti ja exit" />
-              <SelectField label="Sijaintiriski" help="Matala: haluttu sijainti, isot työllistäjät tai oppilaitokset lähellä. Keskitaso: elinvoimainen pieni tai keskisuuri kunta. Korkea: muuttotappiopaikkakunta tai yhden suuren työnantajan varassa." value={data.locationRisk} onChange={(v) => update("locationRisk", v)} placeholder="Valitse sijaintiriski" options={[["low", "Matala – haluttu sijainti"], ["medium", "Keskitaso – elinvoimainen pieni/keskisuuri kunta"], ["high", "Korkea – muuttotappio tai yhden työllistäjän riski"]]} />
-              <SliderField label="Asunnon kunto" help="Arvioi asunnon nykykuntoa vuokrauksen ja mahdollisen remonttitarpeen näkökulmasta." value={data.condition} onChange={(v) => update("condition", v)} left="Heikko" right="Erinomainen" />
-              <SliderField label="Jälleenmyytävyys / likviditeetti" help="Arvioi kuinka nopeasti ja helposti kohde olisi myytävissä eteenpäin." value={data.liquidity} onChange={(v) => update("liquidity", v)} left="Hidas" right="Nopea" />
+              <SelectField label="Sijaintiriski" help="Matala: haluttu sijainti, isot työllistäjät tai oppilaitokset lähellä. Keskitaso: elinvoimainen pieni tai keskisuuri kunta. Korkea: muuttotappiopaikkakunta tai yhden suuren työnantajan varassa." value={data.locationRisk} onChange={(v) => update("locationRisk", v)} placeholder="Valitse sijaintiriski" requiredMissing={isRequiredMissing(data, "locationRisk")} options={[["low", "Matala – haluttu sijainti"], ["medium", "Keskitaso – elinvoimainen pieni/keskisuuri kunta"], ["high", "Korkea – muuttotappio tai yhden työllistäjän riski"]]} />
+              <SliderField label="Asunnon kunto" help="Arvioi asunnon nykykuntoa vuokrauksen ja mahdollisen remonttitarpeen näkökulmasta." value={data.condition} onChange={(v) => update("condition", v)} left="Heikko" right="Erinomainen" requiredMissing={isRequiredMissing(data, "condition")} />
+              <SliderField label="Jälleenmyytävyys / likviditeetti" help="Arvioi kuinka nopeasti ja helposti kohde olisi myytävissä eteenpäin." value={data.liquidity} onChange={(v) => update("liquidity", v)} left="Hidas" right="Nopea" requiredMissing={isRequiredMissing(data, "liquidity")} />
             </div>
           </Card>
 
@@ -757,10 +806,11 @@ function Input(props) {
   return <input {...props} className={`w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${props.className || ""}`} />;
 }
 
-function Label({ children, help }) {
+function Label({ children, help, requiredMissing = false }) {
   return (
-    <label className="flex items-center gap-1 text-sm font-medium text-slate-700">
+    <label className={`flex items-center gap-1 text-sm font-medium ${requiredMissing ? "text-rose-700" : "text-slate-700"}`}>
       {children}
+      {requiredMissing && <span className="text-rose-600">*</span>}
       {help && (
         <span className="group relative inline-flex">
           <HelpCircle className="h-3.5 w-3.5 cursor-help text-slate-400" />
@@ -781,33 +831,38 @@ function SectionTitle({ icon, title }) {
   return <div className="flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white">{icon}{title}</div>;
 }
 
-function NumberField({ label, value, onChange, step = "1", disabled = false, help, placeholder }) {
+function NumberField({ label, value, onChange, step = "1", disabled = false, help, placeholder, requiredMissing = false }) {
+  const highlight = requiredMissing ? "border-rose-300 bg-rose-50 placeholder:text-rose-400 focus-visible:ring-rose-300" : "";
   return (
     <div className={`space-y-2 ${disabled ? "opacity-50" : ""}`}>
-      <Label help={help}>{label}</Label>
-      <Input disabled={disabled} type="number" step={step} value={value} placeholder={placeholder || "Syötä arvo"} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} />
+      <Label help={help} requiredMissing={requiredMissing}>{label}</Label>
+      <Input disabled={disabled} type="number" step={step} value={value} placeholder={requiredMissing ? "Täytä tämä kenttä" : (placeholder || "Syötä arvo")} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} className={highlight} />
+      {requiredMissing && <p className="text-xs font-medium text-rose-600">Pakollinen tieto puuttuu.</p>}
     </div>
   );
 }
 
-function SelectField({ label, value, onChange, options, help, placeholder }) {
+function SelectField({ label, value, onChange, options, help, placeholder, requiredMissing = false }) {
+  const highlight = requiredMissing ? "border-rose-300 bg-rose-50 text-rose-900 focus-visible:ring-rose-300" : "border-slate-200 bg-white";
   return (
     <div className="space-y-2">
-      <Label help={help}>{label}</Label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
-        <option value="">{placeholder || "Valinta vaaditaan"}</option>
+      <Label help={help} requiredMissing={requiredMissing}>{label}</Label>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${highlight}`}>
+        <option value="">{requiredMissing ? "Valinta vaaditaan" : (placeholder || "Valinta vaaditaan")}</option>
         {options.map(([val, text]) => <option key={val} value={val}>{text}</option>)}
       </select>
+      {requiredMissing && <p className="text-xs font-medium text-rose-600">Pakollinen valinta puuttuu.</p>}
     </div>
   );
 }
 
-function SliderField({ label, value, onChange, left, right, help }) {
+function SliderField({ label, value, onChange, left, right, help, requiredMissing = false }) {
   return (
-    <div className="space-y-3 rounded-2xl border bg-white p-4">
-      <div className="flex items-center justify-between"><Label help={help}>{label}</Label><span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">{value || "–"}/5</span></div>
+    <div className={`space-y-3 rounded-2xl border p-4 ${requiredMissing ? "border-rose-300 bg-rose-50" : "bg-white"}`}>
+      <div className="flex items-center justify-between"><Label help={help} requiredMissing={requiredMissing}>{label}</Label><span className={`rounded-full px-3 py-1 text-sm font-semibold ${requiredMissing ? "bg-rose-100 text-rose-700" : "bg-slate-100"}`}>{value || "–"}/5</span></div>
       <input type="range" value={value || 3} min={1} max={5} step={1} onChange={(e) => onChange(Number(e.target.value))} className="w-full" />
       <div className="flex justify-between text-xs text-slate-500"><span>{left}</span><span>{right}</span></div>
+      {requiredMissing && <p className="text-xs font-medium text-rose-600">Pakollinen arvio puuttuu.</p>}
     </div>
   );
 }
