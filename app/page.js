@@ -594,15 +594,15 @@ export default function HomePage() {
   const missingFields = requiredMissingFields(data);
   const canAnalyze = missingFields.length === 0;
   const result = useMemo(() => analyze(data), [data]);
-  const displayRiskItems = useMemo(() => uniqueRiskItems(displayRiskItems), [displayRiskItems]);
+  const displayRiskItems = useMemo(() => uniqueRiskItems(result.riskProfile.items), [result.riskProfile.items]);
   const displayDealbreakers = useMemo(() => {
     const riskKeys = new Set(displayRiskItems.map((item) => normalizeRiskText(item.text)));
-    return uniqueTextItems(displayDealbreakers).filter((item) => !riskKeys.has(normalizeRiskText(item)));
-  }, [displayDealbreakers, displayRiskItems]);
+    return uniqueTextItems(result.dealbreakers).filter((item) => !riskKeys.has(normalizeRiskText(item)));
+  }, [result.dealbreakers, displayRiskItems]);
   const displayWarnings = useMemo(() => {
     const riskKeys = new Set(displayRiskItems.map((item) => normalizeRiskText(item.text)));
-    return uniqueTextItems(displayWarnings).filter((item) => !riskKeys.has(normalizeRiskText(item)));
-  }, [displayWarnings, displayRiskItems]);
+    return uniqueTextItems(result.warnings).filter((item) => !riskKeys.has(normalizeRiskText(item)));
+  }, [result.warnings, displayRiskItems]);
 
   const updateUrlField = (value) => {
     setData((prev) => ({

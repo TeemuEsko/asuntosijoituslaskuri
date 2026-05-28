@@ -48,3 +48,5 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 23: riskilippujen duplikaatit poistettu ja 0 € remonttivara-arviot korvattu järkevämmällä varoituksella.
 
 - Build 24: korjattu build-virhe undefined monthlyInterestOnlyPayment -> bankLoanPrincipalReduction.
+
+- Build 25: debugattu ja korjattu build-virhe: displayRiskItems/displayWarnings/displayDealbreakers eivät enää viittaa itseensä ennen alustusta. npm run build menee läpi.
