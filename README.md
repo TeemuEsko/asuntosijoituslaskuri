@@ -46,3 +46,5 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 22: nettovuokratuotto väritetty tuottotason mukaan ja pankin vakuusarvo eurokenttänä nimetty selkeämmin.
 
 - Build 23: riskilippujen duplikaatit poistettu ja 0 € remonttivara-arviot korvattu järkevämmällä varoituksella.
+
+- Build 24: korjattu build-virhe undefined monthlyInterestOnlyPayment -> bankLoanPrincipalReduction.

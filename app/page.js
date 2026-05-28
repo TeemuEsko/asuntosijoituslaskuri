@@ -425,7 +425,7 @@ function analyzeCore(rawData) {
     cashflow,
     grossYield,
     leverageRatio: adjustedDebtFreePrice > 0 ? (((loanAmount + data.debtShare) / adjustedDebtFreePrice) * 100) : 0,
-    monthlyPrincipalReduction: Math.max(monthlyLoanPayment - monthlyInterestOnlyPayment, 0),
+    monthlyPrincipalReduction: bankLoanPrincipalReduction,
     netYield,
     scores: { cashflow: cashflowScore, company: Math.round(companyScore), condition: Math.round(conditionScore), location: Math.round(locationScore), finance: Math.round(financeScore), total },
     positives,
@@ -940,7 +940,7 @@ export default function HomePage() {
     row("Kassavirta / kk", eur(result.cashflow), 108, y);
     y += 19;
     row("Nettovuokratuotto", pct(result.netYield), 10, y);
-    row("Bruttovuokratuotto", eur(result.bankLoanPrincipalReduction || 0), 108, y);
+    row("Pankkilainan pääoma lyhenee / kk", eur(result.bankLoanPrincipalReduction || 0), 108, y);
     y += 24;
 
     y = sectionTitle("Vakuus ja omarahoitus", y);
