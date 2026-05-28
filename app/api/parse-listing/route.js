@@ -11,9 +11,7 @@ function decodeEntities(text) {
     .replaceAll("&Auml;", "Ä")
     .replaceAll("&Ouml;", "Ö")
     .replaceAll("&Aring;", "Å")
-    .replaceAll("&quot;", '"')
-    .replaceAll("&#x2F;", "/")
-    .replaceAll("&#47;", "/");
+    .replaceAll("&quot;", '"');
 }
 
 function cleanText(html) {
@@ -83,6 +81,7 @@ function parseFields(rawText) {
 
   if (text.includes("kerrostalo")) fields.buildingType = "apartment";
   if (text.includes("rivitalo")) fields.buildingType = "terraced";
+  if (text.includes("paritalo")) fields.buildingType = "semi_detached";
   if (text.includes("luhtitalo")) fields.buildingType = "loft";
 
   if (text.includes("oma tontti")) fields.landType = "own";
@@ -92,16 +91,8 @@ function parseFields(rawText) {
   if (text.includes("kaukolämpö")) fields.heatingType = "district";
   if (text.includes("maalämpö")) fields.heatingType = "geothermal";
   if (text.includes("sähkölämmitys") || text.includes("suora sähkö")) fields.heatingType = "electric";
-
-  if (text.includes("linjasaneeraus") || text.includes("putkiremontti")) fields.upcomingPipeRenovation = "full_line";
-  if (text.includes("sukitus") || text.includes("pinnoitus")) fields.upcomingPipeRenovation = "pipe_rehab";
-  if (text.includes("kattoremontti") || text.includes("vesikatto")) fields.upcomingRoofRenovation = "roof";
-  if (text.includes("julkisivuremontti")) fields.upcomingFacadeRenovation = "facade";
-  if (text.includes("parvekeremontti")) fields.upcomingBalconyRenovation = "balcony";
-  if (text.includes("ikkunaremontti")) fields.upcomingWindowRenovation = "windows";
-  if (text.includes("hissin modernisointi")) fields.upcomingElevatorRenovation = "elevator_modernization";
-  if (text.includes("hissin rakentaminen") || text.includes("jälkiasennushissi")) fields.upcomingElevatorRenovation = "elevator_new";
-  if (text.includes("entinen vuokratalo") || text.includes("vanha vuokratalo")) fields.oldRentalBuilding = "yes";
+  if (text.includes("öljylämmitys")) fields.heatingType = "oil";
+  if (text.includes("poistoilmalämpöpumppu")) fields.heatingType = "exhaust_air";
 
   return fields;
 }
@@ -111,7 +102,6 @@ export async function GET(request) {
   const url = searchParams.get("url");
 
   if (!url) return Response.json({ error: "URL puuttuu." }, { status: 400 });
-
   if (!url.includes("etuovi.com") && !url.includes("oikotie.fi")) {
     return Response.json({ error: "Sallittu vain Etuovi- tai Oikotie-linkeille." }, { status: 400 });
   }
@@ -134,12 +124,7 @@ export async function GET(request) {
     const rawText = cleanText(html);
     const fields = parseFields(rawText);
 
-    return Response.json({
-      sourceUrl: url,
-      fields,
-      rawText,
-      foundKeys: Object.keys(fields),
-    });
+    return Response.json({ sourceUrl: url, fields, rawText, foundKeys: Object.keys(fields) });
   } catch (error) {
     return Response.json({ error: error.message || "URL-haku epäonnistui." }, { status: 500 });
   }

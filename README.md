@@ -1,15 +1,14 @@
 # asuntosijoituslaskuri.fi Next.js MVP
 
-Build 02.
+Build 04.
 
 Mukana:
-- URL-haku
-- kassavirta-analyysi
-- vakuusanalyysi
-- remonttivarat
-- riskiliput
-- tarjoushintasimulaattori
-
-## Käyttö
+- tyhjät oletusarvot ja pakollisten kenttien täydennyskehotus
+- URL-haku täyttää vain löydetyt tiedot
+- käyttäjän vastuu syötteistä korostettu
+- hissi/parveke-logiikka
+- jyvittämätön remonttiosuus Remonttivarat-osioon
+- tuottoperusteisen laskennan huomautus
+- käyttöehdot ja tietosuojasivu
 
 Upload GitHubiin ja deploy Vercelissä.
