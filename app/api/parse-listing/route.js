@@ -1,19 +1,146 @@
-export const runtime="nodejs";
-function decodeEntities(t){return t.replaceAll("&nbsp;"," ").replaceAll("&amp;","&").replaceAll("&euro;","€").replaceAll("&auml;","ä").replaceAll("&ouml;","ö").replaceAll("&aring;","å").replaceAll("&Auml;","Ä").replaceAll("&Ouml;","Ö").replaceAll("&Aring;","Å").replaceAll("&quot;",'"');}
-function cleanText(html){return decodeEntities(html).replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();}
-function numAfter(text,labels,max=140){for(const label of labels){const i=text.indexOf(label);if(i<0)continue;const slice=text.slice(i+label.length,i+label.length+max);let started=false,raw="";for(const ch of slice){const ok="0123456789 ,.".includes(ch);if(!started&&"0123456789".includes(ch))started=true;if(started&&ok)raw+=ch;if(started&&!ok)break;}const v=Number(raw.replaceAll(" ","").replace(",","."));if(Number.isFinite(v))return v;}return null;}
-function parseYear(text){const m=text.match(/(rakennusvuosi|valmistunut|rakennettu)[^\d]*(19\d{2}|20\d{2})/i);return m?Number(m[2]):null;}
-function parseFields(raw){const text=raw.toLowerCase();const f={};let v;
-v=numAfter(text,["velaton myyntihinta","velaton hinta"]); if(v!==null)f.debtFreePrice=Math.round(v);
-v=numAfter(text,["myyntihinta"]); if(v!==null)f.sellingPrice=Math.round(v);
-v=numAfter(text,["velkaosuus","lainaosuus"]); if(v!==null){f.debtShare=Math.round(v);f.hasDebtShare=v>0?"yes":"no";}
-v=numAfter(text,["hoitovastike"]); if(v!==null)f.maintenanceFee=Math.round(v);
-v=numAfter(text,["rahoitusvastike","pääomavastike"]); if(v!==null){f.financingFee=Math.round(v);f.hasDebtShare=v>0||f.debtShare>0?"yes":"no";}
-v=numAfter(text,["vuokra"]); if(v!==null&&v<10000)f.rent=Math.round(v);
-v=numAfter(text,["asuinpinta-ala","pinta-ala"]); if(v!==null&&v>5&&v<1000)f.size=Math.round(v*10)/10;
-v=parseYear(text); if(v!==null)f.buildYear=v;
-if(text.includes("kerrostalo"))f.buildingType="apartment"; if(text.includes("rivitalo"))f.buildingType="terraced"; if(text.includes("luhtitalo"))f.buildingType="loft";
-if(text.includes("oma tontti"))f.landType="own"; if(text.includes("vuokratontti")||text.includes("tontin vuokra")||text.includes("tontinvuokra"))f.landType="leased_city"; if(text.includes("yksityinen vuokratontti"))f.landType="leased_private";
-if(text.includes("kaukolämpö"))f.heatingType="district"; if(text.includes("maalämpö"))f.heatingType="geothermal"; if(text.includes("sähkölämmitys")||text.includes("suora sähkö"))f.heatingType="electric";
-if(text.includes("tasakatto"))f.flatRoof="yes"; if(text.includes("linjasaneeraus")||text.includes("putkiremontti"))f.upcomingPipeRenovation="full_line"; if(text.includes("sukitus")||text.includes("pinnoitus"))f.upcomingPipeRenovation="pipe_rehab"; if(text.includes("kattoremontti")||text.includes("vesikatto"))f.upcomingRoofRenovation="roof"; if(text.includes("julkisivuremontti"))f.upcomingFacadeRenovation="facade"; if(text.includes("parvekeremontti"))f.upcomingBalconyRenovation="balcony"; if(text.includes("ikkunaremontti"))f.upcomingWindowRenovation="windows"; if(text.includes("entinen vuokratalo")||text.includes("vanha vuokratalo"))f.oldRentalBuilding="yes"; return f;}
-export async function GET(request){const {searchParams}=new URL(request.url);const url=searchParams.get("url");if(!url)return Response.json({error:"URL puuttuu."},{status:400});if(!url.includes("etuovi.com")&&!url.includes("oikotie.fi"))return Response.json({error:"Sallittu vain Etuovi- tai Oikotie-linkeille."},{status:400});try{const r=await fetch(url,{headers:{"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36","Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language":"fi-FI,fi;q=0.9,en;q=0.8"},cache:"no-store"});const html=await r.text();if(!r.ok)return Response.json({error:`Ilmoitussivun haku epäonnistui: ${r.status}`},{status:502});const rawText=cleanText(html);const fields=parseFields(rawText);return Response.json({sourceUrl:url,fields,rawText,foundKeys:Object.keys(fields)});}catch(e){return Response.json({error:e.message||"URL-parseri epäonnistui."},{status:500});}}
+export const runtime = "nodejs";
+
+function decodeEntities(text) {
+  return text
+    .replaceAll("&nbsp;", " ")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&euro;", "€")
+    .replaceAll("&auml;", "ä")
+    .replaceAll("&ouml;", "ö")
+    .replaceAll("&aring;", "å")
+    .replaceAll("&Auml;", "Ä")
+    .replaceAll("&Ouml;", "Ö")
+    .replaceAll("&Aring;", "Å")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#x2F;", "/")
+    .replaceAll("&#47;", "/");
+}
+
+function cleanText(html) {
+  return decodeEntities(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseNumberAfterLabel(text, labels, maxDistance = 150) {
+  for (const label of labels) {
+    const index = text.indexOf(label);
+    if (index === -1) continue;
+    const slice = text.slice(index + label.length, index + label.length + maxDistance);
+    let started = false;
+    let raw = "";
+    for (const char of slice) {
+      const ok = "0123456789 ,.".includes(char);
+      if (!started && "0123456789".includes(char)) started = true;
+      if (started && ok) raw += char;
+      if (started && !ok) break;
+    }
+    const value = Number(raw.replaceAll(" ", "").replace(",", "."));
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function parseYear(text) {
+  const match = text.match(/(rakennusvuosi|valmistunut|rakennettu)[^\d]*(19\d{2}|20\d{2})/i);
+  return match ? Number(match[2]) : null;
+}
+
+function parseFields(rawText) {
+  const text = rawText.toLowerCase();
+  const fields = {};
+
+  const debtFreePrice = parseNumberAfterLabel(text, ["velaton myyntihinta", "velaton hinta"]);
+  if (debtFreePrice !== null) fields.debtFreePrice = Math.round(debtFreePrice);
+
+  const sellingPrice = parseNumberAfterLabel(text, ["myyntihinta"]);
+  if (sellingPrice !== null) fields.sellingPrice = Math.round(sellingPrice);
+
+  const debtShare = parseNumberAfterLabel(text, ["velkaosuus", "lainaosuus"]);
+  if (debtShare !== null) {
+    fields.debtShare = Math.round(debtShare);
+    fields.hasDebtShare = debtShare > 0 ? "yes" : "no";
+  }
+
+  const maintenanceFee = parseNumberAfterLabel(text, ["hoitovastike"]);
+  if (maintenanceFee !== null) fields.maintenanceFee = Math.round(maintenanceFee);
+
+  const financingFee = parseNumberAfterLabel(text, ["rahoitusvastike", "pääomavastike"]);
+  if (financingFee !== null) {
+    fields.financingFee = Math.round(financingFee);
+    fields.hasDebtShare = financingFee > 0 || fields.debtShare > 0 ? "yes" : "no";
+  }
+
+  const size = parseNumberAfterLabel(text, ["asuinpinta-ala", "pinta-ala"]);
+  if (size !== null && size > 5 && size < 1000) fields.size = Math.round(size * 10) / 10;
+
+  const buildYear = parseYear(text);
+  if (buildYear !== null) fields.buildYear = buildYear;
+
+  if (text.includes("kerrostalo")) fields.buildingType = "apartment";
+  if (text.includes("rivitalo")) fields.buildingType = "terraced";
+  if (text.includes("luhtitalo")) fields.buildingType = "loft";
+
+  if (text.includes("oma tontti")) fields.landType = "own";
+  if (text.includes("vuokratontti") || text.includes("tontin vuokra") || text.includes("tontinvuokra")) fields.landType = "leased_city";
+  if (text.includes("yksityinen vuokratontti")) fields.landType = "leased_private";
+
+  if (text.includes("kaukolämpö")) fields.heatingType = "district";
+  if (text.includes("maalämpö")) fields.heatingType = "geothermal";
+  if (text.includes("sähkölämmitys") || text.includes("suora sähkö")) fields.heatingType = "electric";
+
+  if (text.includes("linjasaneeraus") || text.includes("putkiremontti")) fields.upcomingPipeRenovation = "full_line";
+  if (text.includes("sukitus") || text.includes("pinnoitus")) fields.upcomingPipeRenovation = "pipe_rehab";
+  if (text.includes("kattoremontti") || text.includes("vesikatto")) fields.upcomingRoofRenovation = "roof";
+  if (text.includes("julkisivuremontti")) fields.upcomingFacadeRenovation = "facade";
+  if (text.includes("parvekeremontti")) fields.upcomingBalconyRenovation = "balcony";
+  if (text.includes("ikkunaremontti")) fields.upcomingWindowRenovation = "windows";
+  if (text.includes("hissin modernisointi")) fields.upcomingElevatorRenovation = "elevator_modernization";
+  if (text.includes("hissin rakentaminen") || text.includes("jälkiasennushissi")) fields.upcomingElevatorRenovation = "elevator_new";
+  if (text.includes("entinen vuokratalo") || text.includes("vanha vuokratalo")) fields.oldRentalBuilding = "yes";
+
+  return fields;
+}
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const url = searchParams.get("url");
+
+  if (!url) return Response.json({ error: "URL puuttuu." }, { status: 400 });
+
+  if (!url.includes("etuovi.com") && !url.includes("oikotie.fi")) {
+    return Response.json({ error: "Sallittu vain Etuovi- tai Oikotie-linkeille." }, { status: 400 });
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+      },
+      cache: "no-store",
+    });
+
+    const html = await response.text();
+    if (!response.ok) {
+      return Response.json({ error: `Ilmoitussivun haku epäonnistui: ${response.status}` }, { status: 502 });
+    }
+
+    const rawText = cleanText(html);
+    const fields = parseFields(rawText);
+
+    return Response.json({
+      sourceUrl: url,
+      fields,
+      rawText,
+      foundKeys: Object.keys(fields),
+    });
+  } catch (error) {
+    return Response.json({ error: error.message || "URL-haku epäonnistui." }, { status: 500 });
+  }
+}
