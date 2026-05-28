@@ -54,6 +54,7 @@ const initial = {
   buildingType: "",
   buildYear: "",
   debtFreePrice: "",
+  originalDebtFreePrice: "",
   debtShare: "",
   ghostDebt: "",
   rent: "",
@@ -361,7 +362,8 @@ function analyzeCore(rawData) {
   else if (cashflow >= 0) warnings.push("Kassavirta on positiivinen, mutta alle 100 €/kk.");
   else warnings.push("Kassavirta jää negatiiviseksi nykyisillä rahoitusoletuksilla.");
 
-  if (netYield >= 6) positives.push("Nettovuokratuotto on asuntosijoittajan näkökulmasta vahva.");
+  if (netYield >= 6 && cashflow >= 0) positives.push("Nettovuokratuotto on asuntosijoittajan näkökulmasta vahva.");
+  else if (netYield >= 6 && cashflow < 0) warnings.push("Nettovuokratuotto näyttää vahvalta, mutta kassavirta on negatiivinen valituilla rahoitusoletuksilla.");
   else if (netYield < 4.5) warnings.push("Nettovuokratuotto on matala suhteessa todelliseen arvioituun velattomaan hintaan.");
 
   if (data.heatingType === "geothermal") positives.push("Maalämpö tukee pisteytystä ja voi parantaa pitkän aikavälin kulutehokkuutta.");
@@ -548,7 +550,8 @@ export default function HomePage() {
       const parsed = payload.fields || {};
       if (!Object.keys(parsed).length) throw new Error("URL-haku haki sivun, mutta ei löytänyt laskentakenttiä.");
       setData((prev) => {
-        const next = { ...prev, ...parsed, url, dataSource: "url-parser", parsedNotice: formatFoundFields(Object.keys(parsed)) };
+        const originalDebtFreePrice = parsed.debtFreePrice ?? prev.originalDebtFreePrice;
+        const next = { ...prev, ...parsed, originalDebtFreePrice, url, dataSource: "url-parser", parsedNotice: formatFoundFields(Object.keys(parsed)) };
         if (next.buildingType === "terraced" || next.buildingType === "semi_detached") next.elevatorStatus = "not_applicable";
         return next;
       });
@@ -645,7 +648,7 @@ export default function HomePage() {
 
               <SectionTitle icon={<Banknote className="h-5 w-5" />} title="Talous" />
               <Grid>
-                <NumberField label="Velaton tarjoushinta" help="Hinta, jolla arvioit kohdetta. Voit testata eri tarjoushintoja ja nähdä vaikutuksen kassavirtaan." value={data.debtFreePrice} onChange={(v) => update("debtFreePrice", v)} placeholder="Syötä velaton hinta" requiredMissing={isRequiredMissing(data, "debtFreePrice")} />
+                <NumberField label="Velaton tarjoushinta" help="Tämä on syötetty velaton tarjoushinta. Voit muuttaa sitä testataksesi, millä hinnalla kohteen luvut täsmäävät. URL-haku tallentaa alkuperäisen ilmoitushinnan erikseen." value={data.debtFreePrice} onChange={(v) => update("debtFreePrice", v)} placeholder="Syötä velaton hinta" requiredMissing={isRequiredMissing(data, "debtFreePrice")} />
                 <SelectField label="Onko velkaosuutta?" help="Valitse kyllä, jos huoneistolla on taloyhtiölainaa tai rahoitusvastiketta." value={data.hasDebtShare} onChange={(v) => update("hasDebtShare", v)} placeholder="Valitse" requiredMissing={isRequiredMissing(data, "hasDebtShare")} options={[["yes", "Kyllä"], ["no", "Ei"]]} />
                 {data.hasDebtShare === "yes" && <NumberField label="Velkaosuus" help="Huoneistolle kohdistuva taloyhtiölainan osuus." value={data.debtShare} onChange={(v) => update("debtShare", v)} placeholder="Syötä velkaosuus" requiredMissing={isRequiredMissing(data, "debtShare")} />}
                 <NumberField label="Hoitovastike / kk" help="Taloyhtiölle maksettava hoitovastike. Tämä vähennetään vuokratuotosta." value={data.maintenanceFee} onChange={(v) => update("maintenanceFee", v)} placeholder="Syötä hoitovastike" requiredMissing={isRequiredMissing(data, "maintenanceFee")} />
@@ -683,7 +686,8 @@ export default function HomePage() {
                 <Metric label="Nettovuokratuotto" value={pct(result.netYield)} />
                 <Metric label="Bruttovuokratuotto" value={pct(result.grossYield)} />
                 <Metric label="Myyntihinta" value={eur(result.purchasePrice)} />
-                <Metric label="Ilmoituksen velaton hinta" value={eur(normalizedData(data).debtFreePrice)} />
+                {isFilled(data.originalDebtFreePrice) && Number(data.originalDebtFreePrice) !== normalizedData(data).debtFreePrice && <Metric label="Alkuperäinen ilmoituksen velaton hinta" value={eur(data.originalDebtFreePrice)} />}
+                <Metric label="Syötetty velaton tarjoushinta" value={eur(normalizedData(data).debtFreePrice)} />
                 <Metric label="Todellinen arvioitu velaton hinta" value={eur(result.adjustedDebtFreePrice)} emphasis={result.adjustedDebtFreePrice > normalizedData(data).debtFreePrice ? "warn" : undefined} />
                 <Metric label="Remonttivara" value={eur(result.renovationReserve.total)} emphasis={result.renovationReserve.total > 0 ? "warn" : undefined} />
                 <Metric label="Lainan kuukausierä" value={eur(result.loanPayment)} />
@@ -725,19 +729,6 @@ export default function HomePage() {
               )}
               {offerSimulation === null && <p className="mt-3 text-sm text-slate-500">Tulos näyttää korkeimman velattoman hinnan valitun tavoitteen perusteella.</p>}
             </Card>
-
-            {canAnalyze && (
-              <Card>
-                <div className="text-xl font-semibold">Pisteiden jakauma</div>
-                <div className="mt-5 space-y-4">
-                  <ScoreBar label="Kassavirta & tuotto" value={result.scores.cashflow} weight="35 %" />
-                  <ScoreBar label="Taloyhtiö & remontit" value={result.scores.company} weight="25 %" />
-                  <ScoreBar label="Asunnon kunto" value={result.scores.condition} weight="15 %" />
-                  <ScoreBar label="Sijainti & kysyntä" value={result.scores.location} weight="15 %" />
-                  <ScoreBar label="Rahoitus" value={result.scores.finance} weight="10 %" />
-                </div>
-              </Card>
-            )}
 
             <Card>
               <div className="flex items-center gap-2 text-xl font-semibold"><ShieldAlert className="h-5 w-5" /> Analyysi ja riskiliput</div>
@@ -836,7 +827,7 @@ function Card({ children, className = "" }) {
 }
 
 function Button({ children, onClick, disabled = false, type = "button" }) {
-  return <button type={type} disabled={disabled} onClick={onClick} className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50">{children}</button>;
+  return <button type={type} disabled={disabled} onClick={onClick} className="inline-flex items-center justify-center rounded-xl bg-[#1F4D3A] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#173A2C] disabled:opacity-50">{children}</button>;
 }
 
 function Input(props) {
@@ -865,7 +856,7 @@ function Grid({ children }) {
 }
 
 function SectionTitle({ icon, title }) {
-  return <div className="flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white">{icon}{title}</div>;
+  return <div className="flex items-center gap-2 rounded-2xl bg-[#1F4D3A] px-4 py-3 font-semibold text-white">{icon}{title}</div>;
 }
 
 function NumberField({ label, value, onChange, step = "1", disabled = false, help, placeholder, requiredMissing = false }) {
@@ -913,7 +904,7 @@ function ScoreBar({ label, value, weight }) {
   return (
     <div>
       <div className="mb-1 flex justify-between text-sm"><span className="font-medium">{label}</span><span className="text-slate-500">{value}/100 · paino {weight}</span></div>
-      <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-slate-800" style={{ width: `${value}%` }} /></div>
+      <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#1F4D3A]" style={{ width: `${value}%` }} /></div>
     </div>
   );
 }

@@ -16,3 +16,5 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 05: punainen korostus puuttuville pakollisille kentille, taloyhtiön koko -selitteet ja omistuspohjan ohjeteksti.
 
 - Build 06: analyysiliput järjestetty, vanha tarjoushintasimulaattori poistettu ja tavoitesimulaattori toimii yhdellä valitulla tavoitteella.
+
+- Build 08: tumma vihreä teema, kassavirta/tuottolipun korjaus, alkuperäinen ilmoitushinta erotettu syötetystä tarjoushinnasta.
