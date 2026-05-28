@@ -160,6 +160,7 @@ function requiredFieldKeys(data) {
 
   if (!isLowRise(data)) {
     keys.push("elevatorStatus");
+    keys.push("balconyStatus");
   }
 
   return keys;
@@ -183,7 +184,7 @@ function requiredMissingFields(data) {
     ["pipeStatus", "Putki-/LVIS-remontti"],
     ["roofStatus", "Katto"],
     ["facadeStatus", "Julkisivu"],
-    ["balconyStatus", "Parveke"],
+    
     ["windowStatus", "Ikkunat"],
     ["debtFreePrice", "Velaton tarjoushinta"],
     ["maintenanceFee", "Hoitovastike"],
@@ -243,6 +244,10 @@ function monthlyLoanPayment(principal, annualRate, years, repaymentType = "annui
   const monthlyRate = annualRate / 100 / 12;
   const months = years * 12;
   if (repaymentType === "interest_only") return principal * monthlyRate;
+  if (repaymentType === "fixed_payment") {
+    if (monthlyRate === 0) return principal / months;
+    return principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+  }
   if (repaymentType === "equal_principal") return principal / months + principal * monthlyRate;
   if (monthlyRate === 0) return principal / months;
   return principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
@@ -338,8 +343,10 @@ function analyzeCore(rawData) {
   let locationScore = clamp(data.locationDemand * 22 + data.liquidity * 8);
   if (data.locationDemand <= 2) locationScore -= 18;
   if (data.locationDemand >= 5) locationScore += 8;
-  if (data.locationRisk === "high") locationScore -= 28;
-  if (data.locationRisk === "low") locationScore += 8;
+  if (data.locationRisk === "high" || data.locationRisk === "5") locationScore -= 28;
+  if (data.locationRisk === "4") locationScore -= 14;
+  if (data.locationRisk === "2") locationScore += 4;
+  if (data.locationRisk === "low" || data.locationRisk === "1") locationScore += 8;
   locationScore = clamp(locationScore);
 
   let financeScore = 70;
@@ -370,6 +377,8 @@ function analyzeCore(rawData) {
 
   if (data.locationDemand >= 5) positives.push("Vahva vuokrakysyntä parantaa kohteen kannattavuus- ja tyhjäkäyntiriskiä.");
   if (data.locationDemand <= 2) warnings.push("Heikko vuokrakysyntä voi kasvattaa tyhjäkäyntiriskiä ja heikentää todellista kassavirtaa.");
+
+  if (data.repaymentType === "interest_only") warnings.push("Lainasta maksetaan vain korkoa, jolloin lainapääoma ei lyhene ja kassavirta voi näyttää todellisuutta paremmalta.");
 
   if (data.heatingType === "geothermal") positives.push("Maalämpö tukee pisteytystä ja voi parantaa pitkän aikavälin kulutehokkuutta.");
   if (data.heatingType === "district") positives.push("Kaukolämpö tukee pisteytystä ennustettavuuden ja vuokrattavuuden näkökulmasta.");
@@ -410,7 +419,7 @@ function buildRiskProfile(rawData, base) {
   const dealbreakers = [];
   const add = (severity, text) => items.push({ severity, text });
 
-  if (base.cashflow < -150 && data.locationRisk === "high") {
+  if (base.cashflow < -150 && (data.locationRisk === "high" || data.locationRisk === "5")) {
     dealbreakers.push("Heikko kassavirta yhdistyy korkeaan sijaintiriskiin.");
     add("critical", "Kassavirta on selvästi negatiivinen ja sijaintiriski on korkea.");
   }
@@ -428,10 +437,11 @@ function buildRiskProfile(rawData, base) {
     add("critical", `Remonttivara on suuri suhteessa velattomaan hintaan: ${eur(base.renovationReserve.total)}.`);
   }
   if (base.cashflow < 0 && base.netYield < 4.5) add("critical", "Negatiivinen kassavirta ja matala nettovuokratuotto heikentävät kohteen sijoituslogiikkaa.");
-  if (data.locationRisk === "high") add("critical", "Korkea sijaintiriski.");
+  if (data.locationRisk === "high" || data.locationRisk === "5") add("critical", "Korkea sijaintiriski.");
   if (data.locationDemand <= 2) add("warning", "Vuokrakysyntä on arvioitu heikoksi, mikä voi kasvattaa tyhjäkäyntiriskiä.");
   if (data.housingCompanyFinancials === "weak") add("critical", "Taloyhtiön talous vaikuttaa heikolta.");
   if (base.requiredOwnCashOrExtraCollateral > data.ownCapital) add("warning", `Sijoitettu oma pääoma ei välttämättä riitä. Vaadittu oma raha tai lisävakuus on arviolta ${eur(base.requiredOwnCashOrExtraCollateral)}.`);
+  if (data.repaymentType === "interest_only") add("warning", "Lainasta maksetaan vain korkoa, joten lainapääoma ei lyhene normaalisti.");
   if (data.heatingType === "electric") add("warning", "Suora sähkölämmitys voi heikentää vuokrattavuutta käyttökulujen vuoksi.");
   if (data.heatingType === "oil") add("critical", "Öljylämmitys nostaa tulevien kustannusten ja energiaratkaisujen riskiä.");
   if (data.buildYear < 1994) add("info", "Mahdollinen asbestiriski rakennusvuoden perusteella.");
@@ -552,9 +562,13 @@ export default function HomePage() {
       }
       if (key === "buildingType" && (value === "terraced" || value === "semi_detached")) {
         next.elevatorStatus = "not_applicable";
+        next.balconyStatus = "not_applicable";
       }
       if (key === "buildingType" && value !== "terraced" && value !== "semi_detached" && next.elevatorStatus === "not_applicable") {
         next.elevatorStatus = "";
+      }
+      if (key === "buildingType" && value !== "terraced" && value !== "semi_detached" && next.balconyStatus === "not_applicable") {
+        next.balconyStatus = "";
       }
 
       if (key === "buildYear") {
@@ -588,6 +602,7 @@ export default function HomePage() {
         const originalDebtFreePrice = parsed.debtFreePrice ?? prev.originalDebtFreePrice;
         const next = { ...prev, ...parsed, originalDebtFreePrice, url, dataSource: "url-parser", parsedNotice: formatFoundFields(Object.keys(parsed)) };
         if (next.buildingType === "terraced" || next.buildingType === "semi_detached") next.elevatorStatus = "not_applicable";
+        next.balconyStatus = "not_applicable";
         const currentYear = new Date().getFullYear();
         const age = Number(next.buildYear) > 0 ? currentYear - Number(next.buildYear) : null;
         if (age !== null && age <= 20) {
@@ -618,97 +633,305 @@ export default function HomePage() {
     const d = normalizedData(data);
     const today = new Date().toLocaleDateString("fi-FI");
 
+    const green = [31, 77, 58];
+    const paleGreen = [234, 244, 239];
+    const slate = [15, 23, 42];
+    const muted = [100, 116, 139];
+    const border = [220, 226, 235];
+    const red = [190, 18, 60];
+    const amber = [146, 64, 14];
+
+    const roundedRect = (x, y, w, h, fill = [255, 255, 255], stroke = border) => {
+      doc.setFillColor(...fill);
+      doc.setDrawColor(...stroke);
+      doc.roundedRect(x, y, w, h, 4, 4, "FD");
+    };
+
+    const metricCard = (x, y, w, title, value, tone = "normal") => {
+      let fill = [255, 255, 255];
+      let text = slate;
+      if (tone === "good") { fill = [236, 253, 245]; text = [6, 95, 70]; }
+      if (tone === "warn") { fill = [255, 251, 235]; text = amber; }
+      if (tone === "bad") { fill = [255, 241, 242]; text = red; }
+      roundedRect(x, y, w, 22, fill);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...muted);
+      doc.text(title.toUpperCase(), x + 4, y + 7);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(...text);
+      doc.text(String(value), x + 4, y + 17);
+      doc.setTextColor(...slate);
+    };
+
+    doc.setFillColor(...green);
+    doc.roundedRect(10, 10, 190, 28, 5, 5, "F");
+    doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text("asuntosijoituslaskuri.fi", 15, 18);
-    doc.setFontSize(14);
-    doc.text("Sijoitusasunnon analyysi", 15, 28);
+    doc.text("asuntosijoituslaskuri.fi", 16, 22);
+    doc.setFontSize(11);
+    doc.text("Sijoitusasunnon analyysi", 16, 31);
 
+    doc.setTextColor(...slate);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Päiväys: ${today}`, 154, 45);
+
+    roundedRect(10, 50, 190, 28, paleGreen, [200, 220, 210]);
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text(`Päiväys: ${today}`, 15, 36);
-    doc.text(`Osoite: ${data.address || "-"}`, 15, 43);
-    doc.text(`Pinta-ala: ${d.size || "-"} m²`, 15, 50);
-    doc.text(`Rakennusvuosi: ${d.buildYear || "-"}`, 15, 57);
+    doc.text("Kohteen perustiedot", 16, 59);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Osoite: ${data.address || "-"}`, 16, 67);
+    doc.text(`Pinta-ala: ${d.size || "-"} m²`, 85, 67);
+    doc.text(`Rakennusvuosi: ${d.buildYear || "-"}`, 135, 67);
+    doc.text(`Talotyyppi: ${data.buildingType || "-"}`, 16, 74);
+    doc.text(`Lämmitys: ${data.heatingType || "-"}`, 85, 74);
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text("Keskeiset luvut", 15, 70);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(12);
+    doc.text("Talousluvut", 10, 91);
 
-    const rows = [
-      ["Velaton tarjoushinta", eur(d.debtFreePrice)],
-      ["Myyntihinta", eur(result.purchasePrice)],
-      ["Vuokra / kk", eur(d.rent)],
-      ["Hoitovastike / kk", eur(d.maintenanceFee)],
-      ["Kassavirta / kk", eur(result.cashflow)],
-      ["Nettovuokratuotto", pct(result.netYield)],
-      ["Bruttovuokratuotto", pct(result.grossYield)],
-      ["Vaadittu oma raha / lisävakuus", eur(result.requiredOwnCashOrExtraCollateral)],
-      ["Sijoitusarvio", canAnalyze ? `${result.scores.total}/100 - ${result.verdict}` : "Ei valmis"],
-    ];
+    const cashTone = result.cashflow < 0 ? "bad" : result.cashflow < 100 ? "warn" : "good";
+    metricCard(10, 97, 58, "Kassavirta / kk", eur(result.cashflow), cashTone);
+    metricCard(76, 97, 58, "Nettovuokratuotto", pct(result.netYield), result.netYield >= 6 && result.cashflow >= 0 ? "good" : result.netYield < 4.5 ? "bad" : "warn");
+    metricCard(142, 97, 58, "Sijoitusarvio", canAnalyze ? `${result.scores.total}/100` : "Ei valmis", canAnalyze ? (result.scores.total >= 80 ? "good" : result.scores.total >= 60 ? "warn" : "bad") : "warn");
 
-    let y = 78;
-    rows.forEach(([label, value]) => {
-      doc.text(`${label}: ${value}`, 15, y);
-      y += 7;
-    });
+    metricCard(10, 125, 58, "Velaton tarjoushinta", eur(d.debtFreePrice));
+    metricCard(76, 125, 58, "Todellinen velaton", eur(result.adjustedDebtFreePrice), result.adjustedDebtFreePrice > d.debtFreePrice ? "warn" : "normal");
+    metricCard(142, 125, 58, "Vaadittu oma raha", eur(result.requiredOwnCashOrExtraCollateral), result.requiredOwnCashOrExtraCollateral > d.ownCapital ? "bad" : "good");
 
-    y += 5;
     doc.setFont("helvetica", "bold");
-    doc.text("Sijoittajan yhteenveto", 15, y);
-    y += 7;
+    doc.setFontSize(12);
+    doc.text("Sijoittajan yhteenveto", 10, 162);
+    roundedRect(10, 167, 190, 30, [255, 255, 255]);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
     const summary = canAnalyze ? result.investorSummary : "Täydennä pakolliset tiedot ennen analyysin tulkintaa.";
-    doc.splitTextToSize(summary, 180).forEach((line) => {
-      doc.text(line, 15, y);
-      y += 6;
+    let y = 176;
+    doc.splitTextToSize(summary, 175).forEach((line) => {
+      doc.text(line, 16, y);
+      y += 5;
     });
 
-    y += 5;
     doc.setFont("helvetica", "bold");
-    doc.text("Riskit ja huomiot", 15, y);
-    y += 7;
-    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.text("Riskit ja huomiot", 10, 210);
 
     const riskLines = [
-      ...result.dealbreakers,
-      ...result.riskProfile.items.map((item) => item.text),
-      ...result.warnings,
-    ].slice(0, 12);
+      ...result.dealbreakers.map((t) => ["KRIITTINEN", t, "bad"]),
+      ...result.riskProfile.items.slice(0, 6).map((item) => [item.severity === "critical" ? "KRIITTINEN" : item.severity === "warning" ? "VAROITUS" : "HUOMIO", item.text, item.severity === "critical" ? "bad" : item.severity === "warning" ? "warn" : "normal"]),
+      ...result.warnings.slice(0, 3).map((t) => ["VAROITUS", t, "warn"]),
+    ].slice(0, 7);
 
+    y = 216;
     if (riskLines.length === 0) {
-      doc.text("Ei merkittäviä riskilippuja valituilla tiedoilla.", 15, y);
-      y += 7;
+      roundedRect(10, y, 190, 16, [236, 253, 245], [187, 247, 208]);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text("Ei merkittäviä riskilippuja valituilla tiedoilla.", 16, y + 10);
+      y += 20;
     } else {
-      riskLines.forEach((line) => {
-        doc.splitTextToSize(`- ${line}`, 180).forEach((part) => {
-          if (y > 270) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(part, 15, y);
-          y += 6;
+      riskLines.forEach(([label, text, tone]) => {
+        if (y > 260) {
+          doc.addPage();
+          y = 20;
+        }
+        const fill = tone === "bad" ? [255, 241, 242] : tone === "warn" ? [255, 251, 235] : [248, 250, 252];
+        const stroke = tone === "bad" ? [254, 205, 211] : tone === "warn" ? [253, 230, 138] : border;
+        roundedRect(10, y, 190, 19, fill, stroke);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(tone === "bad" ? red[0] : tone === "warn" ? amber[0] : muted[0], tone === "bad" ? red[1] : tone === "warn" ? amber[1] : muted[1], tone === "bad" ? red[2] : tone === "warn" ? amber[2] : muted[2]);
+        doc.text(label, 16, y + 6);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(...slate);
+        doc.splitTextToSize(text, 170).slice(0, 2).forEach((line, idx) => {
+          doc.text(line, 16, y + 12 + idx * 4);
         });
+        y += 23;
       });
     }
 
-    if (y > 260) {
+    if (y > 266) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFontSize(7);
+    doc.setTextColor(...muted);
+    doc.text("Laskurin tulokset ovat suuntaa-antavia arvioita eivätkä sijoitusneuvontaa. Käyttäjä vastaa itse lopullisesta sijoituspäätöksestä ja syötettyjen tietojen oikeellisuudesta.", 10, 285, { maxWidth: 190 });
+
+    doc.save("asuntosijoitusanalyysi.pdf");
+  };
+
+  const downloadFinanceApplicationPdf = async () => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const d = normalizedData(data);
+    const today = new Date().toLocaleDateString("fi-FI");
+
+    const green = [31, 77, 58];
+    const paleGreen = [234, 244, 239];
+    const slate = [15, 23, 42];
+    const muted = [100, 116, 139];
+    const border = [220, 226, 235];
+    const red = [190, 18, 60];
+    const amber = [146, 64, 14];
+
+    const roundedRect = (x, y, w, h, fill = [255, 255, 255], stroke = border) => {
+      doc.setFillColor(...fill);
+      doc.setDrawColor(...stroke);
+      doc.roundedRect(x, y, w, h, 4, 4, "FD");
+    };
+
+    const sectionTitle = (title, y) => {
+      doc.setTextColor(...slate);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text(title, 12, y);
+      return y + 6;
+    };
+
+    const row = (label, value, x, y, w = 88) => {
+      roundedRect(x, y, w, 15, [255, 255, 255]);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...muted);
+      doc.text(label.toUpperCase(), x + 4, y + 5);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(...slate);
+      doc.text(String(value), x + 4, y + 11);
+    };
+
+    const positiveItems = [
+      ...result.positives,
+      ...(d.rent > 0 ? [`Vuokratuotto perustuu syötettyyn vuokraan ${eur(d.rent)} / kk.`] : []),
+      ...(result.netYield >= 6 ? [`Nettovuokratuotto on ${pct(result.netYield)}.`] : []),
+      ...(result.cashflow >= 0 ? [`Kassavirta on positiivinen: ${eur(result.cashflow)} / kk.`] : []),
+      ...(data.heatingType === "district" ? ["Kohteessa on kaukolämpö."] : []),
+      ...(data.heatingType === "geothermal" ? ["Kohteessa on maalämpö."] : []),
+      ...(data.locationDemand >= 4 ? ["Vuokrakysyntä on arvioitu hyväksi."] : []),
+    ].slice(0, 7);
+
+    doc.setFillColor(...green);
+    doc.roundedRect(10, 10, 190, 30, 5, 5, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Rahoitushakemus", 16, 23);
+    doc.setFontSize(10);
+    doc.text("asuntosijoituslaskuri.fi", 16, 32);
+
+    doc.setTextColor(...slate);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Päiväys: ${today}`, 155, 47);
+
+    roundedRect(10, 52, 190, 28, paleGreen, [200, 220, 210]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Kohteen perustiedot", 16, 61);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Osoite: ${data.address || "-"}`, 16, 69);
+    doc.text(`Talotyyppi: ${data.buildingType || "-"}`, 100, 69);
+    doc.text(`Pinta-ala: ${d.size || "-"} m²`, 16, 76);
+    doc.text(`Rakennusvuosi: ${d.buildYear || "-"}`, 60, 76);
+    doc.text(`Lämmitys: ${data.heatingType || "-"}`, 115, 76);
+
+    let y = 94;
+    y = sectionTitle("Kaupan ja rahoituksen pääluvut", y);
+    row("Tarjottava velaton hinta", eur(d.debtFreePrice), 10, y);
+    row("Myyntihinta", eur(result.purchasePrice), 108, y);
+    y += 19;
+    row("Yhtiölaina / velkaosuus", eur(d.debtShare), 10, y);
+    row("Tarvittava pankkilaina", eur(result.loanAmount), 108, y);
+    y += 19;
+
+    const ownCapitalText = d.ownCapital > 0
+      ? eur(d.ownCapital)
+      : "0 € — rahoitus suunniteltu lisävakuuksilla";
+    row("Sijoitettu oma pääoma", ownCapitalText, 10, y, 190);
+    y += 24;
+
+    y = sectionTitle("Kohteen kassavirta ja tuotto", y);
+    row("Vuokra / kk", eur(d.rent), 10, y);
+    row("Hoitovastike / kk", eur(d.maintenanceFee), 108, y);
+    y += 19;
+    row("Rahoitusvastike / kk", eur(d.financingFee), 10, y);
+    row("Kassavirta / kk", eur(result.cashflow), 108, y);
+    y += 19;
+    row("Nettovuokratuotto", pct(result.netYield), 10, y);
+    row("Bruttovuokratuotto", pct(result.grossYield), 108, y);
+    y += 24;
+
+    y = sectionTitle("Vakuus ja omarahoitus", y);
+    row("Pankin vakuusarvo", eur(result.collateralValue), 10, y);
+    row("Vaadittu oma raha / lisävakuus", eur(result.requiredOwnCashOrExtraCollateral), 108, y);
+    y += 22;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...muted);
+    doc.text("Huomio: yhtiölaina vähentää pankin todellista vakuusarvoa ja voi kasvattaa lisävakuuden tarvetta.", 12, y, { maxWidth: 180 });
+    y += 16;
+
+    y = sectionTitle("Kohteen valttikortit", y);
+    if (positiveItems.length === 0) {
+      roundedRect(10, y, 190, 16, [248, 250, 252]);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...slate);
+      doc.text("Ei erillisiä automaattisia vahvuusnostoja. Tarkista kohteen tiedot ja täydennä analyysi.", 16, y + 10);
+      y += 20;
+    } else {
+      positiveItems.forEach((item) => {
+        if (y > 260) {
+          doc.addPage();
+          y = 20;
+        }
+        roundedRect(10, y, 190, 16, [236, 253, 245], [187, 247, 208]);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(...slate);
+        doc.splitTextToSize(`• ${item}`, 174).slice(0, 2).forEach((line, idx) => {
+          doc.text(line, 16, y + 7 + idx * 4);
+        });
+        y += 19;
+      });
+    }
+
+    if (y > 238) {
       doc.addPage();
       y = 20;
     }
 
-    y += 8;
+    y = sectionTitle("Sijoittajan yhteenveto", y + 4);
+    roundedRect(10, y, 190, 28, [255, 255, 255]);
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text(
-      "Laskurin tulokset ovat suuntaa-antavia arvioita eivätkä sijoitusneuvontaa. Käyttäjä vastaa itse lopullisesta sijoituspäätöksestä ja syötettyjen tietojen oikeellisuudesta.",
-      15,
-      y,
-      { maxWidth: 180 }
-    );
+    doc.setTextColor(...slate);
+    const summary = [
+      "Kohde on analysoitu kassavirta- ja tuottoperusteisesti.",
+      "Tavoitteena on pitkäaikainen vuokrakäyttö.",
+      canAnalyze ? result.investorSummary : "Täydennä pakolliset tiedot ennen lopullista tulkintaa.",
+    ].join(" ");
+    let textY = y + 8;
+    doc.splitTextToSize(summary, 174).slice(0, 4).forEach((line) => {
+      doc.text(line, 16, textY);
+      textY += 5;
+    });
 
-    doc.save("asuntosijoitusanalyysi.pdf");
+    doc.setFontSize(7);
+    doc.setTextColor(...muted);
+    doc.text("Raportti perustuu käyttäjän syöttämiin tietoihin. Raportti ei ole sijoitusneuvontaa, luottopäätös eikä pankin virallinen rahoituspäätös.", 10, 285, { maxWidth: 190 });
+
+    doc.save("rahoitushakemus-asuntosijoitus.pdf");
   };
 
   const runOfferSimulation = () => {
@@ -798,7 +1021,7 @@ export default function HomePage() {
                 <SelectField label={pipeLabel(data)} help="Valitse remontin todellinen tila. Tulossa lähivuosina lisää karkean remonttivaran todelliseen velattomaan hintaan." value={data.pipeStatus} onChange={(v) => update("pipeStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "pipeStatus")} options={[["not_relevant", "Ei ajankohtainen"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
                 <SelectField label="Katto" help="Kattoremontin tila vaikuttaa taloyhtiöriskiin ja mahdolliseen remonttivaraan." value={data.roofStatus} onChange={(v) => update("roofStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "roofStatus")} options={[["not_relevant", "Ei ajankohtainen"], ["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
                 <SelectField label="Julkisivu" help="Julkisivuremontti on monissa vanhemmissa yhtiöissä iso kuluerä." value={data.facadeStatus} onChange={(v) => update("facadeStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "facadeStatus")} options={[["not_relevant", "Ei ajankohtainen"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
-                <SelectField label="Parveke" help="Valitse ei parveketta, jos kohteessa ei ole parveketta." value={data.balconyStatus} onChange={(v) => update("balconyStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "balconyStatus")} options={[["none", "Ei parveketta"], ["not_relevant", "Ei ajankohtainen"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
+                {!isLowRise(data) && <SelectField label="Parveke" help="Valitse ei parveketta, jos kohteessa ei ole parveketta." value={data.balconyStatus} onChange={(v) => update("balconyStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "balconyStatus")} options={[["none", "Ei parveketta"], ["not_relevant", "Ei ajankohtainen"], ["not_done", "Ei tehty"], ["older", "Tehty yli 10 vuotta sitten"], ["recent", "Tehty viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />}
                 <SelectField label="Ikkunat" help="Ikkunaremontti voi vaikuttaa asumismukavuuteen, energiatehokkuuteen ja yhtiön kustannuksiin." value={data.windowStatus} onChange={(v) => update("windowStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "windowStatus")} options={[["not_relevant", "Ei ajankohtainen"], ["not_renewed", "Ei uusittu"], ["older", "Uusittu yli 10 vuotta sitten"], ["recent", "Uusittu viimeisen 10 vuoden aikana"], ["coming", "Tulossa lähivuosina"]]} />
                 {!isLowRise(data) && <SelectField label="Hissi" help="Valitse ei hissiä, jos yhtiössä ei ole hissiä. Rivitaloissa ja paritaloissa hissivalinta piilotetaan." value={data.elevatorStatus} onChange={(v) => update("elevatorStatus", v)} placeholder="Valitse tila" requiredMissing={isRequiredMissing(data, "elevatorStatus")} options={[["no_elevator", "Ei hissiä"], ["not_relevant", "Ei ajankohtainen"], ["not_modernized", "Ei modernisoitu"], ["modernized_old", "Modernisoitu yli 20 vuotta sitten"], ["modernized_recent", "Modernisoitu viimeisen 20 vuoden aikana"], ["new_planned", "Hissien rakentaminen suunnitteilla"]]} />}
                 <NumberField label="Jyvittämätön remonttiosuus" help="Lisää tähän tiedossa oleva tai arvioitu tuleva remonttiosuus, jota ei vielä näy velattomassa hinnassa." value={data.ghostDebt} onChange={(v) => update("ghostDebt", v)} placeholder="Syötä euroina, jos tiedossa" />
@@ -822,14 +1045,20 @@ export default function HomePage() {
               <SectionTitle icon={<Banknote className="h-5 w-5" />} title="Rahoitus" />
               <Grid>
                 <NumberField label="Sijoitettu oma pääoma" help="Oma raha, jonka aiot sijoittaa tähän kohteeseen." value={data.ownCapital} onChange={(v) => update("ownCapital", v)} placeholder="Syötä oma pääoma" requiredMissing={isRequiredMissing(data, "ownCapital")} />
-                <NumberField label="Pankkilainan kokonaiskorko" help="Arvio lainan kokonaiskorosta." value={data.interestRate} onChange={(v) => update("interestRate", v)} step="0.1" placeholder="Syötä korko" requiredMissing={isRequiredMissing(data, "interestRate")} />
+                <NumberField label="Pankkilainan kokonaiskorko %" help="Arvio lainan kokonaiskorosta." value={data.interestRate} onChange={(v) => update("interestRate", v)} step="0.1" placeholder="Syötä korko" requiredMissing={isRequiredMissing(data, "interestRate")} />
                 <NumberField label="Laina-aika vuosina" help="Laina-aika vaikuttaa kuukausierään ja kassavirtaan." value={data.loanYears} onChange={(v) => update("loanYears", v)} placeholder="Syötä laina-aika" requiredMissing={isRequiredMissing(data, "loanYears")} />
-                <SelectField label="Lyhennystyyppi" help="Annuiteetti on yleinen lainamalli. Korot vain -vaihtoehto näyttää kassavirran lyhennysvapaan aikana." value={data.repaymentType} onChange={(v) => update("repaymentType", v)} placeholder="Valitse lyhennystyyppi" requiredMissing={isRequiredMissing(data, "repaymentType")} options={[["annuity", "Annuiteetti"], ["equal_principal", "Tasalyhennys"], ["interest_only", "Korot vain"]]} />
+                <SelectField label="Lyhennystyyppi" help="Annuiteetti: maksuerä pysyy pääosin samana. Tasalyhennys: laina lyhenee nopeammin ja alkuerä on usein suurempi. Kiinteä tasaerä: kuukausierä pysyy samana, laina-aika voi muuttua korkojen mukana. Maksetaan vain korkoa: lainapääoma ei lyhene." value={data.repaymentType} onChange={(v) => update("repaymentType", v)} placeholder="Valitse lyhennystyyppi" requiredMissing={isRequiredMissing(data, "repaymentType")} options={[["annuity", "Annuiteetti"], ["equal_principal", "Tasalyhennys"], ["fixed_payment", "Kiinteä tasaerä"], ["interest_only", "Maksetaan vain korkoa"]]} />
                 <SelectField label="Pankin antama vakuusarvoprosentti ostokohteelle" help="Arvio siitä, kuinka suuren osuuden ostokohteesta pankki hyväksyy vakuudeksi." value={String(data.collateralValuePct)} onChange={(v) => update("collateralValuePct", v)} placeholder="Valitse vakuusarvo" requiredMissing={isRequiredMissing(data, "collateralValuePct")} options={[["70", "70 %"], ["80", "80 %"], ["90", "90 %"]]} />
               </Grid>
 
               <SectionTitle icon={<TrendingUp className="h-5 w-5" />} title="Sijainti ja exit" />
-              <SelectField label="Sijaintiriski" help="Matala: haluttu sijainti, isot työllistäjät tai oppilaitokset lähellä. Keskitaso: elinvoimainen pieni tai keskisuuri kunta. Korkea: muuttotappiopaikkakunta tai yhden suuren työnantajan varassa." value={data.locationRisk} onChange={(v) => update("locationRisk", v)} placeholder="Valitse sijaintiriski" requiredMissing={isRequiredMissing(data, "locationRisk")} options={[["low", "Matala – haluttu sijainti"], ["medium", "Keskitaso – elinvoimainen pieni/keskisuuri kunta"], ["high", "Korkea – muuttotappio tai yhden työllistäjän riski"]]} />
+              <RiskCardField
+                label="Sijaintiriski"
+                help="Pieni: haluttu sijainti esimerkiksi oppilaitosten tai suurten työllistäjien läheisyydessä. Keskitaso: elinvoimainen pieni tai keskisuuri kunta. Suuri: muuttotappiopaikkakunta tai alue, joka nojaa vahvasti yhden suuren työllistäjän varaan."
+                value={data.locationRisk}
+                onChange={(v) => update("locationRisk", v)}
+                requiredMissing={isRequiredMissing(data, "locationRisk")}
+              />
               <SliderField label="Asunnon kunto" help="1 Heikko: vaatii täydellisen remontin. 2 Tyydyttävä: asuttava, mutta selvä päivitystarve. 3 Kohtalainen: pinnat pääosin ok, kylpyhuone tai keittiö voi vaatia päivitystä. 4 Hyvä: siisti ja toimiva. 5 Erinomainen: remontoitu tai lähes uudenveroinen. Voit arvioida kuntoa kohdekuvien, remonttitietojen ja taloyhtiön dokumenttien perusteella." value={data.condition} onChange={(v) => update("condition", v)} left="Heikko" right="Erinomainen" requiredMissing={isRequiredMissing(data, "condition")} />
               <SliderField label="Jälleenmyytävyys / likviditeetti (arvioitu myyntiaika)" help="Arvioi kuinka nopeasti ja helposti kohde olisi myytävissä eteenpäin." value={data.liquidity} onChange={(v) => update("liquidity", v)} left="Hidas" right="Nopea" requiredMissing={isRequiredMissing(data, "liquidity")} />
             </div>
@@ -883,9 +1112,14 @@ export default function HomePage() {
                   <div className="text-xl font-semibold">PDF-raportti</div>
                   <p className="mt-1 text-sm text-slate-600">Lataa analyysistä tiivis PDF-raportti omaan käyttöön.</p>
                 </div>
-                <Button type="button" onClick={downloadPdfReport}>
-                  <Download className="mr-2 h-4 w-4" /> Lataa PDF-raportti
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button type="button" onClick={downloadPdfReport}>
+                    <Download className="mr-2 h-4 w-4" /> Lataa PDF-raportti
+                  </Button>
+                  <Button type="button" onClick={downloadFinanceApplicationPdf}>
+                    <Download className="mr-2 h-4 w-4" /> Luo rahoitushakemus
+                  </Button>
+                </div>
               </div>
             </Card>
 
@@ -1078,6 +1312,45 @@ function SelectField({ label, value, onChange, options, help, placeholder, requi
   );
 }
 
+function RiskCardField({ label, value, onChange, help, requiredMissing = false }) {
+  const options = [
+    ["1", "1 Pieni", "Haluttu sijainti, esim. oppilaitosten tai isojen työllistäjien lähellä"],
+    ["2", "2 Melko pieni", "Vakaa alue ja tasainen kysyntä"],
+    ["3", "3 Keskitaso", "Elinvoimainen pieni tai keskisuuri kunta"],
+    ["4", "4 Melko suuri", "Kysyntä voi vaihdella merkittävästi"],
+    ["5", "5 Suuri", "Muuttotappio tai yhden suuren työllistäjän riski"],
+  ];
+
+  return (
+    <div className={`space-y-3 rounded-2xl border p-4 ${requiredMissing ? "border-rose-300 bg-rose-50" : "bg-white"}`}>
+      <div className="flex items-center justify-between gap-3">
+        <Label help={help} requiredMissing={requiredMissing}>{label}</Label>
+        <span className={`rounded-full px-3 py-1 text-sm font-semibold ${requiredMissing ? "bg-rose-100 text-rose-700" : "bg-slate-100"}`}>
+          {value || "–"}/5
+        </span>
+      </div>
+      <div className="grid gap-2">
+        {options.map(([val, title, desc]) => (
+          <button
+            key={val}
+            type="button"
+            onClick={() => onChange(val)}
+            className={`rounded-xl border p-3 text-left text-sm transition ${
+              String(value) === val
+                ? "border-[#1F4D3A] bg-[#EAF4EF] text-[#173A2C] ring-2 ring-[#1F4D3A]/20"
+                : "border-slate-200 bg-white hover:border-[#1F4D3A]/40"
+            }`}
+          >
+            <div className="font-semibold">{title}</div>
+            <div className="mt-1 text-xs leading-4 text-slate-500">{desc}</div>
+          </button>
+        ))}
+      </div>
+      {requiredMissing && <p className="text-xs font-medium text-rose-600">Pakollinen valinta puuttuu.</p>}
+    </div>
+  );
+}
+
 function SliderField({ label, value, onChange, left, right, help, requiredMissing = false }) {
   const numericValue = Number(value);
   const isSelected = (n) => numericValue === n;
@@ -1125,7 +1398,7 @@ function SliderField({ label, value, onChange, left, right, help, requiredMissin
         </span>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-5">
+      <div className="grid gap-2">
         {options.map(([n, title, desc]) => (
           <button
             key={n}

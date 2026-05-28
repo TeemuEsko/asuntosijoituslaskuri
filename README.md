@@ -30,3 +30,7 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 14: rahoituskenttien selkeytys, vakuusarvo-tooltip, likviditeetin myyntiaikaselitteet ja laajemmat käyttöohje-tooltipit.
 
 - Build 15: sliderit korvattu 1–5 valintakorteilla ja PDF-raporttinappi palautettu näkyviin.
+
+- Build 16: rivitalo/paritalo piilottaa parvekkeen, valintakortit full width, sijaintiriski korteiksi, lyhennystyypit selkeytetty ja PDF visuaaliseksi.
+
+- Build 17: lisätty erillinen pankille suunnattu rahoitushakemus-PDF.
