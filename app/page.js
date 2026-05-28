@@ -611,7 +611,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 text-slate-900 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-4xl space-y-6">
         <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm text-slate-600 shadow-sm"><Home className="h-4 w-4" /> asuntosijoituslaskuri.fi</div>
@@ -637,6 +637,11 @@ export default function HomePage() {
           </Card>
         </header>
 
+        <div className="rounded-3xl border border-[#1F4D3A]/20 bg-[#EAF4EF] p-4 text-sm text-[#173A2C]">
+          <div className="font-semibold">Täytä tiedot ylhäältä alas</div>
+          <div className="mt-1">Ensin kohteen tiedot ja rahoitusoletukset, sen jälkeen talousluvut, tarjoushintasimulaattori sekä analyysi ja riskiliput.</div>
+        </div>
+
         {!canAnalyze && (
           <div className="rounded-3xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
             <div className="font-semibold">Täydennä puuttuvat tiedot ennen analyysin tulkintaa.</div>
@@ -644,9 +649,13 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="space-y-6">
           <Card>
             <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold">Syötä kohteen tiedot</h2>
+                <p className="mt-1 text-sm text-slate-600">Etene osiot järjestyksessä. URL-haku voi täyttää osan tiedoista automaattisesti.</p>
+              </div>
               <SectionTitle icon={<Calculator className="h-5 w-5" />} title="Kohteen tiedot" />
               <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
                 <Label help="Liitä Etuovi- tai Oikotie-kohdelinkki. Työkalu yrittää hakea ilmoituksesta keskeiset laskentatiedot automaattisesti.">Etuovi/Oikotie-linkki</Label>
@@ -713,9 +722,13 @@ export default function HomePage() {
             </div>
           </Card>
 
-          <div className="space-y-6">
-            <Card>
-              <div className="flex items-center gap-2 text-xl font-semibold"><TrendingUp className="h-5 w-5" /> Talousluvut</div>
+          <div className="pt-2">
+            <h2 className="text-2xl font-bold">Analyysi</h2>
+            <p className="mt-1 text-sm text-slate-600">Kun tiedot on täytetty, tarkista ensin talousluvut, sitten simulaatio ja lopuksi riskiliput.</p>
+          </div>
+
+          <Card>
+            <div className="flex items-center gap-2 text-xl font-semibold"><TrendingUp className="h-5 w-5" /> Talousluvut</div>
               {!canAnalyze && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Talousluvut päivittyvät suuntaa-antavasti. Täydennä kaikki vaaditut kentät ennen tulkintaa.</div>}
 
               <div className="mt-5 space-y-6">
@@ -864,7 +877,6 @@ export default function HomePage() {
                 Laskurin antamat analyysit, pisteytykset ja tarjoushintasimulaatiot ovat suuntaa-antavia arvioita eivätkä sijoitusneuvontaa. Käyttäjä vastaa aina itse lopullisesta sijoituspäätöksestään sekä syöttämiensä tietojen oikeellisuudesta.
               </div>
             </Card>
-          </div>
         </div>
 
         <footer className="flex flex-col gap-2 border-t border-slate-200 pt-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
@@ -965,5 +977,3 @@ function ScoreBar({ label, value, weight }) {
     </div>
   );
 }
-
-// Layout optimized for single-column investment analysis flow.

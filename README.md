@@ -21,4 +21,4 @@ Upload GitHubiin ja deploy Vercelissä.
 
 - Build 09: talousluvut ryhmitelty, vuokrakysyntää painotettu, uusiin kohteisiin automaattinen ei ajankohtainen remonttioletus, simuloidun scorekortin värit ja asunnon kunnon selitteet.
 
-- Build 10: siirretty yksipalstaiseen ylhäältä-alas analyysivirtaan UX:n selkeyttämiseksi.
+- Build 11: oikea yksipalstainen flow, analyysikortit siirretty lomakkeen alle samaan pystysuuntaiseen rakenteeseen.
