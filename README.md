@@ -22,3 +22,9 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 09: talousluvut ryhmitelty, vuokrakysyntää painotettu, uusiin kohteisiin automaattinen ei ajankohtainen remonttioletus, simuloidun scorekortin värit ja asunnon kunnon selitteet.
 
 - Build 11: oikea yksipalstainen flow, analyysikortit siirretty lomakkeen alle samaan pystysuuntaiseen rakenteeseen.
+
+- Build 12: URL-kentän resetointi, hakunapin palautuminen ja selkeämpi Oikotie-virheilmoitus.
+
+- Build 13: PDF-raportin latausnappi palautettu yksipalstaiseen analyysiosioon.
+
+- Build 14: rahoituskenttien selkeytys, vakuusarvo-tooltip, likviditeetin myyntiaikaselitteet ja laajemmat käyttöohje-tooltipit.

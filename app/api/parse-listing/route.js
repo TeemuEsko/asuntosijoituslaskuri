@@ -124,6 +124,16 @@ export async function GET(request) {
     const rawText = cleanText(html);
     const fields = parseFields(rawText);
 
+    if (Object.keys(fields).length === 0 && url.includes("oikotie.fi")) {
+      return Response.json({
+        error: "Oikotie-kohteen tietoja ei saatu luettua kevyellä HTML-parserilla. Oikotie vaatii todennäköisesti selainpohjaisen parserin.",
+        sourceUrl: url,
+        fields,
+        rawText,
+        foundKeys: [],
+      }, { status: 422 });
+    }
+
     return Response.json({ sourceUrl: url, fields, rawText, foundKeys: Object.keys(fields) });
   } catch (error) {
     return Response.json({ error: error.message || "URL-haku epäonnistui." }, { status: 500 });

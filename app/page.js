@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Banknote, Building2, Calculator, CheckCircle2, HelpCircle, Home, Link as LinkIcon, ShieldAlert, Target, TrendingUp } from "lucide-react";
+import { AlertTriangle, Banknote, Building2, Calculator, CheckCircle2, Download, HelpCircle, Home, Link as LinkIcon, ShieldAlert, Target, TrendingUp } from "lucide-react";
 
 function clamp(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
@@ -193,7 +193,7 @@ function requiredMissingFields(data) {
     ["interestRate", "Korko"],
     ["loanYears", "Laina-aika"],
     ["repaymentType", "Lyhennystyyppi"],
-    ["collateralValuePct", "Pankin vakuusarvo"],
+    ["collateralValuePct", "Pankin antama vakuusarvoprosentti ostokohteelle"],
     ["locationDemand", "Vuokrakysyntä"],
     ["locationRisk", "Sijaintiriski"],
     ["condition", "Asunnon kunto"],
@@ -522,6 +522,16 @@ export default function HomePage() {
   const canAnalyze = missingFields.length === 0;
   const result = useMemo(() => analyze(data), [data]);
 
+  const updateUrlField = (value) => {
+    setData((prev) => ({
+      ...prev,
+      url: value,
+      parsedNotice: value.trim() ? "" : "",
+      dataSource: value.trim() ? prev.dataSource : "manual",
+    }));
+    setIsParsingUrl(false);
+  };
+
   const update = (key, value) => {
     setData((prev) => {
       let next = { ...prev, [key]: value };
@@ -592,10 +602,113 @@ export default function HomePage() {
         return next;
       });
     } catch (error) {
-      setData((prev) => ({ ...prev, parsedNotice: `URL-haku ei onnistunut: ${error.message}. Tarkista linkki tai täydennä luvut käsin.` }));
+      const isOikotie = url.includes("oikotie.fi");
+      const message = isOikotie
+        ? `Oikotie-linkin automaattinen haku ei vielä onnistunut nykyisellä kevyellä parserilla. Oikotie vaatii todennäköisesti selainpohjaisen parserin. Täydennä tiedot toistaiseksi käsin. Tekninen syy: ${error.message}.`
+        : `URL-haku ei onnistunut: ${error.message}. Tarkista linkki tai täydennä luvut käsin.`;
+      setData((prev) => ({ ...prev, parsedNotice: message }));
     } finally {
       setIsParsingUrl(false);
     }
+  };
+
+  const downloadPdfReport = async () => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const d = normalizedData(data);
+    const today = new Date().toLocaleDateString("fi-FI");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("asuntosijoituslaskuri.fi", 15, 18);
+    doc.setFontSize(14);
+    doc.text("Sijoitusasunnon analyysi", 15, 28);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Päiväys: ${today}`, 15, 36);
+    doc.text(`Osoite: ${data.address || "-"}`, 15, 43);
+    doc.text(`Pinta-ala: ${d.size || "-"} m²`, 15, 50);
+    doc.text(`Rakennusvuosi: ${d.buildYear || "-"}`, 15, 57);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Keskeiset luvut", 15, 70);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    const rows = [
+      ["Velaton tarjoushinta", eur(d.debtFreePrice)],
+      ["Myyntihinta", eur(result.purchasePrice)],
+      ["Vuokra / kk", eur(d.rent)],
+      ["Hoitovastike / kk", eur(d.maintenanceFee)],
+      ["Kassavirta / kk", eur(result.cashflow)],
+      ["Nettovuokratuotto", pct(result.netYield)],
+      ["Bruttovuokratuotto", pct(result.grossYield)],
+      ["Vaadittu oma raha / lisävakuus", eur(result.requiredOwnCashOrExtraCollateral)],
+      ["Sijoitusarvio", canAnalyze ? `${result.scores.total}/100 - ${result.verdict}` : "Ei valmis"],
+    ];
+
+    let y = 78;
+    rows.forEach(([label, value]) => {
+      doc.text(`${label}: ${value}`, 15, y);
+      y += 7;
+    });
+
+    y += 5;
+    doc.setFont("helvetica", "bold");
+    doc.text("Sijoittajan yhteenveto", 15, y);
+    y += 7;
+    doc.setFont("helvetica", "normal");
+    const summary = canAnalyze ? result.investorSummary : "Täydennä pakolliset tiedot ennen analyysin tulkintaa.";
+    doc.splitTextToSize(summary, 180).forEach((line) => {
+      doc.text(line, 15, y);
+      y += 6;
+    });
+
+    y += 5;
+    doc.setFont("helvetica", "bold");
+    doc.text("Riskit ja huomiot", 15, y);
+    y += 7;
+    doc.setFont("helvetica", "normal");
+
+    const riskLines = [
+      ...result.dealbreakers,
+      ...result.riskProfile.items.map((item) => item.text),
+      ...result.warnings,
+    ].slice(0, 12);
+
+    if (riskLines.length === 0) {
+      doc.text("Ei merkittäviä riskilippuja valituilla tiedoilla.", 15, y);
+      y += 7;
+    } else {
+      riskLines.forEach((line) => {
+        doc.splitTextToSize(`- ${line}`, 180).forEach((part) => {
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(part, 15, y);
+          y += 6;
+        });
+      });
+    }
+
+    if (y > 260) {
+      doc.addPage();
+      y = 20;
+    }
+
+    y += 8;
+    doc.setFontSize(8);
+    doc.text(
+      "Laskurin tulokset ovat suuntaa-antavia arvioita eivätkä sijoitusneuvontaa. Käyttäjä vastaa itse lopullisesta sijoituspäätöksestä ja syötettyjen tietojen oikeellisuudesta.",
+      15,
+      y,
+      { maxWidth: 180 }
+    );
+
+    doc.save("asuntosijoitusanalyysi.pdf");
   };
 
   const runOfferSimulation = () => {
@@ -660,7 +773,7 @@ export default function HomePage() {
               <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
                 <Label help="Liitä Etuovi- tai Oikotie-kohdelinkki. Työkalu yrittää hakea ilmoituksesta keskeiset laskentatiedot automaattisesti.">Etuovi/Oikotie-linkki</Label>
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input value={data.url} onChange={(e) => update("url", e.target.value)} placeholder="Liitä Etuovi- tai Oikotie-linkki" />
+                  <Input value={data.url} onChange={(e) => updateUrlField(e.target.value)} placeholder="Liitä Etuovi- tai Oikotie-linkki" />
                   <Button type="button" onClick={parseListingUrl} disabled={isParsingUrl}><LinkIcon className="mr-2 h-4 w-4" /> {isParsingUrl ? "Haetaan..." : "Hae tiedot"}</Button>
                 </div>
                 <p className="text-xs text-slate-500">URL-haku täyttää vain löydetyt tiedot. Käyttäjä vastaa puuttuvien tietojen täydentämisestä ja valintojen oikeellisuudesta.</p>
@@ -709,16 +822,16 @@ export default function HomePage() {
               <SectionTitle icon={<Banknote className="h-5 w-5" />} title="Rahoitus" />
               <Grid>
                 <NumberField label="Sijoitettu oma pääoma" help="Oma raha, jonka aiot sijoittaa tähän kohteeseen." value={data.ownCapital} onChange={(v) => update("ownCapital", v)} placeholder="Syötä oma pääoma" requiredMissing={isRequiredMissing(data, "ownCapital")} />
-                <NumberField label="Korko %" help="Arvio lainan kokonaiskorosta." value={data.interestRate} onChange={(v) => update("interestRate", v)} step="0.1" placeholder="Syötä korko" requiredMissing={isRequiredMissing(data, "interestRate")} />
+                <NumberField label="Pankkilainan kokonaiskorko" help="Arvio lainan kokonaiskorosta." value={data.interestRate} onChange={(v) => update("interestRate", v)} step="0.1" placeholder="Syötä korko" requiredMissing={isRequiredMissing(data, "interestRate")} />
                 <NumberField label="Laina-aika vuosina" help="Laina-aika vaikuttaa kuukausierään ja kassavirtaan." value={data.loanYears} onChange={(v) => update("loanYears", v)} placeholder="Syötä laina-aika" requiredMissing={isRequiredMissing(data, "loanYears")} />
                 <SelectField label="Lyhennystyyppi" help="Annuiteetti on yleinen lainamalli. Korot vain -vaihtoehto näyttää kassavirran lyhennysvapaan aikana." value={data.repaymentType} onChange={(v) => update("repaymentType", v)} placeholder="Valitse lyhennystyyppi" requiredMissing={isRequiredMissing(data, "repaymentType")} options={[["annuity", "Annuiteetti"], ["equal_principal", "Tasalyhennys"], ["interest_only", "Korot vain"]]} />
-                <SelectField label="Pankin vakuusarvo" help="Arvio siitä, kuinka suuren osuuden ostokohteesta pankki hyväksyy vakuudeksi." value={String(data.collateralValuePct)} onChange={(v) => update("collateralValuePct", v)} placeholder="Valitse vakuusarvo" requiredMissing={isRequiredMissing(data, "collateralValuePct")} options={[["70", "70 %"], ["80", "80 %"], ["90", "90 %"]]} />
+                <SelectField label="Pankin antama vakuusarvoprosentti ostokohteelle" help="Arvio siitä, kuinka suuren osuuden ostokohteesta pankki hyväksyy vakuudeksi." value={String(data.collateralValuePct)} onChange={(v) => update("collateralValuePct", v)} placeholder="Valitse vakuusarvo" requiredMissing={isRequiredMissing(data, "collateralValuePct")} options={[["70", "70 %"], ["80", "80 %"], ["90", "90 %"]]} />
               </Grid>
 
               <SectionTitle icon={<TrendingUp className="h-5 w-5" />} title="Sijainti ja exit" />
               <SelectField label="Sijaintiriski" help="Matala: haluttu sijainti, isot työllistäjät tai oppilaitokset lähellä. Keskitaso: elinvoimainen pieni tai keskisuuri kunta. Korkea: muuttotappiopaikkakunta tai yhden suuren työnantajan varassa." value={data.locationRisk} onChange={(v) => update("locationRisk", v)} placeholder="Valitse sijaintiriski" requiredMissing={isRequiredMissing(data, "locationRisk")} options={[["low", "Matala – haluttu sijainti"], ["medium", "Keskitaso – elinvoimainen pieni/keskisuuri kunta"], ["high", "Korkea – muuttotappio tai yhden työllistäjän riski"]]} />
-              <SliderField label="Asunnon kunto" help="1 Heikko: vaatii täydellisen remontin. 2 Tyydyttävä: asuttava, mutta selvä päivitystarve. 3 Kohtalainen: pinnat pääosin ok, kylpyhuone tai keittiö voi vaatia päivitystä. 4 Hyvä: siisti ja toimiva. 5 Erinomainen: remontoitu tai lähes uudenveroinen." value={data.condition} onChange={(v) => update("condition", v)} left="Heikko" right="Erinomainen" requiredMissing={isRequiredMissing(data, "condition")} />
-              <SliderField label="Jälleenmyytävyys / likviditeetti" help="Arvioi kuinka nopeasti ja helposti kohde olisi myytävissä eteenpäin." value={data.liquidity} onChange={(v) => update("liquidity", v)} left="Hidas" right="Nopea" requiredMissing={isRequiredMissing(data, "liquidity")} />
+              <SliderField label="Asunnon kunto" help="1 Heikko: vaatii täydellisen remontin. 2 Tyydyttävä: asuttava, mutta selvä päivitystarve. 3 Kohtalainen: pinnat pääosin ok, kylpyhuone tai keittiö voi vaatia päivitystä. 4 Hyvä: siisti ja toimiva. 5 Erinomainen: remontoitu tai lähes uudenveroinen. Voit arvioida kuntoa kohdekuvien, remonttitietojen ja taloyhtiön dokumenttien perusteella." value={data.condition} onChange={(v) => update("condition", v)} left="Heikko" right="Erinomainen" requiredMissing={isRequiredMissing(data, "condition")} />
+              <SliderField label="Jälleenmyytävyys / likviditeetti (arvioitu myyntiaika)" help="Arvioi kuinka nopeasti ja helposti kohde olisi myytävissä eteenpäin." value={data.liquidity} onChange={(v) => update("liquidity", v)} left="Hidas" right="Nopea" requiredMissing={isRequiredMissing(data, "liquidity")} />
             </div>
           </Card>
 
@@ -757,10 +870,22 @@ export default function HomePage() {
                   <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Rahoitus</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Metric label="Lainan kuukausierä" value={eur(result.loanPayment)} />
-                    <Metric label="Pankin vakuusarvo" value={eur(result.collateralValue)} />
+                    <Metric label="Pankin antama vakuusarvoprosentti ostokohteelle" value={eur(result.collateralValue)} />
                     <Metric label="Vaadittu oma raha / lisävakuus" value={eur(result.requiredOwnCashOrExtraCollateral)} emphasis={result.requiredOwnCashOrExtraCollateral > normalizedData(data).ownCapital ? "bad" : "good"} />
                   </div>
                 </div>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-xl font-semibold">PDF-raportti</div>
+                  <p className="mt-1 text-sm text-slate-600">Lataa analyysistä tiivis PDF-raportti omaan käyttöön.</p>
+                </div>
+                <Button type="button" onClick={downloadPdfReport}>
+                  <Download className="mr-2 h-4 w-4" /> Lataa PDF-raportti
+                </Button>
               </div>
             </Card>
 
@@ -977,3 +1102,5 @@ function ScoreBar({ label, value, weight }) {
     </div>
   );
 }
+
+// TODO_CARD_SELECTORS: sliderit korvataan seuraavassa UI-päivityksessä 1-5 valintakorteilla.
