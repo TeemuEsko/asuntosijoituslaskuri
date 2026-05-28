@@ -34,3 +34,7 @@ Upload GitHubiin ja deploy Vercelissä.
 - Build 16: rivitalo/paritalo piilottaa parvekkeen, valintakortit full width, sijaintiriski korteiksi, lyhennystyypit selkeytetty ja PDF visuaaliseksi.
 
 - Build 17: lisätty erillinen pankille suunnattu rahoitushakemus-PDF.
+
+- Build 18: parseri poimii rakennusvuoden Vuosi/Rakennusvuosi-kentästä, kohdenumero mukaan, PDF-nimet osoitteella+neliöillä, taloyhtiön kokoluokat korjattu ja PDF-siistimistä.
+
+- Build 19: sijoitusarvio siirretty headerista analyysiosioon ja HUOM-container täysleveäksi.

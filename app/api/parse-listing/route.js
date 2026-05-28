@@ -44,8 +44,26 @@ function parseNumberAfterLabel(text, labels, maxDistance = 150) {
 }
 
 function parseYear(text) {
-  const match = text.match(/(rakennusvuosi|valmistunut|rakennettu)[^\d]*(19\d{2}|20\d{2})/i);
-  return match ? Number(match[2]) : null;
+  const patterns = [
+    /(?:\bvuosi\b|\brakennusvuosi\b|\bvalmistumisvuosi\b|\bvalmistunut\b|\brakennettu\b)[^\d]{0,30}((?:19|20)\d{2})/i,
+    /(?:\bvuosi\b|\brakennusvuosi\b|\bvalmistumisvuosi\b)[\s:.-]{0,10}((?:19|20)\d{2})/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) return Number(match[1]);
+  }
+
+  return null;
+}
+
+function parseListingId(rawText, sourceUrl) {
+  const urlMatch = sourceUrl.match(/kohde\/(\d+)/i);
+  if (urlMatch) return urlMatch[1];
+
+  const text = rawText.toLowerCase();
+  const match = text.match(/(?:kohdenumero|kohde\s*nro|kohde-id)[^\d]{0,20}(\d{5,})/i);
+  return match ? match[1] : null;
 }
 
 function parseFields(rawText) {
@@ -123,6 +141,8 @@ export async function GET(request) {
 
     const rawText = cleanText(html);
     const fields = parseFields(rawText);
+    const listingId = parseListingId(rawText, url);
+    if (listingId) fields.listingId = listingId;
 
     if (Object.keys(fields).length === 0 && url.includes("oikotie.fi")) {
       return Response.json({

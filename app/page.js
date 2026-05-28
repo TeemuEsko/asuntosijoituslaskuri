@@ -642,8 +642,8 @@ export default function HomePage() {
     const amber = [146, 64, 14];
 
     const roundedRect = (x, y, w, h, fill = [255, 255, 255], stroke = border) => {
-      doc.setFillColor(...fill);
-      doc.setDrawColor(...stroke);
+      doc.setFillColor(fill[0], fill[1], fill[2]);
+      doc.setDrawColor(stroke[0], stroke[1], stroke[2]);
       doc.roundedRect(x, y, w, h, 4, 4, "FD");
     };
 
@@ -765,7 +765,7 @@ export default function HomePage() {
     doc.setTextColor(...muted);
     doc.text("Laskurin tulokset ovat suuntaa-antavia arvioita eivätkä sijoitusneuvontaa. Käyttäjä vastaa itse lopullisesta sijoituspäätöksestä ja syötettyjen tietojen oikeellisuudesta.", 10, 285, { maxWidth: 190 });
 
-    doc.save("asuntosijoitusanalyysi.pdf");
+    doc.save(pdfFileName(data, "analyysi"));
   };
 
   const downloadFinanceApplicationPdf = async () => {
@@ -783,8 +783,8 @@ export default function HomePage() {
     const amber = [146, 64, 14];
 
     const roundedRect = (x, y, w, h, fill = [255, 255, 255], stroke = border) => {
-      doc.setFillColor(...fill);
-      doc.setDrawColor(...stroke);
+      doc.setFillColor(fill[0], fill[1], fill[2]);
+      doc.setDrawColor(stroke[0], stroke[1], stroke[2]);
       doc.roundedRect(x, y, w, h, 4, 4, "FD");
     };
 
@@ -839,10 +839,11 @@ export default function HomePage() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.text(`Osoite: ${data.address || "-"}`, 16, 69);
-    doc.text(`Talotyyppi: ${data.buildingType || "-"}`, 100, 69);
-    doc.text(`Pinta-ala: ${d.size || "-"} m²`, 16, 76);
-    doc.text(`Rakennusvuosi: ${d.buildYear || "-"}`, 60, 76);
-    doc.text(`Lämmitys: ${data.heatingType || "-"}`, 115, 76);
+    doc.text(`Kohdenumero: ${data.listingId || "-"}`, 100, 69);
+    doc.text(`Talotyyppi: ${data.buildingType || "-"}`, 16, 76);
+    doc.text(`Pinta-ala: ${d.size || "-"} m²`, 72, 76);
+    doc.text(`Rakennusvuosi: ${d.buildYear || "-"}`, 112, 76);
+    doc.text(`Lämmitys: ${data.heatingType || "-"}`, 158, 76);
 
     let y = 94;
     y = sectionTitle("Kaupan ja rahoituksen pääluvut", y);
@@ -857,7 +858,7 @@ export default function HomePage() {
       ? eur(d.ownCapital)
       : "0 € — rahoitus suunniteltu lisävakuuksilla";
     row("Sijoitettu oma pääoma", ownCapitalText, 10, y, 190);
-    y += 24;
+    y += 22;
 
     y = sectionTitle("Kohteen kassavirta ja tuotto", y);
     row("Vuokra / kk", eur(d.rent), 10, y);
@@ -931,7 +932,7 @@ export default function HomePage() {
     doc.setTextColor(...muted);
     doc.text("Raportti perustuu käyttäjän syöttämiin tietoihin. Raportti ei ole sijoitusneuvontaa, luottopäätös eikä pankin virallinen rahoituspäätös.", 10, 285, { maxWidth: 190 });
 
-    doc.save("rahoitushakemus-asuntosijoitus.pdf");
+    doc.save(pdfFileName(data, "rahoitushakemus"));
   };
 
   const runOfferSimulation = () => {
@@ -948,29 +949,15 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 text-slate-900 md:p-8">
       <div className="mx-auto max-w-4xl space-y-6">
-        <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <header className="space-y-4">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm text-slate-600 shadow-sm"><Home className="h-4 w-4" /> asuntosijoituslaskuri.fi</div>
             <h1 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">Sijoitusasunnon analyysi</h1>
             <p className="mt-2 max-w-2xl text-slate-600">URL-haku, kassavirta, todellinen velaton hinta, riskiliput ja tarjoushintasimulaattori.</p>
-            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
               <strong>HUOM!</strong> Laskuri toimii tuotto- ja kassavirtaperusteisesti. Palvelulla ei ole pääsyä toteutuneisiin kauppahintoihin tai alueellisiin vertailukauppoihin, joten arvio ei ole markkina-arvoanalyysi tai virallinen hinta-arvio.
             </div>
           </div>
-          <Card className={scoreColor}>
-            <div className="text-sm font-medium">Sijoitusarvio</div>
-            {canAnalyze ? (
-              <>
-                <div className="mt-1 flex items-end gap-2"><div className="text-5xl font-bold">{result.scores.total}</div><div className="pb-2 text-lg">/100</div></div>
-                <div className="mt-2 font-semibold">{result.verdict}</div>
-              </>
-            ) : (
-              <>
-                <div className="mt-2 text-2xl font-bold">Täydennä tiedot</div>
-                <div className="mt-2 text-sm">Sijoitusarvio muodostuu, kun vaaditut kentät on täytetty.</div>
-              </>
-            )}
-          </Card>
         </header>
 
         <div className="rounded-3xl border border-[#1F4D3A]/20 bg-[#EAF4EF] p-4 text-sm text-[#173A2C]">
@@ -1008,7 +995,7 @@ export default function HomePage() {
                 <SelectField label="Talotyyppi" help="Valitse ostokohteen tyyppi. Talotyyppi vaikuttaa remonttiriskeihin, kulurakenteeseen ja jälleenmyytävyyteen." value={data.buildingType} onChange={(v) => update("buildingType", v)} placeholder="Valitse talotyyppi" requiredMissing={isRequiredMissing(data, "buildingType")} options={[["apartment", "Kerrostalo"], ["terraced", "Rivitalo"], ["semi_detached", "Paritalo"], ["loft", "Luhtitalo"]]} />
                 <NumberField label="Rakennusvuosi" help="Rakennusvuosi auttaa arvioimaan tulevia remontteja, rakennusteknisiä riskejä ja asbestiriskiä." value={data.buildYear} onChange={(v) => update("buildYear", v)} placeholder="Syötä rakennusvuosi" requiredMissing={isRequiredMissing(data, "buildYear")} />
                 <SelectField label="Lämmitys" help="Maalämpö ja kaukolämpö nostavat pisteytystä. Suora sähkö ja öljy laskevat pisteytystä." value={data.heatingType} onChange={(v) => update("heatingType", v)} placeholder="Valitse lämmitysmuoto" requiredMissing={isRequiredMissing(data, "heatingType")} options={[["electric", "Suora sähkö"], ["district", "Kaukolämpö"], ["geothermal", "Maalämpö"], ["exhaust_air", "Poistoilmalämpöpumppu"], ["oil", "Öljylämmitys"]]} />
-                <SelectField label="Taloyhtiön koko" help="Pienessä yhtiössä isot remontit voivat kohdistua harvemmille osakkaille. Iso yhtiö voi hajauttaa riskiä." value={data.housingCompanySize} onChange={(v) => update("housingCompanySize", v)} placeholder="Valitse koko" requiredMissing={isRequiredMissing(data, "housingCompanySize")} options={[["small", "Pieni (0–5 asuntoa)"], ["medium", "Keskikokoinen (10–30 asuntoa)"], ["large", "Iso (+30 asuntoa)"]]} />
+                <SelectField label="Taloyhtiön koko" help="Pienessä yhtiössä isot remontit voivat kohdistua harvemmille osakkaille. Iso yhtiö voi hajauttaa riskiä." value={data.housingCompanySize} onChange={(v) => update("housingCompanySize", v)} placeholder="Valitse koko" requiredMissing={isRequiredMissing(data, "housingCompanySize")} options={[["small", "Pieni (2–9 asuntoa)"], ["medium", "Keskikokoinen (10–30 asuntoa)"], ["large", "Iso (+31 asuntoa)"]]} />
                 <SelectField label="Taloyhtiön talous" help="Arvio taloyhtiön maksuvalmiudesta, vastikepaineesta ja yleisestä taloudellisesta tilanteesta." value={data.housingCompanyFinancials} onChange={(v) => update("housingCompanyFinancials", v)} placeholder="Valitse arvio" requiredMissing={isRequiredMissing(data, "housingCompanyFinancials")} options={[["good", "Hyvä"], ["average", "Kohtalainen / ei tiedossa"], ["weak", "Heikko"]]} />
                 <SelectField label="Omistuspohja" help="Jos omistuspohja ei ole tiedossa, valitse normaali. Keskittynyt omistuspohja tarkoittaa tilannetta, jossa yksi tai muutama omistaja omistaa suuren osan huoneistoista." value={data.ownershipConcentration} onChange={(v) => update("ownershipConcentration", v)} placeholder="Valitse omistuspohja" requiredMissing={isRequiredMissing(data, "ownershipConcentration")} options={[["normal", "Hajautunut / normaali"], ["high", "Keskittynyt"]]} />
                 <SelectField label="Tontti" help="Oma tontti on yleensä ennustettavin. Vuokratontissa kannattaa tarkistaa vuokra-aika ja uusimisehdot." value={data.landType} onChange={(v) => update("landType", v)} placeholder="Valitse tonttityyppi" requiredMissing={isRequiredMissing(data, "landType")} options={[["own", "Oma tontti"], ["leased_city", "Vuokratontti: kaupunki/kunta"], ["leased_private", "Vuokratontti: yksityinen"]]} />
@@ -1161,6 +1148,23 @@ export default function HomePage() {
 
             <Card>
               <div className="flex items-center gap-2 text-xl font-semibold"><ShieldAlert className="h-5 w-5" /> Analyysi ja riskiliput</div>
+              <div className="mt-5 rounded-3xl border bg-white p-5 shadow-sm">
+                <div className="text-sm font-medium text-slate-500">Sijoitusarvio</div>
+                {canAnalyze ? (
+                  <div className={`mt-3 rounded-2xl border p-5 ${scoreColor}`}>
+                    <div className="flex items-end gap-2">
+                      <div className="text-5xl font-bold">{result.scores.total}</div>
+                      <div className="pb-2 text-lg">/100</div>
+                    </div>
+                    <div className="mt-2 text-lg font-semibold">{result.verdict}</div>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-700">
+                    <div className="text-2xl font-bold">Täydennä tiedot</div>
+                    <div className="mt-2 text-sm">Sijoitusarvio muodostuu, kun vaaditut kentät on täytetty.</div>
+                  </div>
+                )}
+              </div>
               {!canAnalyze ? (
                 <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                   Täydennä puuttuvat tiedot ennen analyysin tulkintaa. Käyttäjä vastaa itse syöttämiensä tietojen ja valintojensa oikeellisuudesta.
