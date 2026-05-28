@@ -83,6 +83,7 @@ const initial = {
   locationDemand: "",
   liquidity: "",
   locationRisk: "",
+  targetMode: "cashflow",
   targetCashflow: 100,
   targetNetYield: 6,
   dataSource: "manual",
@@ -559,7 +560,9 @@ export default function HomePage() {
   };
 
   const runOfferSimulation = () => {
-    const simulated = findOfferForTargets(data, Number(data.targetCashflow), Number(data.targetNetYield));
+    const targetCashflow = data.targetMode === "cashflow" ? Number(data.targetCashflow) : Number.NaN;
+    const targetNetYield = data.targetMode === "yield" ? Number(data.targetNetYield) : Number.NaN;
+    const simulated = findOfferForTargets(data, targetCashflow, targetNetYield);
     setOfferSimulation(simulated);
   };
 
@@ -692,10 +695,25 @@ export default function HomePage() {
 
             <Card>
               <div className="flex items-center gap-2 text-xl font-semibold"><Target className="h-5 w-5" /> Simuloi tarjoushinta</div>
+              <p className="mt-2 text-sm text-slate-600">Valitse yksi tavoite. Laskuri hakee korkeimman velattoman tarjoushinnan, jolla valittu tavoite vielä täyttyy.</p>
+
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <NumberField label="Vaadittu kassavirta €/kk" value={data.targetCashflow} onChange={(v) => update("targetCashflow", v)} />
-                <NumberField label="Vaadittu nettotuotto %" value={data.targetNetYield} onChange={(v) => update("targetNetYield", v)} step="0.1" />
+                <SelectField
+                  label="Simuloinnin tavoite"
+                  value={data.targetMode}
+                  onChange={(v) => {
+                    update("targetMode", v);
+                    setOfferSimulation(null);
+                  }}
+                  options={[["cashflow", "Kassavirta"], ["yield", "Nettotuotto"]]}
+                />
+                {data.targetMode === "cashflow" ? (
+                  <NumberField label="Vaadittu kassavirta €/kk" value={data.targetCashflow} onChange={(v) => update("targetCashflow", v)} />
+                ) : (
+                  <NumberField label="Vaadittu nettotuotto %" value={data.targetNetYield} onChange={(v) => update("targetNetYield", v)} step="0.1" />
+                )}
               </div>
+
               <div className="mt-4"><Button type="button" onClick={runOfferSimulation}>Simuloi tarjoushinta</Button></div>
               {offerSimulation && (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -705,17 +723,7 @@ export default function HomePage() {
                   <Metric label="Sijoitusarvio tällä hinnalla" value={`${offerSimulation.result.scores.total}/100`} />
                 </div>
               )}
-              {offerSimulation === null && <p className="mt-3 text-sm text-slate-500">Anna tavoitearvot ja paina simuloi. Tulos näyttää korkeimman velattoman tarjoushinnan, jolla tavoitteet täyttyvät.</p>}
-            </Card>
-
-            <Card>
-              <div className="flex items-center gap-2 text-xl font-semibold"><Banknote className="h-5 w-5" /> Tarjoushintasimulaattori</div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Metric label="Korkein hinta kassavirralle ≥ 0 €/kk" value={result.priceSimulation.positiveCashflowAt ? eur(result.priceSimulation.positiveCashflowAt) : "Ei tällä haarukalla"} />
-                <Metric label="Korkein hinta kassavirralle ≥ 100 €/kk" value={result.priceSimulation.targetCashflowAt ? eur(result.priceSimulation.targetCashflowAt) : "Ei tällä haarukalla"} />
-                <Metric label="Korkein hinta nettotuotolle ≥ 6 %" value={result.priceSimulation.targetYieldAt ? eur(result.priceSimulation.targetYieldAt) : "Ei tällä haarukalla"} />
-                <Metric label="Korkein hinta pisteille ≥ 70" value={result.priceSimulation.greenScoreAt ? eur(result.priceSimulation.greenScoreAt) : "Ei tällä haarukalla"} />
-              </div>
+              {offerSimulation === null && <p className="mt-3 text-sm text-slate-500">Tulos näyttää korkeimman velattoman hinnan valitun tavoitteen perusteella.</p>}
             </Card>
 
             {canAnalyze && (
@@ -749,28 +757,57 @@ export default function HomePage() {
                     <div className="mt-1">Tarkista aina yhtiövastikkeet, rahoitusvastikkeen verokohtelu, tontin ehdot, PTS, tehdyt/tulevat remontit sekä realistinen vuokrataso.</div>
                   </div>
 
-                  {result.dealbreakers.length > 0 && (
-                    <div className="mt-4 rounded-2xl border border-rose-300 bg-rose-50 p-4">
-                      <div className="mb-2 font-semibold text-rose-900">Mahdolliset dealbreakerit</div>
-                      <div className="space-y-2">{result.dealbreakers.map((item, i) => <div key={i} className="flex gap-2 text-sm text-rose-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item}</div>)}</div>
-                    </div>
-                  )}
+                  <div className="mt-4 space-y-5">
+                    {result.positives.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="font-semibold text-slate-900">Vahvuudet</div>
+                        {result.positives.map((item, i) => (
+                          <div key={i} className="flex gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 className="h-5 w-5 shrink-0" /> {item}</div>
+                        ))}
+                      </div>
+                    )}
 
-                  {result.riskProfile.items.length > 0 && (
-                    <div className="mt-4 space-y-3">
-                      <div className="font-semibold text-slate-900">Riskiliput tärkeysjärjestyksessä</div>
-                      {result.riskProfile.items.map((item, i) => (
-                        <div key={i} className={`rounded-2xl border p-3 text-sm ${riskSeverityTone(item.severity)}`}>
-                          <div className="mb-1 text-xs font-bold uppercase tracking-wide">{riskSeverityLabel(item.severity)}</div>
-                          <div className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item.text}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    {(result.dealbreakers.length > 0 || result.riskProfile.items.filter((item) => item.severity === "critical").length > 0) && (
+                      <div className="space-y-3">
+                        <div className="font-semibold text-rose-900">Kriittiset riskit</div>
+                        {result.dealbreakers.map((item, i) => (
+                          <div key={`deal-${i}`} className="flex gap-2 rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item}</div>
+                        ))}
+                        {result.riskProfile.items.filter((item) => item.severity === "critical").map((item, i) => (
+                          <div key={`critical-${i}`} className={`rounded-2xl border p-3 text-sm ${riskSeverityTone(item.severity)}`}>
+                            <div className="mb-1 text-xs font-bold uppercase tracking-wide">{riskSeverityLabel(item.severity)}</div>
+                            <div className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                  <div className="mt-4 space-y-3">
-                    {result.positives.map((item, i) => <div key={i} className="flex gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 className="h-5 w-5 shrink-0" /> {item}</div>)}
-                    {result.warnings.map((item, i) => <div key={i} className="flex gap-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle className="h-5 w-5 shrink-0" /> {item}</div>)}
+                    {result.riskProfile.items.filter((item) => item.severity === "info").length > 0 && (
+                      <div className="space-y-3">
+                        <div className="font-semibold text-slate-900">Huomiot</div>
+                        {result.riskProfile.items.filter((item) => item.severity === "info").map((item, i) => (
+                          <div key={`info-${i}`} className={`rounded-2xl border p-3 text-sm ${riskSeverityTone(item.severity)}`}>
+                            <div className="mb-1 text-xs font-bold uppercase tracking-wide">{riskSeverityLabel(item.severity)}</div>
+                            <div className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {(result.riskProfile.items.filter((item) => item.severity === "warning").length > 0 || result.warnings.length > 0) && (
+                      <div className="space-y-3">
+                        <div className="font-semibold text-amber-900">Varoitukset</div>
+                        {result.riskProfile.items.filter((item) => item.severity === "warning").map((item, i) => (
+                          <div key={`warning-risk-${i}`} className={`rounded-2xl border p-3 text-sm ${riskSeverityTone(item.severity)}`}>
+                            <div className="mb-1 text-xs font-bold uppercase tracking-wide">{riskSeverityLabel(item.severity)}</div>
+                            <div className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {item.text}</div>
+                          </div>
+                        ))}
+                        {result.warnings.map((item, i) => (
+                          <div key={`warning-${i}`} className="flex gap-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle className="h-5 w-5 shrink-0" /> {item}</div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
