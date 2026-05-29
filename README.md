@@ -1,54 +1,29 @@
-# asuntosijoituslaskuri.fi Next.js MVP
+import Link from "next/link";
 
-Build 04.
-
-Mukana:
-- tyhjät oletusarvot ja pakollisten kenttien täydennyskehotus
-- URL-haku täyttää vain löydetyt tiedot
-- käyttäjän vastuu syötteistä korostettu
-- hissi/parveke-logiikka
-- jyvittämätön remonttiosuus Remonttivarat-osioon
-- tuottoperusteisen laskennan huomautus
-- käyttöehdot ja tietosuojasivu
-
-Upload GitHubiin ja deploy Vercelissä.
-
-- Build 05: punainen korostus puuttuville pakollisille kentille, taloyhtiön koko -selitteet ja omistuspohjan ohjeteksti.
-
-- Build 06: analyysiliput järjestetty, vanha tarjoushintasimulaattori poistettu ja tavoitesimulaattori toimii yhdellä valitulla tavoitteella.
-
-- Build 08: tumma vihreä teema, kassavirta/tuottolipun korjaus, alkuperäinen ilmoitushinta erotettu syötetystä tarjoushinnasta.
-
-- Build 09: talousluvut ryhmitelty, vuokrakysyntää painotettu, uusiin kohteisiin automaattinen ei ajankohtainen remonttioletus, simuloidun scorekortin värit ja asunnon kunnon selitteet.
-
-- Build 11: oikea yksipalstainen flow, analyysikortit siirretty lomakkeen alle samaan pystysuuntaiseen rakenteeseen.
-
-- Build 12: URL-kentän resetointi, hakunapin palautuminen ja selkeämpi Oikotie-virheilmoitus.
-
-- Build 13: PDF-raportin latausnappi palautettu yksipalstaiseen analyysiosioon.
-
-- Build 14: rahoituskenttien selkeytys, vakuusarvo-tooltip, likviditeetin myyntiaikaselitteet ja laajemmat käyttöohje-tooltipit.
-
-- Build 15: sliderit korvattu 1–5 valintakorteilla ja PDF-raporttinappi palautettu näkyviin.
-
-- Build 16: rivitalo/paritalo piilottaa parvekkeen, valintakortit full width, sijaintiriski korteiksi, lyhennystyypit selkeytetty ja PDF visuaaliseksi.
-
-- Build 17: lisätty erillinen pankille suunnattu rahoitushakemus-PDF.
-
-- Build 18: parseri poimii rakennusvuoden Vuosi/Rakennusvuosi-kentästä, kohdenumero mukaan, PDF-nimet osoitteella+neliöillä, taloyhtiön kokoluokat korjattu ja PDF-siistimistä.
-
-- Build 19: sijoitusarvio siirretty headerista analyysiosioon ja HUOM-container täysleveäksi.
-
-- Build 20: vuokratalo-selite, hinnat & arvostus selkeytetty, bruttotuotto poistettu, velkavipu + lainan lyhennys lisätty ja arviointikortit pystylayoutiin.
-
-- Build 21: pankkilainan pääoman lyheneminen eritelty, yhtiölainan arvioitu pääoman lyheneminen lisätty ehdollisesti ja velkavipu säilytetty.
-
-- Build 22: nettovuokratuotto väritetty tuottotason mukaan ja pankin vakuusarvo eurokenttänä nimetty selkeämmin.
-
-- Build 23: riskilippujen duplikaatit poistettu ja 0 € remonttivara-arviot korvattu järkevämmällä varoituksella.
-
-- Build 24: korjattu build-virhe undefined monthlyInterestOnlyPayment -> bankLoanPrincipalReduction.
-
-- Build 25: debugattu ja korjattu build-virhe: displayRiskItems/displayWarnings/displayDealbreakers eivät enää viittaa itseensä ennen alustusta. npm run build menee läpi.
-
-- Build 26: laskenta-auditin korjaukset: yhtiölainan huomioiva vakuusarvo palautettu, rahoitusscore käyttää kokonaisvelkavipua, vakuusarvoprosentin tooltip täsmennetty.
+export default function TermsPage() {
+  return (
+    <main className="min-h-screen bg-slate-50 p-6 text-slate-900 md:p-10">
+      <div className="mx-auto max-w-3xl rounded-3xl border bg-white p-6 shadow-sm md:p-10">
+        <Link href="/" className="text-sm text-slate-500 hover:text-slate-900">← Takaisin laskuriin</Link>
+        <h1 className="mt-6 text-3xl font-bold">Käyttöehdot</h1>
+        <div className="mt-6 space-y-5 text-sm leading-7 text-slate-700">
+          <p>asuntosijoituslaskuri.fi on suuntaa-antava laskuri ja analyysityökalu asuntosijoituskohteiden arviointiin.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Tuottoperusteinen laskenta</h2>
+          <p>Palvelun analyysit perustuvat käyttäjän syöttämiin tietoihin, tuottolaskelmiin, kassavirtaan, riskipisteytykseen sekä arvioituihin kulurakenteisiin. Palvelulla ei ole pääsyä toteutuneisiin kauppahintoihin tai virallisiin vertailukauppatietoihin, joten palvelu ei tuota markkina-arvoarvioita eikä virallisia hinta-arvioita.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Ei sijoitusneuvontaa</h2>
+          <p>Palvelu ei tarjoa sijoitusneuvontaa, taloudellista neuvontaa, veroneuvontaa, lakineuvontaa tai ostosuosituksia. Laskurin tulokset ovat arvioita.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Käyttäjän vastuu</h2>
+          <p>Käyttäjä vastaa aina itse syöttämiensä tietojen oikeellisuudesta, tietojen tarkistamisesta virallisista asiakirjoista sekä lopullisesta sijoituspäätöksestään.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Ei takuita</h2>
+          <p>Palvelu ei takaa laskelmien, parserin, pisteytyksen tai simulaatioiden oikeellisuutta, täydellisyyttä tai ajantasaisuutta.</p>
+          <h2 className="text-lg font-semibold text-slate-900">URL-haku</h2>
+          <p>Automaattisesti haetut tiedot voivat sisältää virheitä tai olla puutteellisia. Käyttäjän tulee tarkistaa kaikki tiedot itse kohteen ilmoituksesta, isännöitsijäntodistuksesta, PTS:stä ja muista virallisista aineistoista.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Vastuunrajoitus</h2>
+          <p>Palveluntarjoaja ei vastaa mahdollisista taloudellisista tappioista, vahingoista tai menetyksistä, jotka aiheutuvat palvelun käytöstä tai sen tulkinnasta.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Immateriaalioikeudet</h2>
+          <p>Palvelun sisältö, käyttöliittymä, pisteytysmallit ja analyysilogiikka ovat palveluntarjoajan omaisuutta, ellei toisin ole sovittu.</p>
+        </div>
+      </div>
+    </main>
+  );
+}
