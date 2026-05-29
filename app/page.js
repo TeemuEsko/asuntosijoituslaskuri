@@ -1522,4 +1522,3 @@ function ScoreBar({ label, value, weight }) {
     </div>
   );
 }
-

@@ -1,9 +1,9 @@
-import "./globals.css";
-
 export const metadata = {
-  title: "asuntosijoituslaskuri.fi",
-  description: "Sijoitusasunnon analyysi ja URL-haku",
+  title: "Asuntosijoituslaskuri",
+  description: "Sijoitusasunnon analyysi",
 };
+
+import "./globals.css";
 
 export default function RootLayout({ children }) {
   return (
