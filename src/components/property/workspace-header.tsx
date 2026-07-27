@@ -1,15 +1,15 @@
 import { FilePlus2, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { brandName } from "@/core/i18n/display-values";
 
-export function WorkspaceHeader() {
+export function WorkspaceHeader({ title }: { title: string }) {
   return (
     <header className="sticky top-0 z-30 flex min-h-17 flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur md:px-6">
       <div className="min-w-0">
-        <div className="flex items-center gap-2 lg:hidden"><span className="font-semibold text-success">PropertyOS</span><Badge variant="outline">Early Access</Badge></div>
+        <div className="flex items-center gap-2 lg:hidden"><span className="font-semibold text-success">{brandName}</span><Badge variant="outline">Ennakkoversio</Badge></div>
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="truncate text-lg font-semibold tracking-tight">Koulukatu 12 A 4</h1>
-          <span className="text-sm text-muted-foreground">Vaasa</span>
+          <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
           <Badge variant="outline" className="bg-muted/70">Luonnos</Badge>
         </div>
       </div>

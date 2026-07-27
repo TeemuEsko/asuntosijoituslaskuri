@@ -1,22 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import type { FieldStatus } from "@/core/domain/field";
 import type { RuleStatus } from "@/core/rules/types";
+import { fieldStatusLabels, ruleStatusLabels } from "@/core/i18n/display-values";
 import { cn } from "@/lib/utils";
-
-const fieldLabels: Record<FieldStatus, string> = {
-  parser: "Parseri",
-  user: "Oma tieto",
-  derived: "Johdettu",
-  missing: "Puuttuu",
-};
-
-const ruleLabels: Record<RuleStatus, string> = {
-  not_detected: "Ei havaittu",
-  detected: "Havaittu",
-  unchecked: "Tarkistamatta",
-  not_applicable: "Ei sovellu",
-  data_conflict: "Ristiriita",
-};
 
 export function SourceBadge({ status }: { status: FieldStatus }) {
   return (
@@ -29,11 +15,11 @@ export function SourceBadge({ status }: { status: FieldStatus }) {
         status === "missing" && "border-warning/25 bg-warning-soft text-warning",
       )}
     >
-      {fieldLabels[status]}
+      {fieldStatusLabels[status]}
     </Badge>
   );
 }
 
 export function RuleStatusBadge({ status }: { status: RuleStatus }) {
-  return <Badge variant="outline" className="bg-background font-normal">{ruleLabels[status]}</Badge>;
+  return <Badge variant="outline" className="bg-background font-normal">{ruleStatusLabels[status]}</Badge>;
 }

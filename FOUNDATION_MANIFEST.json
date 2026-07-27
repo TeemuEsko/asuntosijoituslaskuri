@@ -49,6 +49,15 @@
     "tests/merge-field.test.ts",
     "tests/purchase-price.test.ts",
     "tests/purchase-validation.test.ts"
+    ,"src/app/api/listing-import/route.ts"
+    ,"src/core/i18n/display-values.ts"
+    ,"src/core/parser/listing-parser.ts"
+    ,"src/core/parser/normalization.ts"
+    ,"src/core/parser/synonyms.ts"
+    ,"docs/12_LISTING_IMPORT.md"
+    ,"tests/localization.test.ts"
+    ,"tests/parser-normalization.test.ts"
+    ,"tests/rendered-ui.test.mjs"
   ],
   "status": "release-candidate"
 }

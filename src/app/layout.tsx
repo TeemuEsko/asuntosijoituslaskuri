@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PropertyOS — Property Workspace",
+  title: "asuntosijoituslaskuri.fi — Kohdetyötila",
   description: "Asuntosijoittajan päätöksenteon työtila",
 };
 

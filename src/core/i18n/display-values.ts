@@ -1,0 +1,96 @@
+import type { FieldStatus } from "../domain/field";
+import type { LandOwnership, PlotShareRedemptionStatus, RedemptionClauseStatus } from "../domain/property";
+import type { RuleSeverity, RuleStatus } from "../rules/types";
+
+export const brandName = "asuntosijoituslaskuri.fi";
+
+export const fieldStatusLabels: Record<FieldStatus, string> = {
+  parser: "Tietojen haku",
+  user: "Oma tieto",
+  derived: "Laskettu",
+  missing: "Puuttuu",
+};
+
+export const landOwnershipLabels: Record<LandOwnership, string> = {
+  owned: "Oma tontti",
+  leased: "Vuokratontti",
+  optional_leasehold: "Valinnainen vuokratontti",
+};
+
+export const plotShareRedemptionLabels: Record<PlotShareRedemptionStatus, string> = {
+  redeemed: "Lunastettu",
+  not_redeemed: "Ei lunastettu",
+  unknown: "Ei tiedossa",
+};
+
+export const redemptionClauseLabels: Record<RedemptionClauseStatus, string> = {
+  no: "Ei",
+  yes: "Kyllä",
+  unchecked: "Ei voitu tarkistaa",
+};
+
+export const ruleStatusLabels: Record<RuleStatus, string> = {
+  not_detected: "Ei havaittu",
+  detected: "Havaittu",
+  unchecked: "Ei tarkistettu",
+  not_applicable: "Ei koske kohdetta",
+  data_conflict: "Ristiriita",
+};
+
+export const severityLabels: Record<RuleSeverity, string> = {
+  info: "Tiedoksi",
+  low: "Matala",
+  medium: "Keskitaso",
+  high: "Korkea",
+  critical: "Kriittinen",
+};
+
+export const confidenceLabels = {
+  high: "Korkea",
+  medium: "Keskitaso",
+  low: "Matala",
+} as const;
+
+export const booleanLabels: Record<"true" | "false", string> = {
+  true: "Kyllä",
+  false: "Ei",
+};
+
+export const workflowStatusLabels = {
+  draft: "Luonnos",
+  ready: "Valmis",
+  pending: "Kesken",
+  error: "Virhe",
+  warning: "Varoitus",
+  success: "Onnistui",
+} as const;
+
+export const listingSourceLabels = {
+  etuovi: "Etuovi",
+  oikotie: "Oikotie",
+  pasted_text: "Liitetty ilmoitusteksti",
+} as const;
+
+export const timeStatusLabels = {
+  completed: "Tehty",
+  planned: "Suunnitteilla",
+  estimated: "Arvioitu",
+  decided: "Päätetty",
+  proposed: "Ehdotettu",
+  unknown: "Ei tiedossa",
+} as const;
+
+export const renovationComponentLabels = {
+  pipe_unspecified: "Putkiremontti, laajuus ei tiedossa",
+  line_unspecified: "Linjasaneeraus, osat eivät tiedossa",
+  water_pipes: "Käyttövesiputket",
+  drains: "Viemärit",
+  electrical: "Sähköjärjestelmät",
+  bathrooms: "Kylpyhuoneet",
+  facade: "Julkisivu",
+  balconies: "Parvekkeet",
+  element_seams: "Elementtisaumat",
+  roof_replacement: "Vesikaton uusiminen",
+  roof_coating: "Katon pinnoitus",
+  roof_unspecified: "Kattoremontti, laajuus ei tiedossa",
+} as const;

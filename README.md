@@ -1,6 +1,6 @@
-# PropertyOS Foundation v2.1 RC
+# asuntosijoituslaskuri.fi
 
-PropertyOS on suomalaisen asuntosijoittajan päätöksenteon työtila. Foundation v2.1 Release Candidate määrittelee yhtenäisen kohdemallin, turvallisen lähdetietojen yhdistämisen, nykyisten laskentojen sopimukset sekä Alpha-työtilan paikallisella demo-datalla.
+Asuntosijoittajan suomenkielinen kohdetyötila. Nykyinen julkaisu sisältää uuden kohteen aloitusnäkymän, Etuovi- ja Oikotie-linkkien rajatun haun, ilmoitustekstin normalisoinnin sekä löydösten hyväksyntätyönkulun.
 
 ## Paikallinen testiversio
 
@@ -32,3 +32,4 @@ npm.cmd run check
 - ristiriitaisia dokumenttiarvoja ei ylikirjoiteta automaattisesti
 - laskentakatalogi: `docs/11_CALCULATION_CATALOG.md`
 - Foundation-manifesti: `FOUNDATION_MANIFEST.json`
+- myynti-ilmoituksen haun tuki ja rajoitteet: `docs/12_LISTING_IMPORT.md`

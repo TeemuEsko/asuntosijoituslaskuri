@@ -1,5 +1,5 @@
-import { PropertyWorkspace } from "@/components/property/property-workspace";
+import { PropertyApplication } from "@/components/property/property-application";
 
 export default function Home() {
-  return <PropertyWorkspace />;
+  return <PropertyApplication />;
 }
