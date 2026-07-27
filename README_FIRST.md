@@ -1,4 +1,4 @@
-# PropertyOS Foundation v2
+# PropertyOS Foundation v2.1 Release Candidate
 
 Tämä paketti liitetään olemassa olevan Next.js-projektin juureen.
 
@@ -14,6 +14,14 @@ Tämä paketti liitetään olemassa olevan Next.js-projektin juureen.
 ## Tärkeä rajaus
 
 Tämä paketti määrittelee tuotteen perustan. Se ei vielä toteuta Parseria, Rule Engineä tai käyttöliittymää valmiiksi.
+
+## v2.1 RC
+
+- tontin omistus tukee omaa tonttia, vuokratonttia ja valinnaista vuokratonttia
+- valinnaiselle vuokratontille mallinnetaan lunastustila, lunastushinta ja seuraava lunastusajankohta
+- yhtiöjärjestyksen lunastuslauseke ja juridinen tarkistus mallinnetaan eksplisiittisesti
+- ristiriitaisia lähdearvoja ei ylikirjoiteta automaattisesti
+- laskettavien lukujen kaavat, yksiköt, rajaukset, pyöristykset ja puuttuvan tiedon käsittely on dokumentoitu
 
 North Star:
 

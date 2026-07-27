@@ -1,6 +1,6 @@
 {
-  "name": "PropertyOS Foundation v2",
-  "version": "2.0.0",
+  "name": "PropertyOS Foundation v2.1 Release Candidate",
+  "version": "2.1.0-rc.1",
   "created": "2026-07-27",
   "files": [
     "CODEX_START_HERE.md",
@@ -41,6 +41,14 @@
     "src/core/domain/field.ts",
     "src/core/domain/property.ts",
     "src/core/parser/interface.ts",
-    "src/core/rules/types.ts"
-  ]
+    "src/core/rules/types.ts",
+    "src/core/data-fusion/merge-field.ts",
+    "src/core/validation/purchase-data.ts",
+    "docs/11_CALCULATION_CATALOG.md",
+    "docs/rules/housing-company/RE-024-redemption-clause.md",
+    "tests/merge-field.test.ts",
+    "tests/purchase-price.test.ts",
+    "tests/purchase-validation.test.ts"
+  ],
+  "status": "release-candidate"
 }

@@ -1,5 +1,9 @@
 import type { PropertyField } from "./field";
 
+export type LandOwnership = "owned" | "leased" | "optional_leasehold";
+export type PlotShareRedemptionStatus = "redeemed" | "not_redeemed" | "unknown";
+export type RedemptionClauseStatus = "no" | "yes" | "unchecked";
+
 export type PropertyModel = {
   id: string;
   identity: {
@@ -17,7 +21,12 @@ export type PropertyModel = {
     maintenanceFeeMonthly: PropertyField<number>;
     financingFeeMonthly: PropertyField<number>;
     apartmentCount: PropertyField<number>;
-    landOwnership: PropertyField<"owned" | "leased">;
+    landOwnership: PropertyField<LandOwnership>;
+    plotShareRedemptionStatus: PropertyField<PlotShareRedemptionStatus>;
+    plotShareRedemptionPrice: PropertyField<number>;
+    nextPlotShareRedemptionDate: PropertyField<string>;
+    articlesRedemptionClause: PropertyField<RedemptionClauseStatus>;
+    articlesRedemptionRightDescription: PropertyField<string>;
   };
   rent: {
     currentRentMonthly: PropertyField<number>;

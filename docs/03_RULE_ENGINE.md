@@ -51,6 +51,7 @@ Jokaisella säännöllä on:
 - taloudellinen tila
 - vuokratalotausta
 - tontti
+- yhtiöjärjestyksen lunastuslauseke ja juridinen tarkistustarve
 - omistuspohjan keskittyminen
 - kunnossapitotarveselvitys ja PTS
 

@@ -38,7 +38,12 @@ Jokainen olennainen tieto mallinnetaan arvona ja metadatana:
 
 ### Housing Company
 - huoneistojen määrä
-- tontin omistus
+- tontin omistus: oma | vuokrattu | valinnainen vuokratontti
+- huoneistokohtaisen tonttiosuuden lunastustila: lunastettu | ei lunastettu | ei tiedossa
+- tonttiosuuden lunastushinta
+- seuraava mahdollinen tonttiosuuden lunastusajankohta
+- yhtiöjärjestyksen lunastuslauseke: ei | kyllä | ei voitu tarkistaa
+- lunastusoikeuden kuvaus
 - hoitovastike
 - rahoitusvastike
 - talouden tila
@@ -81,6 +86,13 @@ Velaton hinta = myyntihinta + yhtiölainaosuus
 
 Jos yhtiölainaosuus on 0:
 
-- rahoitusvastike pakotetaan laskennassa arvoon 0
+- laskennallinen rahoitusvastike on 0
 - UI näyttää tilan `Ei yhtiölainaa`
-- mahdollinen ristiriitainen rahoitusvastike liputetaan datavirheenä
+- mahdollinen positiivinen raportoitu rahoitusvastike säilytetään alkuperäisenä lähdearvona ja liputetaan erilliseksi dataristiriidaksi
+
+## Ristiriitaiset lähdetiedot
+
+- aktiivista arvoa ei ylikirjoiteta automaattisesti ristiriitaisella havainnolla
+- alkuperäinen ja uusi lähdearvo sekä niiden lähteet säilytetään
+- ristiriita näytetään omana varoituksenaan
+- käyttäjä ratkaisee ristiriidan tai korjaa arvon; laskenta ei arvaa oikeaa arvoa

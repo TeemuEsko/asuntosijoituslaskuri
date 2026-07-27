@@ -43,3 +43,15 @@ Tuote analysoi jatkuvasti yhtä kohdetta. Analyysiä ei käynnistetä alusta uus
 ## D-010 Vanhan UI:n toimivat ratkaisut säilytetään
 
 Värikorostukset, selitetekstit, infoikonit ja valintakortit modernisoidaan.
+
+## D-011 Ristiriitaisia lähdearvoja ei ylikirjoiteta
+
+Alkuperäinen dokumenttiarvo ja ristiriitainen uusi havainto säilytetään. Laskennallinen arvo ei muuta lähde-evidenssiä.
+
+## D-012 Tontin omistusmuodot
+
+Tontti mallinnetaan arvona `owned`, `leased` tai `optional_leasehold`. Valinnaisen vuokratontin huoneistokohtainen lunastustila, hinta ja seuraava ajankohta ovat erillisiä kenttiä.
+
+## D-013 Lunastuslauseke vaatii juridisen tarkistuksen
+
+Yhtiöjärjestyksen lunastuslauseke ei johda automaattiseen johtopäätökseen. Tila `yes` tai `unchecked` näyttää juridisen tarkistusvaroituksen.

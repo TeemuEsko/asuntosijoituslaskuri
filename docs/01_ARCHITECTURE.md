@@ -33,6 +33,7 @@ Property Workspace
 - ratkaisee lähteiden prioriteetin
 - ylläpitää yhtä kohdemallia
 - säilyttää muutoshistorian myöhemmässä vaiheessa
+- säilyttää ristiriitaiset lähdehavainnot aktiivisen arvon rinnalla eikä ylikirjoita niitä automaattisesti
 
 Prioriteetti:
 
@@ -40,6 +41,8 @@ Prioriteetti:
 2. käyttäjän syöttämä arvo
 3. luotettavasti parseroitu arvo
 4. tyhjä
+
+Ristiriita ei muuta tätä prioriteettia. Uusi poikkeava dokumenttiarvo tallennetaan evidenssiksi ja nostetaan käyttäjälle ratkaistavaksi.
 
 ### Unified Property Model
 
