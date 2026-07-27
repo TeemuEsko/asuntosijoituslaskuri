@@ -16,10 +16,10 @@ type PropertyFieldProps = ComponentProps<typeof Input> & {
 
 export function PropertyField({ label, status, suffix, help, className, ...props }: PropertyFieldProps) {
   return (
-    <div className="space-y-2">
-      <div className="flex min-h-5 items-center justify-between gap-2">
-        <Label htmlFor={props.id} className="text-[13px]">{label}</Label>
-        <div className="flex items-center gap-1.5">
+    <div className="min-w-0 space-y-2">
+      <div className="flex min-h-10 min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
+        <Label htmlFor={props.id} className="min-w-0 flex-1 whitespace-normal text-[13px] leading-5">{label}</Label>
+        <div className="flex shrink-0 items-center gap-1.5">
           {help ? (
             <Tooltip>
               <TooltipTrigger aria-label={`Lisätietoa kentästä ${label}`} className="text-muted-foreground hover:text-foreground">
@@ -32,8 +32,8 @@ export function PropertyField({ label, status, suffix, help, className, ...props
         </div>
       </div>
       <div className="relative">
-        <Input className={cn("h-10 pr-14 text-right tabular-nums", className)} {...props} />
-        {suffix ? <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">{suffix}</span> : null}
+        <Input className={cn("h-11 text-right tabular-nums", suffix ? suffix.length > 4 ? "pr-20" : "pr-12" : "pr-3", className)} {...props} />
+        {suffix ? <span className="pointer-events-none absolute inset-y-0 right-3 flex max-w-16 items-center whitespace-nowrap text-sm text-muted-foreground">{suffix}</span> : null}
       </div>
     </div>
   );

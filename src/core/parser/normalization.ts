@@ -3,13 +3,19 @@ const numberPattern = /-?\d[\d\s\u00a0]*(?:[,.]\d+)?/;
 export function parseFinnishNumber(input: string): number | null {
   const match = input.match(numberPattern)?.[0];
   if (!match) return null;
-  const normalized = match.replace(/[\s\u00a0]/g, "").replace(",", ".");
+  const compact = match.replace(/[\s\u00a0]/g, "");
+  const normalized = compact.includes(",")
+    ? compact.replace(/\./g, "").replace(",", ".")
+    : /^-?\d{1,3}(?:\.\d{3})+$/.test(compact)
+      ? compact.replace(/\./g, "")
+      : compact;
   const value = Number(normalized);
   return Number.isFinite(value) ? value : null;
 }
 
 export function parseMonthlyAmount(input: string): number | null {
-  if (!/(?:€|euroa?|\be\b)\s*(?:\/\s*kk|kuukaudessa)|€\s*\/\s*m[²2]\s*\/\s*kk/i.test(input)) return null;
+  if (/(?:€|euroa?)\s*\/\s*m[²2]\s*\/\s*kk/i.test(input)) return null;
+  if (!/(?:€|euroa?|\be\b)\s*(?:\/\s*kk|kuukaudessa)/i.test(input)) return null;
   return parseFinnishNumber(input);
 }
 
@@ -37,11 +43,18 @@ export function formatArea(value: number): string {
   return `${formatFinnishNumber(value)} m²`;
 }
 
-export type TimeStatus = "completed" | "planned" | "estimated" | "decided" | "proposed" | "unknown";
+export function parseFloor(input: string): string | null {
+  const fraction = input.match(/\b(\d+)\s*\/\s*(\d+)\s*(?:krs|kerros)?\b/i);
+  if (fraction) return `${fraction[1]} / ${fraction[2]}`;
+  const single = input.match(/\b(\d+)\.\s*(?:krs|kerros)|\b(?:kerros)\s*(\d+)\b/i);
+  return single ? single[1] ?? single[2] ?? null : null;
+}
+
+export type TimeStatus = "completed" | "ongoing" | "decided" | "planned" | "estimated" | "proposed" | "under_investigation" | "investigated" | "preparing" | "not_done" | "not_implemented" | "unknown";
 
 export function parseTimeExpression(input: string): { years: number[]; status: TimeStatus } {
   const years = [...input.matchAll(/\b(?:19|20)\d{2}\b/g)].map((match) => Number(match[0]));
   const lower = input.toLocaleLowerCase("fi");
-  const status: TimeStatus = /tehty|valmistui|uusittu/.test(lower) ? "completed" : /päätetty/.test(lower) ? "decided" : /suunnitteilla/.test(lower) ? "planned" : /arviolta|arvioitu/.test(lower) ? "estimated" : /ehdotettu/.test(lower) ? "proposed" : "unknown";
+  const status: TimeStatus = /ei\s+(?:ole\s+)?tehty|ei tehty/.test(lower) ? "not_done" : /ei vielä toteutettu|ei toteutettu/.test(lower) ? "not_implemented" : /ei tiedossa|ei mainintaa|ei(?:\s+ole)?\s+suunnitteilla|ei(?:\s+ole)?\s+päätetty/.test(lower) ? "unknown" : /kuntotutkimus|kuntoarvio|kuvaus|kartoitus|julkisivututkimus/.test(lower) && /tehty|toteutettu|valmistunut/.test(lower) ? "investigated" : /hankesuunnittelu|korjaussuunnitelma|kilpailutus|valmistelussa/.test(lower) ? "preparing" : /tutkitaan|tutkittavana/.test(lower) ? "under_investigation" : /käynnissä|aloitettu/.test(lower) ? "ongoing" : /päätetty(?:\s+toteuttaa)?/.test(lower) ? "decided" : /suunnitteilla|suunniteltu/.test(lower) ? "planned" : /arviolta|arvioitu/.test(lower) ? "estimated" : /ehdotettu|harkitaan|alustavasti|mahdollisesti/.test(lower) ? "proposed" : /tehty|valmistui|valmistunut|uusittu|saneerattu|remontoitu|korjattu|kunnostettu|pinnoitettu|sukitettu|vaihdettu|peruskorjattu|toteutettu/.test(lower) ? "completed" : "unknown";
   return { years, status };
 }

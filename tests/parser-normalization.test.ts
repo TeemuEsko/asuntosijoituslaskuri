@@ -68,6 +68,6 @@ test("vuosien vaihteluväli ja remontin tila säilyvät", () => {
 
 test("putkiremontin osat ja katon pinnoitus erotellaan", () => {
   const result = parseListingText("Käyttövesiputkien uusiminen tehty 2018.\nViemärien sukitus suunnitteilla 2029.\nKaton pinnoitus tehty 2020.\nPutkiremontti arvioitu 2030.");
-  assert.deepEqual(result.renovations.map((item) => item.component), ["water_pipes", "drains", "roof_coating", "pipe_unspecified"]);
+  assert.deepEqual(result.renovations.map((item) => item.component), ["water_pipes", "drain_lining", "roof_coating", "pipe_unspecified"]);
   assert.equal(result.renovations.some((item) => item.component === "roof_replacement"), false);
 });

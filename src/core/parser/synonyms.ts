@@ -10,9 +10,15 @@ export type NormalizedFieldKey =
   | "constructionYear"
   | "floor"
   | "condition"
+  | "address"
+  | "city"
   | "housingCompanyName"
   | "apartmentCount"
-  | "landOwnership";
+  | "landOwnership"
+  | "otherMonthlyFees"
+  | "heatingType"
+  | "energyClass"
+  | "elevator";
 
 export const fieldDisplayNames: Record<NormalizedFieldKey, string> = {
   salePrice: "Myyntihinta",
@@ -26,9 +32,15 @@ export const fieldDisplayNames: Record<NormalizedFieldKey, string> = {
   constructionYear: "Rakennusvuosi",
   floor: "Kerros",
   condition: "Kunto",
+  address: "Osoite",
+  city: "Kunta tai kaupunki",
   housingCompanyName: "Taloyhtiön nimi",
   apartmentCount: "Huoneistojen lukumäärä",
   landOwnership: "Tontin omistusmuoto",
+  otherMonthlyFees: "Muut kuukausittaiset maksut",
+  heatingType: "Lämmitysmuoto",
+  energyClass: "Energialuokka",
+  elevator: "Hissi",
 };
 
 export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
@@ -43,9 +55,39 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   constructionYear: ["rakennusvuosi", "valmistumisvuosi", "käyttöönottovuosi", "valmistunut", "rakennettu"],
   floor: ["kerros", "sijaintikerros", "asuinkerros", "kerros / kerroksia"],
   condition: ["kunto", "yleiskunto", "kuntoarvio"],
+  address: ["osoite", "käyntiosoite", "kohteen osoite"],
+  city: ["kunta", "kaupunki", "sijaintikunta"],
   housingCompanyName: ["taloyhtiö", "asunto-osakeyhtiö", "yhtiön nimi", "asunto oy", "as oy"],
   apartmentCount: ["huoneistoja", "asuntojen lukumäärä", "asuinhuoneistoja", "huoneistojen määrä"],
-  landOwnership: ["oma tontti", "vuokratontti", "valinnainen vuokratontti", "lunastettava vuokratontti", "tonttiosuuden voi lunastaa", "valinnainen tontinvuokra"],
+  landOwnership: ["tontin omistusmuoto", "oma tontti", "vuokratontti", "valinnainen vuokratontti", "lunastettava vuokratontti", "tonttiosuuden voi lunastaa", "valinnainen tontinvuokra"],
+  otherMonthlyFees: ["muut maksut", "muut kuukausittaiset maksut", "vesimaksu", "autopaikkamaksu", "saunamaksu"],
+  heatingType: ["lämmitys", "lämmitysmuoto", "lämmitysjärjestelmä"],
+  energyClass: ["energialuokka", "energiatehokkuusluokka"],
+  elevator: ["hissi", "onko talossa hissiä"],
 };
 
-export const excludedCompanyLoanLabels = ["taloyhtiön lainat", "taloyhtiön koko lainamäärä", "remontin kustannusarvio", "pankkilaina"] as const;
+export const excludedCompanyLoanLabels = ["taloyhtiön lainat", "taloyhtiön koko lainamäärä", "yhtiön lainat yhteensä", "remontin kustannusarvio", "lainan enimmäismäärä", "pankkilaina", "henkilökohtainen laina"] as const;
+
+export const criticalFields: ReadonlyArray<{ key: NormalizedFieldKey | "completedRenovations" | "futureRenovations"; label: string }> = [
+  { key: "address", label: "Osoite" },
+  { key: "city", label: "Kunta tai kaupunki" },
+  { key: "areaSqm", label: "Pinta-ala" },
+  { key: "roomDescription", label: "Huoneistotyyppi" },
+  { key: "constructionYear", label: "Rakennusvuosi" },
+  { key: "salePrice", label: "Myyntihinta" },
+  { key: "debtFreePrice", label: "Velaton hinta" },
+  { key: "companyLoanShare", label: "Yhtiölainaosuus" },
+  { key: "maintenanceFeeMonthly", label: "Hoitovastike" },
+  { key: "financingFeeMonthly", label: "Rahoitusvastike" },
+  { key: "plotFeeMonthly", label: "Tonttivastike" },
+  { key: "otherMonthlyFees", label: "Muut kuukausittaiset maksut" },
+  { key: "landOwnership", label: "Tontin omistusmuoto" },
+  { key: "housingCompanyName", label: "Taloyhtiön nimi" },
+  { key: "condition", label: "Huoneiston kunto" },
+  { key: "heatingType", label: "Lämmitysmuoto" },
+  { key: "energyClass", label: "Energialuokka" },
+  { key: "floor", label: "Kerros" },
+  { key: "elevator", label: "Hissi" },
+  { key: "completedRenovations", label: "Tehdyt remontit" },
+  { key: "futureRenovations", label: "Tulevat remontit" },
+];

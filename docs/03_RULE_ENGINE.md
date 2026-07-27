@@ -37,6 +37,7 @@ Jokaisella säännöllä on:
 
 ### Rakennus
 - ikä ja tekemättömät peruskorjaukset
+- korjaushistorian kattavuus sekä ylläpito-, osa- ja peruskorjausten erottelu (`RE-005`)
 - viemärit
 - käyttövesiputket
 - lämpöputket

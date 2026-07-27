@@ -9,7 +9,7 @@ export function SourceBadge({ status }: { status: FieldStatus }) {
     <Badge
       variant="outline"
       className={cn(
-        "font-normal",
+        "shrink-0 whitespace-nowrap font-normal",
         status === "user" && "border-success/25 bg-success-soft text-success",
         status === "derived" && "border-blue-200 bg-blue-50 text-blue-700",
         status === "missing" && "border-warning/25 bg-warning-soft text-warning",

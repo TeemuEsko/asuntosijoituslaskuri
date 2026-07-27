@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ListingImport } from "./listing-import";
 import { NewPropertyStart } from "./new-property-start";
 import { PropertyWorkspace, type ImportedPropertyData } from "./property-workspace";
+import type { RepairDocumentKind } from "@/core/rules/repair-history";
 
 type View = "start" | "listing" | "workspace";
 
@@ -18,7 +19,20 @@ export function PropertyApplication() {
     setView("workspace");
   }
 
+  function openDocuments(files: FileList | null) {
+    const kinds = new Set<RepairDocumentKind>();
+    for (const file of Array.from(files ?? [])) {
+      const name = file.name.toLocaleLowerCase("fi");
+      if (/isännöitsijä|isannoitsija/.test(name)) kinds.add("manager_certificate");
+      if (/kunnossapito|pts/.test(name)) kinds.add("maintenance_plan");
+      if (/tilinpäätös|tilinpaatos/.test(name)) kinds.add("financial_statements");
+      if (/toimintakertomus/.test(name)) kinds.add("annual_report");
+      if (/yhtiökokous|yhtiokokous|pöytäkirja|poytakirja/.test(name)) kinds.add("meeting_minutes");
+    }
+    openWorkspace({ documentKinds: [...kinds] });
+  }
+
   if (view === "listing") return <ListingImport onBack={() => setView("start")} onComplete={openWorkspace} />;
   if (view === "workspace") return <PropertyWorkspace importedData={importedData} title={title} />;
-  return <NewPropertyStart onListing={() => setView("listing")} onDocuments={() => openWorkspace()} onManual={() => openWorkspace()} />;
+  return <NewPropertyStart onListing={() => setView("listing")} onDocuments={openDocuments} onManual={() => openWorkspace()} />;
 }
