@@ -10,6 +10,10 @@
 6. Havainnoille lasketaan selitettävä varmuuspistemäärä lähteen, tarkan kenttäosuman, yksikön, osion, tukevien lähteiden, epäselvyyden ja ristiriitojen perusteella.
 7. Varmat, ristiriidattomat tiedot hyväksytään valmiiksi. Muut tiedot jäävät käyttäjän tarkistettaviksi.
 
+Jos staattisesta HTML:stä puuttuu useita ydinkenttiä, hankintakerros käynnistää automaattisesti Playwright-selainfallbackin. Selain odottaa pääsisältöä, käsittelee tavallisen evästesuostumuksen, avaa vain ennalta rajattuja tietosisältöhaitareita ja vierittää sivua asteittain lazy loading -sisällön lataamiseksi. Renderöity HTML, näkyvä pääsisältö, kenttäparit ja JSON-LD välitetään samalle parserille kuin staattinen aineisto.
+
+Selainhaku on `ListingBrowserProvider`-rajapinnan takana. Etuovi ja Oikotie käyttävät omia adaptereitaan, joissa ovat sivustokohtaiset pääsisältö-, valmius- ja tietojenavausvalitsimet. Yhteydenottoa, kirjautumista, tarjousta, kuvagalleriaa tai muita toimintoja ei klikata.
+
 Lähdejärjestys ei ole kaikille kentille sama. Nimetty kenttä on yleensä vahvin lähde, JSON-LD seuraava ja tunnistetun osion sisältö sen jälkeen. Taloyhtiön nimessä yhtiöosion nimetty kenttä säilyttää täydellisen yhtiömuodon. Eri lähteiden ristiriita ohittaa lähdejärjestyksen: kumpaakaan arvoa ei valita automaattisesti.
 
 ## Duplikaatit ja ristiriidat
@@ -32,7 +36,23 @@ Tarkistusnäkymä ryhmittelee tiedot varmoihin, tarkistettaviin, ristiriitaisiin
 
 ## Todellinen Etuovi- ja Oikotie-tuki
 
-Tuki perustuu julkisesti palautettuun HTML:ään, JSON-LD:hen ja näkyvään tekstiin. Se ei käytä sivustojen yksityisiä rajapintoja. Jos sivusto estää palvelinhaun, vaatii JavaScript-suorituksen, poistaa ilmoituksen tai muuttaa HTML-rakennetta, käyttäjälle tarjotaan ilmoitustekstin liittämistä. Kirjautumisen takana olevia tietoja, kuvia tai ilmoituksen PDF-liitteitä ei tässä releasessa käsitellä.
+Tuki perustuu julkisesti palautettuun HTML:ään, JSON-LD:hen ja näkyvään tekstiin. Paikallisessa Node-ympäristössä Playwright voi lisäksi suorittaa JavaScriptin, avata tietohaitarit ja ladata vierityksessä syntyvää sisältöä. Tuki ei käytä sivustojen yksityisiä rajapintoja eikä kierrä CAPTCHAa, kirjautumista tai teknisiä estoja. Kirjautumisen takana olevia tietoja, kuvia tai ilmoituksen PDF-liitteitä ei käsitellä.
+
+## Tuotanto ja Vercel
+
+Playwright-provider toimii paikallisesti ja fixture-testeissä projektin mukana asennetulla Chromiumilla. Nykyiseen Vercel-konfiguraatioon ei kuulu serverless-ympäristöön sovitettua Chromium-binääriä, eikä selaimen käynnistymistä, muistinkäyttöä ja 35 sekunnin kokonaisrajaa voida pitää siellä luotettavina. Siksi provider on Vercelissä oletuksena pois käytöstä. Sen voi ottaa eksplisiittisesti käyttöön ympäristömuuttujalla `LISTING_BROWSER_ENABLED=true` vain, jos tuotantoruntimeen on järjestetty yhteensopiva selain.
+
+Suositeltu tuotantoratkaisu on erillinen rajattu browser worker, joka toteuttaa saman `ListingBrowserProvider`-sopimuksen. Hosting-arkkitehtuuria ei ole tässä muutoksessa muutettu.
+
+## Turvallisuus ja rajat
+
+- vain HTTPS ja tunnetut Etuovi-/Oikotie-ilmoituspolut hyväksytään
+- localhost, IP-osoitteisiin perustuvat sisäverkot, metadataosoitteet ja muut protokollat estetään
+- DNS-tulokset tarkistetaan ennen hankintaa
+- HTTP-uudelleenohjauksia ei seurata ja selaimen pääkehyksen sallimaton navigointi keskeytetään
+- staattisen ja renderöidyn HTML:n koko on rajattu kahteen megatavuun
+- navigointi, kokonaisajo, avattavat osiot ja vierityskierrokset on rajattu
+- viiden minuutin muistivälimuisti säilyttää parserituloksen ja sisältötiivisteen, ei koko sivua
 
 ## Laatumittaus
 

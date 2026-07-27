@@ -39,7 +39,7 @@ export type RenovationComponent = "pipe_unspecified" | "line_unspecified" | "ful
 export type RenovationFinding = { component: RenovationComponent; status: TimeStatus; years: number[]; sourceExcerpt: string; supportingExcerpts: string[]; section: ListingSection; confidence: ConfidenceLevel; confidenceScore: number; confidenceReasons: string[] };
 
 export type RejectedCandidate = { excerpt: string; field?: NormalizedFieldKey; reason: string };
-export type ParserDiagnostics = { parserVersion: string; site: ListingSourceType; sections: ListingSection[]; rawCandidateCount: number; rejectedCandidates: RejectedCandidate[]; mergedFindingCount: number; conflicts: string[] };
+export type ParserDiagnostics = { parserVersion: string; site: ListingSourceType; sections: ListingSection[]; rawCandidateCount: number; rejectedCandidates: RejectedCandidate[]; mergedFindingCount: number; conflicts: string[]; acquisition?: Record<string, unknown> };
 export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics };
 export type StructuredListingValue = { field: NormalizedFieldKey; value: number | string; unit?: ListingFinding["unit"]; label: string; excerpt: string };
 
@@ -70,7 +70,7 @@ function findField(line: string): { field: NormalizedFieldKey; synonym: string; 
     if ((preceding && /[a-zåäö]/i.test(preceding)) || (following && /[a-zåäö]/i.test(following))) continue;
     if (candidate.field === "companyLoanShare" && excludedCompanyLoanLabels.some((label) => lower.includes(label))) continue;
     const separatorPosition = line.search(/[:\t]/); const fallbackStart = position + candidate.synonym.length;
-    return { field: candidate.field, synonym: candidate.synonym, label: line.slice(0, separatorPosition >= 0 ? separatorPosition : fallbackStart).trim(), valueText: line.slice(separatorPosition >= 0 ? separatorPosition + 1 : fallbackStart).trim().replace(/^[-–—]\s*/, ""), exactSynonym: candidate.index === 0 };
+    return { field: candidate.field, synonym: candidate.synonym, label: line.slice(0, separatorPosition >= 0 ? separatorPosition : fallbackStart).trim(), valueText: line.slice(separatorPosition >= 0 ? separatorPosition + 1 : fallbackStart).trim().replace(/^(?:[–—]\s*|-\s+)/, ""), exactSynonym: candidate.index === 0 };
   }
   return null;
 }

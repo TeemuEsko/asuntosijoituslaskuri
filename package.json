@@ -11,6 +11,14 @@
     "test": "node --test --experimental-strip-types \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "test:rendered": "node --test tests/rendered-ui.test.mjs",
+    "test:unit": "node --test --experimental-strip-types tests/purchase-price.test.ts tests/purchase-validation.test.ts tests/merge-field.test.ts tests/release-foundation.test.ts",
+    "test:integration": "node --test --experimental-strip-types tests/parser-normalization.test.ts tests/repair-history-rule.test.ts",
+    "test:fixtures": "node --test --experimental-strip-types tests/listing-quality.test.ts",
+    "test:responsive": "node --test --experimental-strip-types tests/responsive-layout.test.ts",
+    "test:browser": "node --test --experimental-strip-types tests/listing-browser.integration.test.ts",
+    "test:screenshots": "node scripts/audit-checks/responsive-screenshots.mjs",
+    "test:localization": "node --test --experimental-strip-types tests/localization.test.ts && node --test tests/rendered-ui.test.mjs",
+    "audit:release": "node scripts/release-audit.mjs",
     "check": "npm run test && npm run lint && npm run typecheck && npm run build && npm run test:rendered"
   },
   "dependencies": {
@@ -32,6 +40,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "playwright": "^1.62.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
