@@ -14,7 +14,7 @@ import {
   TextCursorInput,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,8 +110,10 @@ function FindingCard({
             {finding.aggregate ? (
               <Badge variant="outline">Yhteissumma</Badge>
             ) : null}
-            {finding.autoAccepted ? (
-              <Badge className="bg-success text-white">Esihyväksytty</Badge>
+            {accepted ? (
+              <Badge className="bg-success text-white">Hyväksytty</Badge>
+            ) : finding.autoAccepted ? (
+              <Badge variant="outline">Löydetty</Badge>
             ) : null}
           </div>
           <p className="mt-2 text-lg font-semibold tabular-nums">
@@ -195,18 +197,22 @@ function FindingCard({
 }
 
 export function ListingImport({
+  initialUrl,
   onBack,
   onComplete,
 }: {
+  initialUrl?: string;
   onBack: () => void;
   onComplete: (values: ImportedPropertyData) => void;
 }) {
   const [mode, setMode] = useState<ImportMode>("url");
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialUrl ?? "");
   const [result, setResult] = useState<ListingParseResult | null>(null);
   const [decisions, setDecisions] = useState<DecisionState>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ImportError | null>(null);
+  const initialSearchStarted = useRef(false);
+  const searchListingRef = useRef<() => Promise<void>>(async () => undefined);
 
   async function searchListing(forceRefresh: boolean | unknown = false) {
     setLoading(true);
@@ -227,19 +233,7 @@ export function ListingImport({
         | ImportError;
       if (!response.ok || "error" in payload) throw payload;
       setResult(payload);
-      setDecisions(
-        Object.fromEntries(
-          payload.findings.map((finding) => [
-            finding.id,
-            {
-              decision:
-                finding.autoAccepted && !finding.conflicts.length
-                  ? "accepted"
-                  : "pending",
-            },
-          ]),
-        ),
-      );
+      setDecisions(Object.fromEntries(payload.findings.map((finding) => [finding.id, { decision: "pending" }])));
     } catch (caught) {
       setError(
         typeof caught === "object" && caught !== null && "error" in caught
@@ -253,6 +247,17 @@ export function ListingImport({
       setLoading(false);
     }
   }
+
+  // Ref pitää ensimmäisen automaattihaun ajan tasalla ilman uutta renderöintiä.
+  // eslint-disable-next-line react-hooks/refs
+  searchListingRef.current = async () => { await searchListing(); };
+
+  useEffect(() => {
+    if (initialUrl && !initialSearchStarted.current) {
+      initialSearchStarted.current = true;
+      void searchListingRef.current();
+    }
+  }, [initialUrl]);
 
   function decide(finding: ListingFinding, decision: FindingDecision) {
     setDecisions((current) => {
@@ -279,7 +284,7 @@ export function ListingImport({
           result.findings
             .filter(
               (finding) =>
-                finding.confidence === "high" && !finding.conflicts.length,
+                finding.autoAccepted && finding.validationResult === "accepted" && finding.confidence === "high" && !finding.conflicts.length,
             )
             .map((finding) => [finding.id, { decision: "accepted" }]),
         ),
@@ -316,7 +321,7 @@ export function ListingImport({
 
   const certain =
     result?.findings.filter(
-      (finding) => finding.confidence === "high" && !finding.conflicts.length,
+      (finding) => finding.autoAccepted && finding.validationResult === "accepted" && finding.confidence === "high" && !finding.conflicts.length,
     ) ?? [];
   const uncertain =
     result?.findings.filter(
@@ -324,14 +329,14 @@ export function ListingImport({
     ) ?? [];
   const conflicting =
     result?.findings.filter((finding) => finding.conflicts.length) ?? [];
-  const unresolved = [...uncertain, ...conflicting].some((finding) => {
+  const unresolved = result?.findings.some((finding) => {
     const state = decisions[finding.id];
     return (
       !state ||
       state.decision === "pending" ||
       (state.decision === "corrected" && !state.correctedValue?.trim())
     );
-  });
+  }) ?? false;
   const canCreate = Boolean(result?.findings.length) && !unresolved;
 
   return (
@@ -351,7 +356,7 @@ export function ListingImport({
           tarkistat itse.
         </p>
       </div>
-      <Card className="mt-8">
+      {!initialUrl || error ? <Card className="mt-8">
         <CardHeader>
           <CardTitle>Myynti-ilmoituksen lähde</CardTitle>
           <CardDescription>
@@ -436,9 +441,10 @@ export function ListingImport({
             </div>
           ) : null}
         </CardContent>
-      </Card>
+      </Card> : loading && !result ? <div role="status" className="mt-10 flex items-center justify-center gap-3 text-muted-foreground"><LoaderCircle className="animate-spin" /> Haetaan ilmoituksen tietoja…</div> : null}
       {result ? (
         <section className="mt-8 space-y-7">
+          <div><h1 className="text-2xl font-semibold">Tarkista löydetyt tiedot</h1><p className="mt-1 text-sm text-muted-foreground">Tiedot tallennetaan kohteelle vasta, kun hyväksyt ne.</p></div>
           <Card className="border-success/20">
             <CardContent className="grid gap-4 py-2 sm:grid-cols-4">
               <div>
@@ -497,17 +503,16 @@ export function ListingImport({
           </div>
           {certain.length ? (
             <section>
-              <h2 className="text-xl font-semibold">Hyväksytyt tiedot</h2>
+              <h2 className="text-xl font-semibold">Varmat tiedot</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Voit avata, muuttaa tai jättää käyttämättä myös esihyväksytyn
-                tiedon.
+                Löydökset ovat korkean varmuuden tietoja, mutta odottavat vielä hyväksyntääsi.
               </p>
               <div className="mt-4 space-y-3">
                 {certain.map((finding) => (
                   <FindingCard
                     key={finding.id}
                     finding={finding}
-                    state={decisions[finding.id] ?? { decision: "accepted" }}
+                    state={decisions[finding.id] ?? { decision: "pending" }}
                     onDecision={(decision) => decide(finding, decision)}
                     onCorrection={(correctedValue) =>
                       setDecisions((current) => ({
@@ -546,7 +551,7 @@ export function ListingImport({
           ) : null}
           {conflicting.length ? (
             <section>
-              <h2 className="text-xl font-semibold text-danger">Ristiriidat</h2>
+              <h2 className="text-xl font-semibold text-danger">Ristiriitaiset tiedot</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Arvoja ei ole ratkaistu automaattisesti. Valitse tai korjaa
                 oikea ehdokas.

@@ -1,6 +1,6 @@
 {
   "name": "Release Audit Suite",
-  "generatedAt": "2026-07-27T17:32:29.985Z",
+  "generatedAt": "2026-07-27T17:57:17.992Z",
   "summary": {
     "PASS": 14,
     "FAIL": 0,
@@ -20,7 +20,7 @@
       "suggestion": null,
       "file": "eslint.config.mjs",
       "command": "npm.cmd run lint",
-      "durationMs": 5655
+      "durationMs": 7096
     },
     {
       "section": "Yhteenveto",
@@ -33,7 +33,7 @@
       "suggestion": null,
       "file": "tsconfig.json",
       "command": "npm.cmd run typecheck",
-      "durationMs": 3798
+      "durationMs": 4440
     },
     {
       "section": "Release 0.1",
@@ -46,7 +46,7 @@
       "suggestion": null,
       "file": "tests/release-foundation.test.ts",
       "command": "npm.cmd run test:unit",
-      "durationMs": 1173
+      "durationMs": 1229
     },
     {
       "section": "Release 0.3",
@@ -59,7 +59,7 @@
       "suggestion": null,
       "file": "tests/parser-normalization.test.ts",
       "command": "npm.cmd run test:integration",
-      "durationMs": 1165
+      "durationMs": 1220
     },
     {
       "section": "Parseri",
@@ -72,7 +72,7 @@
       "suggestion": null,
       "file": "tests/fixtures/listing-fixtures.ts",
       "command": "npm.cmd run test:fixtures",
-      "durationMs": 1060
+      "durationMs": 1224
     },
     {
       "section": "Yhteenveto",
@@ -85,7 +85,7 @@
       "suggestion": null,
       "file": "tests/",
       "command": "npm.cmd run test",
-      "durationMs": 7001
+      "durationMs": 7823
     },
     {
       "section": "Release 0.2",
@@ -98,7 +98,7 @@
       "suggestion": null,
       "file": "src/app/",
       "command": "npm.cmd run build",
-      "durationMs": 12338
+      "durationMs": 14075
     },
     {
       "section": "Release 0.2",
@@ -111,7 +111,7 @@
       "suggestion": null,
       "file": "tests/rendered-ui.test.mjs",
       "command": "npm.cmd run test:rendered",
-      "durationMs": 928
+      "durationMs": 1276
     },
     {
       "section": "Responsiivisuus",
@@ -124,7 +124,7 @@
       "suggestion": null,
       "file": "tests/responsive-layout.test.ts",
       "command": "npm.cmd run test:responsive",
-      "durationMs": 1124
+      "durationMs": 1265
     },
     {
       "section": "Release 0.3",
@@ -137,7 +137,7 @@
       "suggestion": null,
       "file": "tests/listing-browser.integration.test.ts",
       "command": "npm.cmd run test:browser",
-      "durationMs": 6749
+      "durationMs": 7818
     },
     {
       "section": "Responsiivisuus",
@@ -150,7 +150,7 @@
       "suggestion": null,
       "file": "reports/screenshots/",
       "command": "npm.cmd run test:screenshots",
-      "durationMs": 7550
+      "durationMs": 9714
     },
     {
       "section": "Suomennos",
@@ -163,7 +163,7 @@
       "suggestion": null,
       "file": "tests/support/forbidden-visible-values.mjs",
       "command": "npm.cmd run test:localization",
-      "durationMs": 1212
+      "durationMs": 1616
     },
     {
       "section": "Suomennos",
@@ -176,7 +176,7 @@
       "suggestion": null,
       "file": "src/core/i18n/display-values.ts",
       "command": "C:\\Program Files\\nodejs\\node.exe --test --experimental-strip-types tests/localization.test.ts",
-      "durationMs": 240
+      "durationMs": 288
     },
     {
       "section": "Taloyhtiöremontit",
@@ -189,7 +189,7 @@
       "suggestion": null,
       "file": "src/core/rules/repair-history.ts",
       "command": "C:\\Program Files\\nodejs\\node.exe --experimental-strip-types scripts/audit-checks/major-repairs.mjs",
-      "durationMs": 163
+      "durationMs": 182
     },
     {
       "section": "Release 0.3",

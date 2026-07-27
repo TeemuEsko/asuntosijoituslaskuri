@@ -48,7 +48,22 @@ export interface ListingBrowserProvider {
 }
 
 export type ListingAcquisitionDiagnostics = {
+  portal: ListingSourceType;
   acquisitionMethod: "static" | "browser" | "cache";
+  staticHtmlSucceeded: boolean;
+  structuredDataFound: boolean;
+  browserAutomationUsed: boolean;
+  cookieBannerHandled: boolean;
+  scrollCompleted: boolean;
+  accordionsOpened: number;
+  rawFieldsFound: number;
+  normalizedFieldsCreated: number;
+  acceptedFields: number;
+  rejectedFields: number;
+  conflicts: string[];
+  missingEssentialFields: string[];
+  warnings: string[];
+  errors: string[];
   browserFallbackReason?: string;
   staticLoadTimeMs: number;
   browser?: BrowserAcquisitionDiagnostics;

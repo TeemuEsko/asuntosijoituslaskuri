@@ -23,6 +23,19 @@ const viewports = [[1280, 720], [1366, 768], [1440, 900], [1536, 864], [1920, 10
 let browser;
 try {
   await waitForServer(); browser = await chromium.launch({ headless: true });
+  const startPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await startPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
+  const urlInput = startPage.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki");
+  const searchButton = startPage.getByRole("button", { name: "Hae tiedot", exact: true });
+  if (!await searchButton.isDisabled()) throw new Error("Tyhjän URL-kentän hakupainike ei ole pois käytöstä");
+  await urlInput.fill("https://example.com/kohde/1");
+  await urlInput.press("Enter");
+  await startPage.getByRole("alert").getByText(/kelvollinen Etuovi- tai Oikotie/).waitFor();
+  await startPage.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings: [], renovations: [], missingCriticalFields: ["Osoite"], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: 0, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: 0, acceptedFields: 0, rejectedFields: 0, conflicts: [], missingEssentialFields: ["Osoite"], warnings: [], errors: [] } }) }));
+  await urlInput.fill("https://www.etuovi.com/kohde/123");
+  await urlInput.press("Enter");
+  await startPage.getByRole("heading", { name: "Tarkista löydetyt tiedot" }).waitFor();
+  await startPage.close();
   for (const [width, height] of viewports) {
     const page = await browser.newPage({ viewport: { width, height } });
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });

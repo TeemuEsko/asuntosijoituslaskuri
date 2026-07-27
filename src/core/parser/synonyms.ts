@@ -11,6 +11,11 @@ export type NormalizedFieldKey =
   | "floor"
   | "condition"
   | "address"
+  | "streetAddress"
+  | "postalCode"
+  | "district"
+  | "apartmentIdentifier"
+  | "listingTitle"
   | "city"
   | "housingCompanyName"
   | "apartmentCount"
@@ -33,6 +38,11 @@ export const fieldDisplayNames: Record<NormalizedFieldKey, string> = {
   floor: "Kerros",
   condition: "Kunto",
   address: "Osoite",
+  streetAddress: "Katuosoite",
+  postalCode: "Postinumero",
+  district: "Kaupunginosa",
+  apartmentIdentifier: "Huoneiston tunnus",
+  listingTitle: "Ilmoituksen otsikko",
   city: "Kunta tai kaupunki",
   housingCompanyName: "Taloyhtiön nimi",
   apartmentCount: "Huoneistojen lukumäärä",
@@ -56,6 +66,11 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   floor: ["kerros", "sijaintikerros", "asuinkerros", "kerros / kerroksia"],
   condition: ["kunto", "yleiskunto", "kuntoarvio"],
   address: ["osoite", "käyntiosoite", "kohteen osoite"],
+  streetAddress: ["katuosoite"],
+  postalCode: ["postinumero"],
+  district: ["kaupunginosa", "alue"],
+  apartmentIdentifier: ["huoneiston tunnus", "asunnon tunnus"],
+  listingTitle: ["ilmoituksen otsikko", "kohteen otsikko"],
   city: ["kunta", "kaupunki", "sijaintikunta"],
   housingCompanyName: ["taloyhtiö", "asunto-osakeyhtiö", "yhtiön nimi", "asunto oy", "as oy"],
   apartmentCount: ["huoneistoja", "asuntojen lukumäärä", "asuinhuoneistoja", "huoneistojen määrä"],
