@@ -19,6 +19,11 @@ export type NormalizedFieldKey =
   | "listingId"
   | "buildingType"
   | "currentRentMonthly"
+  | "totalHousingCharge"
+  | "waterFeeMonthly"
+  | "parkingFeeMonthly"
+  | "saunaFeeMonthly"
+  | "wasteFeeMonthly"
   | "city"
   | "housingCompanyName"
   | "apartmentCount"
@@ -49,6 +54,11 @@ export const fieldDisplayNames: Record<NormalizedFieldKey, string> = {
   listingId: "Kohdenumero",
   buildingType: "Talotyyppi",
   currentRentMonthly: "Nykyinen vuokra",
+  totalHousingCharge: "Yhtiövastike yhteensä",
+  waterFeeMonthly: "Vesimaksu",
+  parkingFeeMonthly: "Autopaikkamaksu",
+  saunaFeeMonthly: "Saunamaksu",
+  wasteFeeMonthly: "Jätemaksu",
   city: "Kunta tai kaupunki",
   housingCompanyName: "Taloyhtiön nimi",
   apartmentCount: "Huoneistojen lukumäärä",
@@ -80,6 +90,11 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   listingId: ["kohdenumero", "kohde nro", "kohde-id"],
   buildingType: ["talotyyppi", "rakennustyyppi"],
   currentRentMonthly: ["nykyinen vuokra", "vuokra", "vuokrattu"],
+  totalHousingCharge: ["yhtiövastike yhteensä", "vastikkeet yhteensä"],
+  waterFeeMonthly: ["vesimaksu"],
+  parkingFeeMonthly: ["autopaikkamaksu"],
+  saunaFeeMonthly: ["saunamaksu"],
+  wasteFeeMonthly: ["jätemaksu"],
   city: ["kunta", "kaupunki", "sijaintikunta"],
   housingCompanyName: ["taloyhtiön nimi", "asunto-osakeyhtiön nimi", "yhtiön nimi", "taloyhtiö", "asunto-osakeyhtiö", "asunto oy", "as oy"],
   apartmentCount: ["huoneistoja", "asuntojen lukumäärä", "asuinhuoneistoja", "huoneistojen määrä"],

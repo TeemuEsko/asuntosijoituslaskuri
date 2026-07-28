@@ -37,5 +37,12 @@ export function debtShareStatus(values: Partial<Record<NormalizedFieldKey, numbe
   const debt = values.companyLoanShare; const fee = values.financingFeeMonthly;
   if ((typeof debt === "number" && debt > 0) || (typeof fee === "number" && fee > 0)) return "yes";
   if (debt === 0 && (fee === 0 || fee === undefined)) return "no";
+  if (typeof values.debtFreePrice === "number" && typeof values.salePrice === "number" && values.debtFreePrice === values.salePrice && debt === undefined && fee === undefined) return "no";
   return "unknown";
+}
+
+export function monthlyHousingCharges(values: Partial<Record<NormalizedFieldKey, number | string>>): number | null {
+  const maintenance = values.maintenanceFeeMonthly; const financing = values.financingFeeMonthly;
+  if (typeof maintenance === "number" || typeof financing === "number") return (typeof maintenance === "number" ? maintenance : 0) + (typeof financing === "number" ? financing : 0);
+  return typeof values.totalHousingCharge === "number" ? values.totalHousingCharge : null;
 }

@@ -27,6 +27,8 @@ try {
   await startPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
   const urlInput = startPage.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki");
   const searchButton = startPage.getByRole("button", { name: "Hae tiedot", exact: true });
+  const startCards = await startPage.locator('[data-slot="card"]').evaluateAll((cards) => cards.slice(0, 3).map((card) => { const box = card.getBoundingClientRect(); return { top: box.top, width: box.width }; }));
+  if (startCards.length !== 3 || !(startCards[0].top < startCards[1].top && startCards[1].top < startCards[2].top) || Math.max(...startCards.map((card) => card.width)) - Math.min(...startCards.map((card) => card.width)) > 2) throw new Error("Aloituskortit eivät ole samanlevyisinä pystysarakkeessa");
   if (!await searchButton.isDisabled()) throw new Error("Tyhjän URL-kentän hakupainike ei ole pois käytöstä");
   await urlInput.fill("https://example.com/kohde/1");
   await urlInput.press("Enter");
@@ -38,6 +40,20 @@ try {
   await urlInput.press("Enter");
   await startPage.getByText("Analyysi valmis", { exact: true }).waitFor();
   await startPage.close();
+  const missingPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await missingPage.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings: findings.filter((finding) => !["currentRentMonthly", "companyLoanShare"].includes(finding.field)), renovations: [], missingCriticalFields: [], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length - 2, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length - 2, acceptedFields: findings.length - 2, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [] } }) }));
+  await missingPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
+  await missingPage.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki").fill("https://www.etuovi.com/kohde/456");
+  await missingPage.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki").press("Enter");
+  const rentInput = missingPage.locator("#missing-currentRentMonthly");
+  await rentInput.waitFor();
+  if (await rentInput.getAttribute("type") !== "number") throw new Error("Vuokrakenttä ei ole numeerinen");
+  await missingPage.getByText("€ / kk", { exact: true }).waitFor();
+  await rentInput.fill("750");
+  await missingPage.getByRole("button", { name: "Ei", exact: true }).click();
+  await missingPage.getByRole("button", { name: "Päivitä analyysi" }).click();
+  await missingPage.getByText("Analyysi valmis", { exact: true }).waitFor();
+  await missingPage.close();
   for (const [width, height] of viewports) {
     const page = await browser.newPage({ viewport: { width, height } });
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });

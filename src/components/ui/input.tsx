@@ -4,6 +4,9 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cn } from "@/lib/utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  if (props.id === "missing-currentRentMonthly") {
+    return <div className="relative min-w-0"><InputPrimitive {...props} type="number" inputMode="decimal" placeholder="Esim. 750 € / kk. HUOM! Vain vuokra, ei erilliskustannuksia." data-slot="input" className={cn("h-11 w-full min-w-0 rounded-lg border border-input bg-transparent py-1 pl-2.5 pr-17 text-base transition-colors outline-none placeholder:text-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:placeholder:text-sm", className)} /><span className="pointer-events-none absolute inset-y-0 right-3 flex items-center whitespace-nowrap text-sm text-muted-foreground">€ / kk</span></div>
+  }
   return (
     <InputPrimitive
       type={type}

@@ -46,15 +46,15 @@ export type RejectedCandidate = { excerpt: string; field?: NormalizedFieldKey; f
 export type FieldDiagnostic = { fieldName: string; rawValue: string; normalizedValue?: number | string; source: ListingSourceType; sourcePath: string; sourceConfidence: number; fieldMatchConfidence: number; validationConfidence: number; finalConfidence: number; validationResult: "accepted" | "rejected"; rejectionReason?: string };
 export type ParserDiagnostics = { parserVersion: string; site: ListingSourceType; sections: ListingSection[]; rawCandidateCount: number; rejectedCandidates: RejectedCandidate[]; fieldDiagnostics: FieldDiagnostic[]; mergedFindingCount: number; acceptedFields: number; rejectedFields: number; conflicts: string[]; missingEssentialFields: string[]; warnings: string[]; errors: string[]; acquisition?: Record<string, unknown> };
 export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics };
-export type StructuredListingValue = { field: NormalizedFieldKey; value: number | string; unit?: ListingFinding["unit"]; label: string; excerpt: string; sourcePath?: string };
+export type StructuredListingValue = { field: NormalizedFieldKey; value: number | string; unit?: ListingFinding["unit"]; label: string; excerpt: string; sourcePath?: string; matchQuality?: "exact" | "general" };
 
 type RawCandidate = { field: NormalizedFieldKey; label: string; originalValue: string; value: number | string; unit?: ListingFinding["unit"]; source: ListingSourceType; excerpt: string; semanticSource: SemanticSource; section: ListingSection; exactSynonym: boolean; hasUnit: boolean; ambiguous?: boolean; calculationBasis?: string; sourcePath?: string };
 
 const sectionHeadings: ReadonlyArray<[ListingSection, RegExp]> = [
   ["basic", /^(perustiedot|kohteen perustiedot)$/i], ["prices", /^(hintatiedot|hinta)$/i], ["fees", /^(vastikkeet ja maksut|vastikkeet|maksut)$/i], ["apartment", /^(asunnon tiedot|huoneiston tiedot)$/i], ["housing_company", /^(taloyhtiön tiedot|taloyhtiö)$/i], ["building", /^(rakennuksen tiedot|rakennus)$/i], ["completed_renovations", /^(tehdyt remontit|toteutetut remontit|korjaushistoria)$/i], ["future_renovations", /^(tulevat remontit|suunnitellut remontit)$/i], ["maintenance_plan", /^(kunnossapitotarveselvitys|pts)$/i], ["plot", /^tontti$/i], ["energy", /^energialuokka$/i], ["description", /^(kuvaus|kohteen kuvaus)$/i], ["location", /^sijainti$/i], ["services", /^palvelut$/i], ["additional", /^lisätiedot$/i],
 ];
-const moneyFields = new Set<NormalizedFieldKey>(["salePrice", "debtFreePrice", "companyLoanShare", "maintenanceFeeMonthly", "financingFeeMonthly", "plotFeeMonthly", "otherMonthlyFees"]);
-const monthlyFields = new Set<NormalizedFieldKey>(["maintenanceFeeMonthly", "financingFeeMonthly", "plotFeeMonthly", "otherMonthlyFees"]);
+const moneyFields = new Set<NormalizedFieldKey>(["salePrice", "debtFreePrice", "companyLoanShare", "maintenanceFeeMonthly", "financingFeeMonthly", "plotFeeMonthly", "otherMonthlyFees", "currentRentMonthly", "totalHousingCharge", "waterFeeMonthly", "parkingFeeMonthly", "saunaFeeMonthly", "wasteFeeMonthly"]);
+const monthlyFields = new Set<NormalizedFieldKey>(["maintenanceFeeMonthly", "financingFeeMonthly", "plotFeeMonthly", "otherMonthlyFees", "currentRentMonthly", "totalHousingCharge", "waterFeeMonthly", "parkingFeeMonthly", "saunaFeeMonthly", "wasteFeeMonthly"]);
 const expectedSections: Partial<Record<NormalizedFieldKey, ListingSection[]>> = { salePrice: ["prices"], debtFreePrice: ["prices"], companyLoanShare: ["prices"], maintenanceFeeMonthly: ["fees"], financingFeeMonthly: ["fees"], plotFeeMonthly: ["fees", "plot"], areaSqm: ["basic", "apartment"], housingCompanyName: ["housing_company"], landOwnership: ["plot", "housing_company"] };
 
 const streetAddressPattern = /^(?:[\p{L}.'-]+\s+){0,5}[\p{L}.'-]*(?:katu|tie|kuja|polku|väylä|kaari|rinne|ranta|aukio|tori|puisto|raitti|portti|mäki|penger|piha|kallio|harju|niitty|metsä|lehto|salmi|lahdentie|laita)\s+\d+[a-zA-Z]?(?:\s+[A-Z](?:\s*\d+)?)?$/iu;
@@ -205,7 +205,7 @@ export function parseListingText(text: string, source: ListingSourceType = "past
       rejectedCandidates.push({ excerpt: item.excerpt, field: item.field, fieldName: fieldDisplayNames[item.field], rawValue: String(item.value), normalizedValue: item.value, source, sourcePath: item.sourcePath ?? "structured_data", sourceConfidence: 90, fieldMatchConfidence: 0, validationConfidence: 0, validationResult: "rejected", reason: "Value matches street address pattern", rejectionReason: "Value matches street address pattern" });
       continue;
     }
-    candidates.push({ field: item.field, label: item.label, originalValue: String(item.value), value: item.value, unit: item.unit, source, excerpt: item.excerpt, semanticSource: "structured_data", section: "unknown", exactSynonym: true, hasUnit: Boolean(item.unit), sourcePath: item.sourcePath });
+    candidates.push({ field: item.field, label: item.label, originalValue: String(item.value), value: item.value, unit: item.unit, source, excerpt: item.excerpt, semanticSource: "structured_data", section: "unknown", exactSynonym: item.matchQuality !== "general", hasUnit: Boolean(item.unit), ambiguous: item.matchQuality === "general", sourcePath: item.sourcePath });
   }
   let section: ListingSection = "unknown";
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);

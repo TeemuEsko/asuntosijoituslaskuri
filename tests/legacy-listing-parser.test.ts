@@ -50,7 +50,29 @@ const fixture = `<!doctype html><html><head><script>const ignored = "Hinta 1 €
 
 test("vanhan parserin HTML-fixture palauttaa kaikki peruskentät", () => {
   const { fields } = parseLegacyListingHtml(fixture, "https://www.etuovi.com/kohde/123456");
-  assert.deepEqual(fields, { listingId: "123456", debtFreePrice: 89_000, sellingPrice: 75_500, maintenanceFee: 245.5, financingFee: 112.3, hasDebtShare: "yes", size: 32.5, buildYear: 1987, buildingType: "apartment", heatingType: "district", landType: "own" });
+  assert.deepEqual(fields, { listingId: "123456", debtFreePrice: 89_000, sellingPrice: 75_500, maintenanceFee: 245.5, financingFee: 112.3, debtShare: 13_500, debtShareSource: "price_difference", hasDebtShare: "yes", size: 32.5, buildYear: 1987, buildingType: "apartment", heatingType: "district", landType: "own" });
+});
+
+test("pääoma- ja rahoitusvastike mapataan samaan canonical-kenttään", () => {
+  assert.equal(parseLegacyListingHtml("Pääomavastike 216 € / kk").fields.financingFee, 216);
+  assert.equal(parseLegacyListingHtml("Rahoitusvastike 216 € / kk").fields.financingFee, 216);
+  assert.equal(parseLegacyListingHtml("Pääomavastike 216 € / kk").fields.hasDebtShare, "yes");
+});
+
+test("suora velkaosuus voittaa hintojen erotuksen", () => {
+  const direct = parseLegacyListingHtml("Myyntihinta 144 000 € Velkaosuus 15 000 € Velaton hinta 159 000 €");
+  assert.equal(direct.fields.debtShare, 15_000); assert.equal(direct.fields.debtShareSource, "label"); assert.equal(direct.fields.hasDebtShare, "yes");
+  const fallback = parseLegacyListingHtml("Myyntihinta 144 000 € Velaton hinta 159 000 €");
+  assert.equal(fallback.fields.debtShare, 15_000); assert.equal(fallback.fields.debtShareSource, "price_difference");
+  const directFinding = parseListingText(direct.text, "etuovi", mapLegacyFieldsToCanonical(direct.fields)).findings.find((finding) => finding.field === "companyLoanShare");
+  const fallbackFinding = parseListingText(fallback.text, "etuovi", mapLegacyFieldsToCanonical(fallback.fields)).findings.find((finding) => finding.field === "companyLoanShare");
+  assert.ok((directFinding?.confidenceScore ?? 0) > (fallbackFinding?.confidenceScore ?? 0));
+});
+
+test("yhtiövastike yhteensä ja erillismaksut säilyvät erillisinä", () => {
+  const { fields } = parseLegacyListingHtml("Hoitovastike 400 € / kk Pääomavastike 216 € / kk Yhtiövastike yhteensä 616 € / kk Vesimaksu 20 € / kk Autopaikkamaksu 15 € / kk Saunamaksu 10 € / kk Jätemaksu 5 € / kk");
+  assert.equal(fields.maintenanceFee, 400); assert.equal(fields.financingFee, 216); assert.equal(fields.totalHousingCharge, 616);
+  assert.equal(fields.waterFee, 20); assert.equal(fields.parkingFee, 15); assert.equal(fields.saunaFee, 10); assert.equal(fields.wasteFee, 5);
 });
 
 test("legacy-kentät mapataan canonical review -kentiksi eikä validointi pudota niitä", () => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { analysisBlockingFields, analysisReliability, automaticValues, canUseFindingAutomatically, debtShareStatus, metadataFields, missingAnalysisFields } from "../src/core/analysis/requirements.ts";
+import { analysisBlockingFields, analysisReliability, automaticValues, canUseFindingAutomatically, debtShareStatus, metadataFields, missingAnalysisFields, monthlyHousingCharges } from "../src/core/analysis/requirements.ts";
 import { parseListingText, type ListingFinding } from "../src/core/parser/listing-parser.ts";
 
 test("vain keskitetyt seitsemän analyysikenttää estävät analyysin", () => {
@@ -35,6 +35,11 @@ test("yhtiölainan tila päätellään vain löydetyistä arvoista", () => {
   assert.equal(debtShareStatus({ companyLoanShare: 10_000 }), "yes");
   assert.equal(debtShareStatus({ companyLoanShare: 0, financingFeeMonthly: 0 }), "no");
   assert.equal(debtShareStatus({}), "unknown");
+});
+
+test("vastikkeita ei tuplalasketa yhtiövastike yhteensä -kentästä", () => {
+  assert.equal(monthlyHousingCharges({ maintenanceFeeMonthly: 400, financingFeeMonthly: 216, totalHousingCharge: 616 }), 616);
+  assert.equal(monthlyHousingCharges({ totalHousingCharge: 616 }), 616);
 });
 
 test("kokonaisluotettavuus on korkea vain kattavalla automaattisella aineistolla", () => {
