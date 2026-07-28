@@ -49,7 +49,9 @@ try {
   await rentInput.waitFor();
   if (await rentInput.getAttribute("type") !== "number") throw new Error("Vuokrakenttä ei ole numeerinen");
   await missingPage.getByText("€ / kk", { exact: true }).waitFor();
-  await rentInput.fill("750");
+  await rentInput.pressSequentially("750");
+  if (await rentInput.inputValue() !== "750" || !await rentInput.isVisible()) throw new Error("Vuokrakenttä katosi tai arvo ei säilynyt monimerkkisen syötön aikana");
+  if (await missingPage.getByText("Analyysi valmis", { exact: true }).count()) throw new Error("Analyysi käynnistyi ennen Päivitä analyysi -painallusta");
   await missingPage.getByRole("button", { name: "Ei", exact: true }).click();
   await missingPage.getByRole("button", { name: "Päivitä analyysi" }).click();
   await missingPage.getByText("Analyysi valmis", { exact: true }).waitFor();

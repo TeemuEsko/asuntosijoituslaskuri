@@ -375,8 +375,10 @@ export function ListingImport({
 
   if (result && typeof window !== "undefined") {
     const parsedValues = automaticValues(result);
-    const missing = missingAnalysisFields({ ...parsedValues, ...userValues });
-    const detectedDebt = debtShareStatus({ ...parsedValues, ...userValues });
+    // Pidä parserin määrittämä täydennyslomake vakaana koko syöttämisen ajan.
+    // Käyttäjän keskeneräinen arvo validoidaan vasta Päivitä analyysi -painalluksessa.
+    const missing = missingAnalysisFields(parsedValues);
+    const detectedDebt = debtShareStatus(parsedValues);
     const askDebt = detectedDebt === "unknown";
     const needsDebtAmounts = (detectedDebt === "yes" || debtChoice === "yes") && (parsedValues.companyLoanShare === undefined || parsedValues.financingFeeMonthly === undefined);
     const fieldLabels: Partial<Record<NormalizedFieldKey, string>> = { debtFreePrice: "Velaton hinta", maintenanceFeeMonthly: "Hoitovastike / kk", areaSqm: "Pinta-ala", constructionYear: "Rakennusvuosi", buildingType: "Talotyyppi", heatingType: "Lämmitysmuoto", currentRentMonthly: "Kuukausivuokra" };
