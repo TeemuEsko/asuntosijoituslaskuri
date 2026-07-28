@@ -44,10 +44,25 @@ export function formatArea(value: number): string {
 }
 
 export function parseFloor(input: string): string | null {
+  if (/katutaso/i.test(input)) return "Katutaso";
   const fraction = input.match(/\b(\d+)\s*\/\s*(\d+)\s*(?:krs|kerros)?\b/i);
   if (fraction) return `${fraction[1]} / ${fraction[2]}`;
   const single = input.match(/\b(\d+)\.\s*(?:krs|kerros)|\b(?:kerros)\s*(\d+)\b/i);
   return single ? single[1] ?? single[2] ?? null : null;
+}
+
+export function parseRoomConfiguration(input: string): string | null {
+  const compact = input.replace(/\s+/g, " ").trim();
+  const short = compact.match(/\b([1-9]\d?\s*h(?:\s*(?:\+|,)\s*(?:kk|khh|alk|oh|mh|kt|k|s)){1,6})/i)?.[1];
+  if (short) return short.replace(/\s*,\s*/g, " + ").replace(/\s*\+\s*/g, " + ").toLocaleLowerCase("fi");
+  const words = compact.match(/\b([1-9]\d?)\s+huonetta\s+ja\s+keittiö/i);
+  return words ? `${words[1]}h + k` : null;
+}
+
+export function parseBuildingType(input: string): string | null {
+  const value = input.toLocaleLowerCase("fi");
+  const types: ReadonlyArray<[RegExp, string]> = [[/puutalo[- ]?osake/, "wooden_apartment"], [/kerrostalo/, "apartment"], [/rivitalo/, "terraced"], [/luhtitalo/, "loft"], [/paritalo/, "semi_detached"], [/erillistalo/, "detached_unit"], [/omakotitalo/, "detached_house"]];
+  return types.find(([pattern]) => pattern.test(value))?.[1] ?? null;
 }
 
 export type TimeStatus = "completed" | "ongoing" | "decided" | "planned" | "estimated" | "proposed" | "under_investigation" | "investigated" | "preparing" | "not_done" | "not_implemented" | "unknown";

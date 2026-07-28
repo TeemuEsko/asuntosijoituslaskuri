@@ -28,10 +28,10 @@ test("sivupalkki vaihtuu kompaktiin ja täyteen tilaan hallituilla rajoilla", as
   assert.match(workspace, /min-\[1600px\]:pl-60/);
 });
 
-test("oikea analyysipaneeli ei muodosta kolmatta saraketta alle 1600 pikselissä", async () => {
+test("analyysisivu käyttää yhtä hallittua sisältösaraketta", async () => {
   const workspace = await source("property-workspace.tsx");
-  assert.match(workspace, /min-\[1600px\]:grid-cols-\[minmax\(0,1fr\)_minmax\(300px,350px\)\]/);
-  assert.match(workspace, /min-\[1600px\]:hidden/);
+  assert.match(workspace, /max-w-\[1500px\]/);
+  assert.doesNotMatch(workspace, /<aside/);
 });
 
 test("yläpalkki, otsikot ja toimintopainikkeet voivat rivittyä törmäämättä", async () => {

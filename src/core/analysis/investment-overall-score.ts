@@ -31,12 +31,12 @@ export type InvestmentOverallScoreData = {
 };
 
 const summaries: Record<InvestmentGrade, string> = {
-  "A+": "Kohteen tuotto, kassavirta ja riskitaso muodostavat erittäin vahvan kokonaisuuden.",
-  A: "Kohde on kokonaisuutena vahva, vaikka yksittäisissä osa-alueissa voi olla parannettavaa.",
-  B: "Kohde täyttää hyvän sijoituskohteen keskeiset kriteerit, mutta mukana on myös huomioitavia tekijöitä.",
+  "A+": "Kohteen tuotto, kassavirta, rahoitettavuus ja riskitaso muodostavat erittäin vahvan sijoitusmahdollisuuden.",
+  A: "Kohde on nykyisillä tiedoilla erittäin kiinnostava sijoitusmahdollisuus, vaikka yksittäisiä huomioitavia tekijöitä voi olla.",
+  B: "Kohde täyttää hyvän sijoitusmahdollisuuden tärkeimmät kriteerit, mutta kokonaisuudessa on myös tarkistettavia tekijöitä.",
   C: "Kohde voi soveltua sijoitukseen, mutta tuoton, kassavirran ja riskien tasapaino vaatii tarkempaa arviointia.",
-  D: "Kohteessa on useita tekijöitä, jotka heikentävät sijoituksen kokonaisuutta.",
-  E: "Kohteen tuotto- ja riskiprofiili on nykyisillä tiedoilla heikko.",
+  D: "Kohteessa on useita tekijöitä, jotka heikentävät sijoituksen houkuttelevuutta nykyisillä tiedoilla.",
+  E: "Kohde ei nykyisillä tiedoilla ja hinnalla muodosta houkuttelevaa sijoitusmahdollisuutta.",
 };
 
 export function clampInvestmentScore(score: number | null | undefined): number {
@@ -46,7 +46,7 @@ export function clampInvestmentScore(score: number | null | undefined): number {
 export function getInvestmentRating(score: number | null | undefined): RatingLevel {
   const value = clampInvestmentScore(score);
   const grade: InvestmentGrade = value >= 90 ? "A+" : value >= 80 ? "A" : value >= 70 ? "B" : value >= 60 ? "C" : value >= 45 ? "D" : "E";
-  const labels: Record<InvestmentGrade, string> = { "A+": "Erinomainen kokonaisuus", A: "Erittäin hyvä kokonaisuus", B: "Hyvä kokonaisuus", C: "Kohtalainen kokonaisuus", D: "Kohonnut riski", E: "Heikko kokonaisuus" };
+  const labels: Record<InvestmentGrade, string> = { "A+": "Erinomainen sijoitusmahdollisuus", A: "Erittäin hyvä sijoitusmahdollisuus", B: "Hyvä sijoitusmahdollisuus", C: "Kohtalainen sijoitusmahdollisuus", D: "Heikko sijoitusmahdollisuus", E: "Ei suositeltava sijoitus" };
   return { grade, label: labels[grade], summary: summaries[grade] };
 }
 

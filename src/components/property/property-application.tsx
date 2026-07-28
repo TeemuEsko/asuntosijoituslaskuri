@@ -11,12 +11,10 @@ type View = "start" | "listing" | "workspace";
 export function PropertyApplication() {
   const [view, setView] = useState<View>("start");
   const [importedData, setImportedData] = useState<ImportedPropertyData>({});
-  const [title, setTitle] = useState("Uusi kohde");
   const [listingUrl, setListingUrl] = useState("");
 
   function openWorkspace(values: ImportedPropertyData = {}) {
     setImportedData(values);
-    setTitle("Uusi kohde");
     setView("workspace");
   }
 
@@ -34,6 +32,6 @@ export function PropertyApplication() {
   }
 
   if (view === "listing") return <ListingImport initialUrl={listingUrl} onBack={() => setView("start")} onComplete={openWorkspace} />;
-  if (view === "workspace") return <PropertyWorkspace importedData={importedData} title={title} />;
+  if (view === "workspace") return <PropertyWorkspace importedData={importedData} />;
   return <NewPropertyStart onListing={(url) => { setListingUrl(url); setView("listing"); }} onDocuments={openDocuments} onManual={() => openWorkspace()} />;
 }

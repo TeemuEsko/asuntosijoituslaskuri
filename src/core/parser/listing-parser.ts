@@ -1,5 +1,5 @@
 import { confidenceLabels } from "../i18n/display-values.ts";
-import { formatEuro, formatMonthlyEuro, parseArea, parseFinnishNumber, parseFloor, parseMonthlyAmount, parseSquareMeterRate, parseTimeExpression, type TimeStatus } from "./normalization.ts";
+import { formatEuro, formatMonthlyEuro, parseArea, parseBuildingType, parseFinnishNumber, parseFloor, parseMonthlyAmount, parseRoomConfiguration, parseSquareMeterRate, parseTimeExpression, type TimeStatus } from "./normalization.ts";
 import { criticalFields, excludedCompanyLoanLabels, fieldDisplayNames, fieldSynonyms, type NormalizedFieldKey } from "./synonyms.ts";
 
 export const LISTING_PARSER_VERSION = "0.3.1";
@@ -98,12 +98,14 @@ function normalizeFieldValue(field: NormalizedFieldKey, rawValue: string, fullLi
   if (field === "constructionYear") { const value = parseFinnishNumber(rawValue); return value !== null && value >= 1800 && value <= new Date().getFullYear() + 2 ? { value, unit: "vuosi" } : null; }
   if (field === "apartmentCount") { const value = parseFinnishNumber(rawValue); return value !== null && value > 0 && Number.isInteger(value) ? { value } : null; }
   if (field === "floor") { const value = parseFloor(rawValue || fullLine); return value ? { value } : null; }
+  if (field === "roomDescription") { const value = parseRoomConfiguration(rawValue || fullLine); return value ? { value } : rawValue ? { value: rawValue.trim() } : null; }
+  if (field === "buildingType") { const value = parseBuildingType(rawValue || fullLine); return value ? { value } : rawValue ? { value: rawValue.trim() } : null; }
   if (moneyFields.has(field)) {
     const squareRate = monthlyFields.has(field) ? parseSquareMeterRate(rawValue || fullLine) : null;
     const value = squareRate ?? (monthlyFields.has(field) ? parseMonthlyAmount(rawValue || fullLine) : parseFinnishNumber(rawValue));
     return value !== null && value >= 0 ? { value, unit: squareRate !== null ? "€/m²/kk" : monthlyFields.has(field) ? "€/kk" : "€" } : null;
   }
-  if (field === "landOwnership") { const value = normalizedText(`${rawValue} ${fullLine}`); if (/valinnainen|lunastettava|voi lunastaa/.test(value)) return { value: "optional_leasehold" }; if (/vuokra/.test(value)) return { value: "leased" }; if (/oma tontti|oma$/.test(value)) return { value: "owned" }; return null; }
+  if (field === "landOwnership") { const value = normalizedText(`${rawValue} ${fullLine}`); if (/valinnainen|lunastettava|voi lunastaa/.test(value)) return { value: "optional_leasehold" }; if (/osittain oma/.test(value)) return { value: "partial_ownership" }; if (/vuokra/.test(value)) return { value: "leased" }; if (/oma tontti|oma$/.test(value)) return { value: "owned" }; if (/muu/.test(value)) return { value: "other" }; return null; }
   if (field === "elevator") { const value = normalizedText(rawValue); if (/^(kyllä|on)$|hissi on/.test(value)) return { value: "Kyllä" }; if (/^(ei|ei ole)$|ei hissiä/.test(value)) return { value: "Ei" }; return null; }
   return rawValue ? { value: rawValue.trim() } : null;
 }
@@ -206,6 +208,11 @@ export function parseListingText(text: string, source: ListingSourceType = "past
       continue;
     }
     candidates.push({ field: item.field, label: item.label, originalValue: String(item.value), value: item.value, unit: item.unit, source, excerpt: item.excerpt, semanticSource: "structured_data", section: "unknown", exactSynonym: item.matchQuality !== "general", hasUnit: Boolean(item.unit), ambiguous: item.matchQuality === "general", sourcePath: item.sourcePath });
+  }
+  for (const title of structuredValues.filter((item) => item.field === "listingTitle" && typeof item.value === "string")) {
+    const room = parseRoomConfiguration(String(title.value)); const building = parseBuildingType(String(title.value));
+    if (room && !structuredValues.some((item) => item.field === "roomDescription")) candidates.push({ field: "roomDescription", label: "Ilmoituksen otsikko", originalValue: String(title.value), value: room, source, excerpt: title.excerpt, semanticSource: "structured_data", section: "basic", exactSynonym: false, hasUnit: true, sourcePath: title.sourcePath });
+    if (building && !structuredValues.some((item) => item.field === "buildingType")) candidates.push({ field: "buildingType", label: "Ilmoituksen otsikko", originalValue: String(title.value), value: building, source, excerpt: title.excerpt, semanticSource: "structured_data", section: "basic", exactSynonym: false, hasUnit: true, sourcePath: title.sourcePath });
   }
   let section: ListingSection = "unknown";
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);

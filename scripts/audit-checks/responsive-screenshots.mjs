@@ -60,7 +60,8 @@ try {
     const page = await browser.newPage({ viewport: { width, height } });
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Aloita tyhjästä" }).click();
-    await page.getByRole("heading", { name: "Uusi kohde", exact: true }).first().waitFor();
+    await page.getByRole("heading", { name: "Analysoitu sijoituskohde", exact: true }).first().waitFor();
+    await page.getByText("Sijoitusmahdollisuus", { exact: true }).waitFor();
     const layout = await page.evaluate(() => {
       const header = document.querySelector("header");
       const headerChildren = header ? Array.from(header.children).map((element) => element.getBoundingClientRect()) : [];
