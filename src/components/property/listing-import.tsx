@@ -45,6 +45,9 @@ import type {
   ListingParseResult,
 } from "@/core/parser/listing-parser";
 import type { ImportedPropertyData } from "./property-workspace";
+import { analysisReliability, automaticValues, debtShareStatus, missingAnalysisFields } from "@/core/analysis/requirements";
+import type { NormalizedFieldKey } from "@/core/parser/synonyms";
+import { ImportSourceReview } from "./import-source-review";
 
 type ImportMode = "url" | "text";
 type DecisionState = Record<
@@ -211,6 +214,8 @@ export function ListingImport({
   const [decisions, setDecisions] = useState<DecisionState>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ImportError | null>(null);
+  const [userValues, setUserValues] = useState<Partial<Record<NormalizedFieldKey, number | string>>>({});
+  const [debtChoice, setDebtChoice] = useState<"yes" | "no" | null>(null);
   const initialSearchStarted = useRef(false);
   const searchListingRef = useRef<() => Promise<void>>(async () => undefined);
 
@@ -233,7 +238,11 @@ export function ListingImport({
         | ImportError;
       if (!response.ok || "error" in payload) throw payload;
       setResult(payload);
+      setUserValues({});
+      setDebtChoice(null);
       setDecisions(Object.fromEntries(payload.findings.map((finding) => [finding.id, { decision: "pending" }])));
+      const parsedValues = automaticValues(payload);
+      if (!missingAnalysisFields(parsedValues).length && debtShareStatus(parsedValues) !== "unknown") onComplete({ ...parsedValues, renovations: payload.renovations, documentKinds: ["listing"], importReview: payload, analysisReliability: analysisReliability(payload, parsedValues) });
     } catch (caught) {
       setError(
         typeof caught === "object" && caught !== null && "error" in caught
@@ -319,6 +328,19 @@ export function ListingImport({
     onComplete(importedValues);
   }
 
+  function finishAutomaticAnalysis() {
+    if (!result) return;
+    const parsedValues = automaticValues(result);
+    const suggestedValues = Object.fromEntries(result.findings.filter((finding) => finding.validationResult === "accepted" && !finding.conflicts.length && missingAnalysisFields(parsedValues).includes(finding.field)).map((finding) => [finding.field, finding.normalizedValue])) as Partial<Record<NormalizedFieldKey, number | string>>;
+    const combined = { ...parsedValues, ...suggestedValues, ...userValues };
+    if (missingAnalysisFields(combined).length) return;
+    const detectedDebt = debtShareStatus(combined);
+    if (detectedDebt === "unknown" && debtChoice === null) return;
+    if (detectedDebt === "unknown" && debtChoice === "no") { combined.companyLoanShare = 0; combined.financingFeeMonthly = 0; }
+    if ((detectedDebt === "yes" || debtChoice === "yes") && (combined.companyLoanShare === undefined || combined.financingFeeMonthly === undefined)) return;
+    onComplete({ ...combined, renovations: result.renovations, documentKinds: ["listing"], importReview: result, analysisReliability: analysisReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues), ...Object.keys(userValues) as NormalizedFieldKey[]])]) });
+  }
+
   const certain =
     result?.findings.filter(
       (finding) => finding.autoAccepted && finding.validationResult === "accepted" && finding.confidence === "high" && !finding.conflicts.length,
@@ -338,6 +360,17 @@ export function ListingImport({
     );
   }) ?? false;
   const canCreate = Boolean(result?.findings.length) && !unresolved;
+
+  if (result && typeof window !== "undefined") {
+    const parsedValues = automaticValues(result);
+    const missing = missingAnalysisFields({ ...parsedValues, ...userValues });
+    const detectedDebt = debtShareStatus({ ...parsedValues, ...userValues });
+    const askDebt = detectedDebt === "unknown";
+    const needsDebtAmounts = (detectedDebt === "yes" || debtChoice === "yes") && (parsedValues.companyLoanShare === undefined || parsedValues.financingFeeMonthly === undefined);
+    const fieldLabels: Partial<Record<NormalizedFieldKey, string>> = { debtFreePrice: "Velaton hinta", maintenanceFeeMonthly: "Hoitovastike / kk", areaSqm: "Pinta-ala", constructionYear: "Rakennusvuosi", buildingType: "Talotyyppi", heatingType: "Lämmitysmuoto", currentRentMonthly: "Kuukausivuokra" };
+    const tooManyMissing = missing.length > 3;
+    return <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 md:px-8 md:py-12"><Button variant="ghost" onClick={onBack}><ArrowLeft /> Takaisin</Button><section className="mt-8"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-success">asuntosijoituslaskuri.fi</p><h1 className="mt-2 text-3xl font-semibold">{tooManyMissing ? "Ilmoituksesta ei löytynyt riittävästi tietoa" : `Tarvitsen vielä ${missing.length + (askDebt ? 1 : 0)} tietoa analyysiä varten`}</h1><p className="mt-2 text-muted-foreground">{tooManyMissing ? "Täydennä kohde käsin tai kokeile hakua uudelleen." : "Täydennä vain analyysin kannalta välttämättömät tiedot. Muut löydökset käytetään automaattisesti."}</p>{tooManyMissing ? <div className="mt-6 flex flex-wrap gap-3"><Button onClick={onBack}>Yritä uudelleen</Button><Button variant="outline" onClick={() => onComplete({})}>Syötä kaikki tiedot käsin</Button></div> : <Card className="mt-6"><CardContent className="space-y-5 pt-2">{missing.map((field) => { const suggestion = result.findings.find((finding) => finding.field === field)?.normalizedValue; return <div key={field} className="space-y-2"><Label htmlFor={`missing-${field}`}>{fieldLabels[field] ?? field}</Label><Input id={`missing-${field}`} value={String(userValues[field] ?? suggestion ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, [field]: ["buildingType", "heatingType"].includes(field) ? event.currentTarget.value : Number(event.currentTarget.value.replace(",", ".")) }))} placeholder={field === "currentRentMonthly" ? "Esimerkiksi 750" : undefined} />{suggestion !== undefined ? <p className="text-xs text-muted-foreground">Ilmoituksesta arvioitu. Tarkista tarvittaessa.</p> : null}</div>; })}{askDebt ? <div className="space-y-2"><Label>Onko huoneistolla yhtiölainaosuutta?</Label><div className="flex gap-2"><Button type="button" variant={debtChoice === "no" ? "default" : "outline"} onClick={() => setDebtChoice("no")}>Ei</Button><Button type="button" variant={debtChoice === "yes" ? "default" : "outline"} onClick={() => setDebtChoice("yes")}>Kyllä</Button></div></div> : null}{needsDebtAmounts ? <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="missing-debt">Yhtiölainaosuus</Label><Input id="missing-debt" type="number" value={String(userValues.companyLoanShare ?? parsedValues.companyLoanShare ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, companyLoanShare: Number(event.currentTarget.value) }))} /></div><div className="space-y-2"><Label htmlFor="missing-fee">Rahoitusvastike / kk</Label><Input id="missing-fee" type="number" value={String(userValues.financingFeeMonthly ?? parsedValues.financingFeeMonthly ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, financingFeeMonthly: Number(event.currentTarget.value) }))} /></div></div> : null}<Button size="lg" onClick={finishAutomaticAnalysis}>Päivitä analyysi</Button></CardContent></Card>}<div className="mt-6"><ImportSourceReview result={result} onChange={(field, value) => setUserValues((current) => ({ ...current, [field]: value ?? "" }))} /></div></section></main>;
+  }
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-4 py-8 md:px-8 md:py-12">

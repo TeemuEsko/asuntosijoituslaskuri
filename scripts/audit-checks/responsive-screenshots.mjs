@@ -31,10 +31,12 @@ try {
   await urlInput.fill("https://example.com/kohde/1");
   await urlInput.press("Enter");
   await startPage.getByRole("alert").getByText(/kelvollinen Etuovi- tai Oikotie/).waitFor();
-  await startPage.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings: [], renovations: [], missingCriticalFields: ["Osoite"], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: 0, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: 0, acceptedFields: 0, rejectedFields: 0, conflicts: [], missingEssentialFields: ["Osoite"], warnings: [], errors: [] } }) }));
+  const required = [["debtFreePrice", "Velaton hinta", 89000], ["maintenanceFeeMonthly", "Hoitovastike", 245], ["areaSqm", "Pinta-ala", 32], ["constructionYear", "Rakennusvuosi", 1987], ["buildingType", "Talotyyppi", "apartment"], ["heatingType", "Lämmitysmuoto", "district"], ["currentRentMonthly", "Kuukausivuokra", 750], ["companyLoanShare", "Yhtiölainaosuus", 0]];
+  const findings = required.map(([field, fieldName, value], index) => ({ id: `${field}-${index}`, field, fieldName, originalLabel: fieldName, originalValue: String(value), normalizedValue: value, source: "etuovi", sourceExcerpt: `Myynti-ilmoituksen HTML: ${fieldName} ${value}`, supportingSources: [{ semanticSource: "named_field", section: "basic", excerpt: `${fieldName}: ${value}`, originalValue: String(value) }], section: "basic", confidence: "high", confidenceScore: 90, confidenceReasons: ["Tarkka kenttäosuma"], sourceConfidence: 90, fieldMatchConfidence: 90, validationConfidence: 100, validationResult: "accepted", conflicts: [], autoAccepted: true }));
+  await startPage.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings, renovations: [], missingCriticalFields: [], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length, acceptedFields: findings.length, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [] } }) }));
   await urlInput.fill("https://www.etuovi.com/kohde/123");
   await urlInput.press("Enter");
-  await startPage.getByRole("heading", { name: "Tarkista löydetyt tiedot" }).waitFor();
+  await startPage.getByText("Analyysi valmis", { exact: true }).waitFor();
   await startPage.close();
   for (const [width, height] of viewports) {
     const page = await browser.newPage({ viewport: { width, height } });

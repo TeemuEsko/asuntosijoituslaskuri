@@ -81,7 +81,7 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   buildingType: ["talotyyppi", "rakennustyyppi"],
   currentRentMonthly: ["nykyinen vuokra", "vuokra", "vuokrattu"],
   city: ["kunta", "kaupunki", "sijaintikunta"],
-  housingCompanyName: ["taloyhtiö", "asunto-osakeyhtiö", "yhtiön nimi", "asunto oy", "as oy"],
+  housingCompanyName: ["taloyhtiön nimi", "asunto-osakeyhtiön nimi", "yhtiön nimi", "taloyhtiö", "asunto-osakeyhtiö", "asunto oy", "as oy"],
   apartmentCount: ["huoneistoja", "asuntojen lukumäärä", "asuinhuoneistoja", "huoneistojen määrä"],
   landOwnership: ["tontin omistusmuoto", "oma tontti", "vuokratontti", "valinnainen vuokratontti", "lunastettava vuokratontti", "tonttiosuuden voi lunastaa", "valinnainen tontinvuokra"],
   otherMonthlyFees: ["muut maksut", "muut kuukausittaiset maksut", "vesimaksu", "autopaikkamaksu", "saunamaksu"],
