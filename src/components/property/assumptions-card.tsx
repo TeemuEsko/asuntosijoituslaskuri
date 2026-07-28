@@ -9,7 +9,7 @@ import { PropertyField } from "./property-field";
 import { RentalDemandSelector } from "./rental-demand-selector";
 import { SourceBadge } from "./status-badge";
 
-export type AssumptionValues = { monthlyRent: number; vacancyMonths: number; annualInterestRate: number; loanTermYears: number; equity: number; repaymentType: RepaymentType; rentalDemand: number; otherCostsMonthly: number; maintenanceReserveMonthly: number; collateralValue: number };
+export type AssumptionValues = { monthlyRent: number; vacancyMonths: number; annualInterestRate: number; loanTermYears: number; equity: number; repaymentType: RepaymentType; rentalDemand: number; otherCostsMonthly: number; maintenanceReserveMonthly: number; collateralValue: number; transferTaxRate: number; transactionCosts: number; locationRisk: number; resaleLiquidity: number };
 
 function DebouncedRentField({ value, onChange, onUpdating }: { value: number; onChange: (value: number) => void; onUpdating: (value: boolean) => void }) {
   const [draft, setDraft] = useState(String(value));
@@ -28,6 +28,8 @@ export function AssumptionsCard({ values, onChange, onUpdating }: { values: Assu
     <PropertyField id="collateral" label="Arvioitu vakuusarvo" status="user" suffix="€" type="number" min={0} value={values.collateralValue} onChange={(event) => onChange("collateralValue", Math.max(0, event.currentTarget.valueAsNumber || 0))} />
     <PropertyField id="other-costs" label="Muut kuukausikulut" status="user" suffix="€/kk" type="number" min={0} value={values.otherCostsMonthly} onChange={(event) => onChange("otherCostsMonthly", Math.max(0, event.currentTarget.valueAsNumber || 0))} />
     <PropertyField id="maintenance-reserve" label="Kuukausittainen remonttivara" status="user" suffix="€/kk" type="number" min={0} value={values.maintenanceReserveMonthly} onChange={(event) => onChange("maintenanceReserveMonthly", Math.max(0, event.currentTarget.valueAsNumber || 0))} />
+    <PropertyField id="transfer-tax" label="Varainsiirtovero" status="user" suffix="%" type="number" min={0} step="0.1" value={values.transferTaxRate} onChange={(event) => onChange("transferTaxRate", Math.max(0, event.currentTarget.valueAsNumber || 0))} />
+    <PropertyField id="transaction-costs" label="Muut kaupantekokulut" status="user" suffix="€" type="number" min={0} value={values.transactionCosts} onChange={(event) => onChange("transactionCosts", Math.max(0, event.currentTarget.valueAsNumber || 0))} />
     <div className="min-w-0 space-y-2"><div className="flex min-h-10 items-start justify-between gap-3"><Label>Lyhennystyyppi</Label><SourceBadge status="user" /></div><Select value={values.repaymentType} onValueChange={(value) => value && onChange("repaymentType", value as RepaymentType)}><SelectTrigger className="h-11 w-full"><SelectValue>{repaymentLabels[values.repaymentType]}</SelectValue></SelectTrigger><SelectContent>{Object.entries(repaymentLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
-  </div><RentalDemandSelector value={values.rentalDemand} onChange={(value) => onChange("rentalDemand", value)} /></CardContent></Card>;
+  </div><div className="grid gap-6 lg:grid-cols-3"><RentalDemandSelector value={values.rentalDemand} onChange={(value) => onChange("rentalDemand", value)} /><RentalDemandSelector label="Sijaintiriski" value={values.locationRisk} onChange={(value) => onChange("locationRisk", value)} /><RentalDemandSelector label="Jälleenmyytävyys" value={values.resaleLiquidity} onChange={(value) => onChange("resaleLiquidity", value)} /></div></CardContent></Card>;
 }

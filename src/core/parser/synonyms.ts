@@ -31,7 +31,20 @@ export type NormalizedFieldKey =
   | "otherMonthlyFees"
   | "heatingType"
   | "energyClass"
-  | "elevator";
+  | "elevator"
+  | "floorCount"
+  | "apartmentType"
+  | "balcony"
+  | "sauna"
+  | "parking"
+  | "landRentAnnual"
+  | "plotShareRedemptionPrice"
+  | "nextPlotShareRedemptionDate"
+  | "articlesRedemptionClause"
+  | "usageRestrictions"
+  | "maintenancePlanText"
+  | "availability"
+  | "occupancyStatus";
 
 export const fieldDisplayNames: Record<NormalizedFieldKey, string> = {
   salePrice: "Myyntihinta",
@@ -67,6 +80,19 @@ export const fieldDisplayNames: Record<NormalizedFieldKey, string> = {
   heatingType: "Lämmitysmuoto",
   energyClass: "Energialuokka",
   elevator: "Hissi",
+  floorCount: "Kerrosten lukumäärä",
+  apartmentType: "Asuntotyyppi",
+  balcony: "Parveke",
+  sauna: "Sauna",
+  parking: "Autopaikka",
+  landRentAnnual: "Tontin vuosivuokra",
+  plotShareRedemptionPrice: "Tonttiosuuden lunastushinta",
+  nextPlotShareRedemptionDate: "Seuraava tonttiosuuden lunastusajankohta",
+  articlesRedemptionClause: "Yhtiöjärjestyksen lunastuslauseke",
+  usageRestrictions: "Käyttörajoitukset",
+  maintenancePlanText: "Kunnossapitotarveselvitys",
+  availability: "Vapautuminen",
+  occupancyStatus: "Vuokraustilanne",
 };
 
 export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
@@ -103,6 +129,19 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   heatingType: ["lämmitys", "lämmitysmuoto", "lämmitysjärjestelmä"],
   energyClass: ["energialuokka", "energiatehokkuusluokka"],
   elevator: ["hissi", "onko talossa hissiä"],
+  floorCount: ["kerrosten lukumäärä", "kerroksia", "talossa kerroksia"],
+  apartmentType: ["asuntotyyppi", "huoneistomuoto"],
+  balcony: ["parveke", "parveketyyppi"],
+  sauna: ["sauna", "saunatyyppi"],
+  parking: ["autopaikka", "autopaikat", "pysäköinti"],
+  landRentAnnual: ["tontin vuosivuokra", "maanvuokra vuodessa", "tontin vuokra"],
+  plotShareRedemptionPrice: ["tonttiosuuden lunastushinta", "tonttiosuuden hinta", "lunastusosuus"],
+  nextPlotShareRedemptionDate: ["seuraava lunastusajankohta", "tonttiosuuden lunastusajankohta"],
+  articlesRedemptionClause: ["lunastuslauseke", "yhtiöjärjestyksen lunastuslauseke", "lunastusoikeus"],
+  usageRestrictions: ["käyttörajoitukset", "käyttö- ja luovutusrajoitukset", "rajoitukset"],
+  maintenancePlanText: ["kunnossapitotarveselvitys", "pts", "kunnossapitotarve seuraavalle viidelle vuodelle"],
+  availability: ["vapautuminen", "vapautuu", "hallinnan luovutus"],
+  occupancyStatus: ["vuokrattu", "vuokraustilanne", "hallintamuoto"],
 };
 
 export const excludedCompanyLoanLabels = ["taloyhtiön lainat", "taloyhtiön koko lainamäärä", "yhtiön lainat yhteensä", "remontin kustannusarvio", "lainan enimmäismäärä", "pankkilaina", "henkilökohtainen laina"] as const;

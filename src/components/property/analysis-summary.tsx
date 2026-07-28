@@ -11,6 +11,10 @@ export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult })
     ["Nettovuokratuotto", analysis.netRentalYield === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.netRentalYield, 1)} %`, "Huomioi tyhjäkäynnin ja jatkuvat kuukausikulut."],
     ["Oma pääoma", money(analysis.equity, "€"), "Analyysissa käytetty sijoittajan oma pääoma."],
     ["Lainan lyheneminen", money(analysis.monthlyBankLoanPrincipal), "Pankkilainan ensimmäisen kuukauden lyhennys."],
+    ["Kassavirta vuodessa", money(analysis.annualCashFlowAfterBankLoan, "€/v"), "Kuukausittainen kassavirta kerrottuna kahdellatoista."],
+    ["Oman pääoman kassatuotto", analysis.cashOnCashReturn === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.cashOnCashReturn, 1)} %`, "Vuosikassavirta suhteessa sijoitettuun omaan pääomaan."],
+    ["Vakuusvaje", money(analysis.collateralShortfall, "€"), "Pankkilainan ja kohteen vakuusarvon positiivinen erotus."],
+    ["Oikaistu hankintahinta", money(analysis.adjustedAcquisitionPrice, "€"), "Velaton hinta, remonttivara, varainsiirtovero ja kaupantekokulut."],
   ];
   return <Card><CardContent><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{metrics.map(([label, value, description]) => <div key={label} className="rounded-lg bg-muted/35 p-4"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold">{value}</dd><p className="mt-2 text-xs leading-relaxed text-muted-foreground">{description}</p></div>)}</dl></CardContent></Card>;
 }

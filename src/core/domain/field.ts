@@ -22,6 +22,10 @@ export type PropertyField<T> = {
   sourceValue?: T | null;
   conflicts?: FieldConflict<T>[];
   confidence?: number;
+  confidenceLevel?: "high" | "medium" | "low" | "unknown";
+  extractionMethod?: "label" | "structured_data" | "title" | "free_text" | "calculation" | "user";
+  rawText?: string;
+  userEdited?: boolean;
   updatedAt?: string;
   notes?: string;
 };

@@ -71,6 +71,14 @@ try {
       const normalizedSalePrice = (await salePrice.inputValue()).replace(/[\s\u00a0]/g, "");
       if (normalizedSalePrice !== "143989") throw new Error(`Myyntihinta ei päivittynyt velattomasta hinnasta: ${normalizedSalePrice}`);
       if (await page.getByText("Hintatiedot eivät täsmää", { exact: true }).count()) throw new Error("Normaali hintojen haarukointi näytti ristiriitavirheen");
+      const assumptionRent = page.locator("#market-rent");
+      const scoreBeforeRentChange = await page.locator('[aria-label^="Sijoitusmahdollisuus"]').getAttribute("aria-label");
+      await assumptionRent.fill("1100");
+      if (!await assumptionRent.evaluate((element) => document.activeElement === element) || await assumptionRent.inputValue() !== "1100") throw new Error("Oletusvuokran fokus tai luonnos katosi muutoksen aikana");
+      await page.getByRole("status").getByText("Päivitetään analyysiä…", { exact: true }).waitFor();
+      await page.getByRole("status").waitFor({ state: "detached" });
+      const scoreAfterRentChange = await page.locator('[aria-label^="Sijoitusmahdollisuus"]').getAttribute("aria-label");
+      if (scoreAfterRentChange === scoreBeforeRentChange) throw new Error("Vuokran muutos ei päivittänyt sijoitusanalyysiä");
       await page.getByText("kk / vuosi", { exact: true }).waitFor();
       const coverageCard = page.getByText("Analyysin kattavuus", { exact: true }).locator("xpath=ancestor::*[@data-slot='card']");
       const financialInput = coverageCard.locator('input[type="file"]');

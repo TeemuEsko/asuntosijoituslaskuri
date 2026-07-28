@@ -19,6 +19,8 @@ import { HousingCompanyCard, PropertyDetailsCard } from "./details-cards";
 import { ImportSourceReview } from "./import-source-review";
 import { InvestmentOverallScore } from "./investment-overall-score";
 import { ProfessionalEvaluationCard } from "./professional-evaluation-card";
+import { OfferPriceCard } from "./offer-price-card";
+import { ReportsCard } from "./reports-card";
 import { PurchaseCard } from "./purchase-card";
 import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
@@ -32,11 +34,11 @@ export function PropertyWorkspace({ importedData = {}, title, onRequestEvaluatio
   const [purchase, setPurchase] = useState<Record<PurchaseFieldKey, number>>(() => purchaseFromImport(importedData));
   const [statuses, setStatuses] = useState<Record<PurchaseFieldKey, FieldStatus>>({ debtFreePrice: importedData.debtFreePrice === undefined ? "missing" : "parser", salePrice: importedData.salePrice === undefined ? "missing" : "parser", companyLoanShare: importedData.companyLoanShare === undefined ? "missing" : "parser", financingFeeMonthly: importedData.financingFeeMonthly === undefined ? "missing" : "parser", renovationReserve: "user" });
   const [lastEditedPriceField, setLastEditedPriceField] = useState<PrimaryPriceField>("debtFreePrice");
-  const [assumptions, setAssumptions] = useState<AssumptionValues>(() => ({ monthlyRent: typeof importedData.currentRentMonthly === "number" ? importedData.currentRentMonthly : 650, vacancyMonths: 1, annualInterestRate: 4.5, loanTermYears: 20, equity: 20_000, repaymentType: "annuity", rentalDemand: 3, otherCostsMonthly: 0, maintenanceReserveMonthly: 0, collateralValue: typeof importedData.debtFreePrice === "number" ? importedData.debtFreePrice * .7 : 0 }));
+  const [assumptions, setAssumptions] = useState<AssumptionValues>(() => ({ monthlyRent: typeof importedData.currentRentMonthly === "number" ? importedData.currentRentMonthly : 650, vacancyMonths: 1, annualInterestRate: 4.5, loanTermYears: 20, equity: 20_000, repaymentType: "annuity", rentalDemand: 3, otherCostsMonthly: 0, maintenanceReserveMonthly: 0, collateralValue: typeof importedData.debtFreePrice === "number" ? importedData.debtFreePrice * .7 : 0, transferTaxRate: 1.5, transactionCosts: 0, locationRisk: 3, resaleLiquidity: 3 }));
   const [analysisUpdating, setAnalysisUpdating] = useState(false);
   const repairHistory = assessRepairHistory({ renovations: data.renovations ?? [], constructionYear: typeof data.constructionYear === "number" ? data.constructionYear : undefined, documentKinds: data.documentKinds ?? [], buildingType: typeof data.buildingType === "string" ? data.buildingType : undefined });
   const bankLoanAmount = Math.max(0, purchase.salePrice - assumptions.equity);
-  const scoreSource = { debtFreePrice: purchase.debtFreePrice || undefined, salePrice: purchase.salePrice || undefined, currentRentMonthly: assumptions.monthlyRent || undefined, maintenanceFeeMonthly: typeof data.maintenanceFeeMonthly === "number" ? data.maintenanceFeeMonthly : undefined, financingFeeMonthly: statuses.financingFeeMonthly === "missing" ? undefined : purchase.financingFeeMonthly, companyLoanShare: statuses.companyLoanShare === "missing" ? undefined : purchase.companyLoanShare, vacancyMonths: assumptions.vacancyMonths, otherCostsMonthly: assumptions.otherCostsMonthly, maintenanceReserveMonthly: assumptions.maintenanceReserveMonthly, bankLoanAmount, annualInterestRate: assumptions.annualInterestRate, loanTermYears: assumptions.loanTermYears, repaymentType: assumptions.repaymentType, equity: assumptions.equity, collateralValue: assumptions.collateralValue || undefined, rentalDemand: assumptions.rentalDemand, repairHistory };
+  const scoreSource = { debtFreePrice: purchase.debtFreePrice || undefined, salePrice: purchase.salePrice || undefined, currentRentMonthly: assumptions.monthlyRent || undefined, maintenanceFeeMonthly: typeof data.maintenanceFeeMonthly === "number" ? data.maintenanceFeeMonthly : undefined, financingFeeMonthly: statuses.financingFeeMonthly === "missing" ? undefined : purchase.financingFeeMonthly, companyLoanShare: statuses.companyLoanShare === "missing" ? undefined : purchase.companyLoanShare, vacancyMonths: assumptions.vacancyMonths, otherCostsMonthly: assumptions.otherCostsMonthly, maintenanceReserveMonthly: assumptions.maintenanceReserveMonthly, renovationReserve: purchase.renovationReserve, transferTaxRate: assumptions.transferTaxRate, transactionCosts: assumptions.transactionCosts, bankLoanAmount, annualInterestRate: assumptions.annualInterestRate, loanTermYears: assumptions.loanTermYears, repaymentType: assumptions.repaymentType, equity: assumptions.equity, collateralValue: assumptions.collateralValue || undefined, rentalDemand: assumptions.rentalDemand, locationRisk: assumptions.locationRisk, resaleLiquidity: assumptions.resaleLiquidity, repairHistory };
   const overallScore = adaptInvestmentScore(scoreSource);
   const presentationData = { ...data, listingTitle: data.listingTitle ?? (title && title !== "Uusi kohde" ? title : undefined) };
   const pageTitle = analysisTitle(presentationData);
@@ -55,10 +57,12 @@ export function PropertyWorkspace({ importedData = {}, title, onRequestEvaluatio
     <KeyMetrics analysis={overallScore} />
     <AnalysisHighlights rating={overallScore} />
     <section id="talous" className="scroll-mt-24 space-y-8"><PurchaseCard values={purchase} statuses={statuses} onChange={updatePurchase} /><AssumptionsCard values={assumptions} onChange={updateAssumption} onUpdating={setAnalysisUpdating} /></section>
+    <OfferPriceCard input={scoreSource} />
     <DecisionSummaryCard repairHistory={repairHistory} />
     <section id="kohde" className="grid min-w-0 scroll-mt-24 gap-6 lg:grid-cols-2"><PropertyDetailsCard importedData={data} /><HousingCompanyCard importedData={data} /></section>
     <AnalysisCoverageCard documentKinds={data.documentKinds} onDocumentAdded={addDocument} />
     {data.importReview ? <section id="dokumentit" className="scroll-mt-24"><h2 className="mb-3 text-lg font-semibold">Analyysin lähtötiedot</h2><ImportSourceReview result={data.importReview} onChange={updateImportedField} /></section> : null}
+    <ReportsCard input={scoreSource} analysis={overallScore} />
     <ProfessionalEvaluationCard onRequestEvaluation={onRequestEvaluation} />
   </div></main></div></div></TooltipProvider>;
 }

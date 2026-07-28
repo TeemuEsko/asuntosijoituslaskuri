@@ -6,38 +6,11 @@ export type RedemptionClauseStatus = "no" | "yes" | "unchecked";
 
 export type PropertyModel = {
   id: string;
-  identity: {
-    title: PropertyField<string>;
-    address: PropertyField<string>;
-    listingUrl: PropertyField<string>;
-  };
-  purchase: {
-    debtFreePrice: PropertyField<number>;
-    salePrice: PropertyField<number>;
-    companyLoanShare: PropertyField<number>;
-    renovationReserve: PropertyField<number>;
-  };
-  housingCompany: {
-    maintenanceFeeMonthly: PropertyField<number>;
-    financingFeeMonthly: PropertyField<number>;
-    apartmentCount: PropertyField<number>;
-    landOwnership: PropertyField<LandOwnership>;
-    plotShareRedemptionStatus: PropertyField<PlotShareRedemptionStatus>;
-    plotShareRedemptionPrice: PropertyField<number>;
-    nextPlotShareRedemptionDate: PropertyField<string>;
-    articlesRedemptionClause: PropertyField<RedemptionClauseStatus>;
-    articlesRedemptionRightDescription: PropertyField<string>;
-  };
-  rent: {
-    currentRentMonthly: PropertyField<number>;
-    marketRentMonthly: PropertyField<number>;
-    occupancyRate: PropertyField<number>;
-    rentalDemand: PropertyField<1 | 2 | 3 | 4 | 5>;
-  };
-  financing: {
-    equityInvested: PropertyField<number>;
-    annualInterestRate: PropertyField<number>;
-    loanTermYears: PropertyField<number>;
-    repaymentType: PropertyField<"annuity" | "equal_principal" | "bullet">;
-  };
+  identity: { title: PropertyField<string>; address: PropertyField<string>; listingUrl: PropertyField<string>; city: PropertyField<string>; postalCode: PropertyField<string> };
+  apartment: { areaSqm: PropertyField<number>; roomDescription: PropertyField<string>; roomCount: PropertyField<number>; apartmentType: PropertyField<string>; buildingType: PropertyField<string>; constructionYear: PropertyField<number>; floor: PropertyField<string>; floorCount: PropertyField<number>; condition: PropertyField<string>; elevator: PropertyField<boolean>; balcony: PropertyField<boolean>; sauna: PropertyField<boolean>; parking: PropertyField<boolean> };
+  purchase: { debtFreePrice: PropertyField<number>; salePrice: PropertyField<number>; companyLoanShare: PropertyField<number>; renovationReserve: PropertyField<number>; transferTax: PropertyField<number>; transactionCosts: PropertyField<number> };
+  housingCompany: { maintenanceFeeMonthly: PropertyField<number>; financingFeeMonthly: PropertyField<number>; apartmentCount: PropertyField<number>; ownershipStructure: PropertyField<string>; formerRentalBuilding: PropertyField<boolean>; landOwnership: PropertyField<LandOwnership>; plotShareRedemptionStatus: PropertyField<PlotShareRedemptionStatus>; plotShareRedemptionPrice: PropertyField<number>; nextPlotShareRedemptionDate: PropertyField<string>; articlesRedemptionClause: PropertyField<RedemptionClauseStatus>; articlesRedemptionRightDescription: PropertyField<string>; landRentMonthly: PropertyField<number>; heatingType: PropertyField<string>; energyClass: PropertyField<string>; usageRestrictions: PropertyField<string>; totalHousingChargeMonthly: PropertyField<number>; waterFeeMonthly: PropertyField<number>; parkingFeeMonthly: PropertyField<number>; saunaFeeMonthly: PropertyField<number>; otherMonthlyFees: PropertyField<number>; completedRenovations: PropertyField<string>; futureRenovations: PropertyField<string>; maintenancePlan: PropertyField<string> };
+  rent: { currentRentMonthly: PropertyField<number>; marketRentMonthly: PropertyField<number>; occupancyRate: PropertyField<number>; rentalDemand: PropertyField<1 | 2 | 3 | 4 | 5>; rentIncreasePotential: PropertyField<number>; tenantPaidCostsMonthly: PropertyField<number>; otherRentalCostsMonthly: PropertyField<number> };
+  financing: { equityInvested: PropertyField<number>; bankLoanAmount: PropertyField<number>; referenceRate: PropertyField<number>; marginRate: PropertyField<number>; annualInterestRate: PropertyField<number>; loanTermYears: PropertyField<number>; repaymentType: PropertyField<"annuity" | "equal_principal" | "interest_only" | "bullet">; interestOnlyMonths: PropertyField<number>; collateralValue: PropertyField<number>; extraCollateral: PropertyField<number> };
+  exit: { estimatedSalePrice: PropertyField<number>; sellingCosts: PropertyField<number>; holdingPeriodYears: PropertyField<number>; annualAppreciationRate: PropertyField<number>; locationRisk: PropertyField<1 | 2 | 3 | 4 | 5>; resaleLiquidity: PropertyField<1 | 2 | 3 | 4 | 5> };
 };
