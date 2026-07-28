@@ -4,7 +4,10 @@ export type RatingLevel = {
   grade: InvestmentGrade;
   label: string;
   summary: string;
+  color: string;
 };
+
+const ratingColors: Record<InvestmentGrade, string> = { "A+": "#166534", A: "#27845f", B: "#73a66a", C: "#a48f24", D: "#c9672f", E: "#b33f4b" };
 
 export type RatingSubScore = {
   score: number;
@@ -48,19 +51,9 @@ export function getInvestmentRating(score: number | null | undefined): RatingLev
   const value = clampInvestmentScore(score);
   const grade: InvestmentGrade = value >= 90 ? "A+" : value >= 80 ? "A" : value >= 70 ? "B" : value >= 60 ? "C" : value >= 45 ? "D" : "E";
   const labels: Record<InvestmentGrade, string> = { "A+": "Erinomainen sijoitusmahdollisuus", A: "Erittäin hyvä sijoitusmahdollisuus", B: "Hyvä sijoitusmahdollisuus", C: "Kohtalainen sijoitusmahdollisuus", D: "Heikko sijoitusmahdollisuus", E: "Ei suositeltava sijoitus" };
-  return { grade, label: labels[grade], summary: summaries[grade] };
+  return { grade, label: labels[grade], summary: summaries[grade], color: ratingColors[grade] };
 }
 
-export type GaugePoint = { x: number; y: number };
-
-export function gaugePoint(score: number | null | undefined, radius = 82, centerX = 110, centerY = 103): GaugePoint {
-  const angle = (150 + clampInvestmentScore(score) * 2.4) * Math.PI / 180;
-  return { x: centerX + radius * Math.cos(angle), y: centerY + radius * Math.sin(angle) };
-}
-
-export function gaugeArcPath(startScore: number, endScore: number, radius = 82, centerX = 110, centerY = 103): string {
-  const start = gaugePoint(startScore, radius, centerX, centerY);
-  const end = gaugePoint(endScore, radius, centerX, centerY);
-  const largeArc = (endScore - startScore) * 2.4 > 180 ? 1 : 0;
-  return `M ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x.toFixed(3)} ${end.y.toFixed(3)}`;
+export function scoreMarkerPosition(score: number | null | undefined): string {
+  return `clamp(6px, ${clampInvestmentScore(score)}%, calc(100% - 6px))`;
 }

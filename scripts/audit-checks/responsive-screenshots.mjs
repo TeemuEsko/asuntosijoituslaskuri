@@ -60,10 +60,11 @@ try {
     const page = await browser.newPage({ viewport: { width, height } });
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Aloita tyhjästä" }).click();
-    await page.getByRole("heading", { name: "Analysoitu sijoituskohde", exact: true }).first().waitFor();
-    await page.getByText("Täydennä analyysin lähtötiedot", { exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Täydennä sijoituskohteen analyysi", exact: true }).first().waitFor();
+    await page.getByText("Täydennä vielä analyysin lähtötiedot", { exact: true }).waitFor();
     if (await page.getByText("Sijoitusmahdollisuus", { exact: true }).count()) throw new Error("Score näkyi ennen kriittisten tietojen täydentämistä");
     await page.locator("#purchase-debtFreePrice").fill("158989"); await page.locator("#purchase-debtFreePrice").blur();
+    await page.locator("#purchase-companyLoanShare").fill("0"); await page.locator("#purchase-companyLoanShare").blur();
     await page.locator("#maintenance-fee").fill("280");
     await page.locator("#market-rent").fill("750");
     await page.getByText("Sijoitusmahdollisuus", { exact: true }).waitFor();
@@ -83,8 +84,9 @@ try {
       const scoreBeforeRentChange = await page.locator('[aria-label^="Sijoitusmahdollisuus"]').getAttribute("aria-label");
       await assumptionRent.fill("1100");
       if (!await assumptionRent.evaluate((element) => document.activeElement === element) || await assumptionRent.inputValue() !== "1100") throw new Error("Oletusvuokran fokus tai luonnos katosi muutoksen aikana");
-      await page.getByRole("status").getByText("Päivitetään analyysiä…", { exact: true }).waitFor();
-      await page.getByRole("status").waitFor({ state: "detached" });
+      const updatingStatus = page.getByText("Päivitetään analyysiä…", { exact: true });
+      await updatingStatus.waitFor();
+      await updatingStatus.waitFor({ state: "detached" });
       const scoreAfterRentChange = await page.locator('[aria-label^="Sijoitusmahdollisuus"]').getAttribute("aria-label");
       if (scoreAfterRentChange === scoreBeforeRentChange) throw new Error("Vuokran muutos ei päivittänyt sijoitusanalyysiä");
       await page.getByText("kk / vuosi", { exact: true }).waitFor();
@@ -110,6 +112,15 @@ try {
     await page.screenshot({ path: path.join(screenshots, `workspace-${width}x${height}.png`), fullPage: true });
     await page.close();
   }
+  const logoPage = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  await logoPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
+  await logoPage.getByRole("button", { name: "Aloita tyhjästä" }).click();
+  const homeLink = logoPage.getByRole("link", { name: "Siirry etusivulle" }).first();
+  if (await homeLink.getAttribute("href") !== "/") throw new Error("Työtilan logo ei linkitä etusivulle");
+  await homeLink.focus();
+  await homeLink.press("Enter");
+  await logoPage.getByRole("heading", { name: "Aloita uusi kohde", exact: true }).waitFor();
+  await logoPage.close();
 } finally {
   await browser?.close().catch(() => undefined);
   app.kill();

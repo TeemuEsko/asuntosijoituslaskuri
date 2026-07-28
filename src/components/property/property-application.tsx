@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ListingImport } from "./listing-import";
 import { NewPropertyStart } from "./new-property-start";
 import { PropertyWorkspace, type ImportedPropertyData } from "./property-workspace";
@@ -12,6 +12,7 @@ export function PropertyApplication() {
   const [view, setView] = useState<View>("start");
   const [importedData, setImportedData] = useState<ImportedPropertyData>({});
   const [listingUrl, setListingUrl] = useState("");
+  useEffect(() => { const returnHome = () => setView("start"); window.addEventListener("property-home", returnHome); return () => window.removeEventListener("property-home", returnHome); }, []);
 
   function openWorkspace(values: ImportedPropertyData = {}) {
     setImportedData(values);

@@ -9,10 +9,12 @@ export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult })
   const metrics = [
     ["Kassavirta pankkilainan jälkeen", money(analysis.cashFlowAfterBankLoan), analysis.cashFlowAfterBankLoan === undefined ? "Lisää pankkilainan ja kulujen tiedot." : "Vuokra vähennettynä kuluilla ja pankkilainan kuukausierällä."],
     ["Nettovuokratuotto", analysis.netRentalYield === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.netRentalYield, 1)} %`, "Huomioi tyhjäkäynnin ja jatkuvat kuukausikulut."],
+    ["Bruttovuokratuotto", analysis.grossRentalYield === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.grossRentalYield, 1)} %`, "Efektiivinen vuosivuokra suhteessa velattomaan hintaan."],
     ["Oma pääoma", money(analysis.equity, "€"), "Analyysissa käytetty sijoittajan oma pääoma."],
     ["Lainan lyheneminen", money(analysis.monthlyBankLoanPrincipal), "Pankkilainan ensimmäisen kuukauden lyhennys."],
     ["Kassavirta vuodessa", money(analysis.annualCashFlowAfterBankLoan, "€/v"), "Kuukausittainen kassavirta kerrottuna kahdellatoista."],
     ["Oman pääoman kassatuotto", analysis.cashOnCashReturn === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.cashOnCashReturn, 1)} %`, "Vuosikassavirta suhteessa sijoitettuun omaan pääomaan."],
+    ["Oman pääoman tuotto", analysis.returnOnEquity === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.returnOnEquity, 1)} %`, "Kassavirta ja lainan lyheneminen suhteessa omaan pääomaan."],
     ["Vakuusvaje", money(analysis.collateralShortfall, "€"), "Pankkilainan ja kohteen vakuusarvon positiivinen erotus."],
     ["Oikaistu hankintahinta", money(analysis.adjustedAcquisitionPrice, "€"), "Velaton hinta, remonttivara, varainsiirtovero ja kaupantekokulut."],
   ];
