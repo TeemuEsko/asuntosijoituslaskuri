@@ -21,6 +21,7 @@ export type InvestmentSubScores = {
 
 export type InvestmentOverallScoreData = {
   score: number;
+  preliminary?: boolean;
   grade?: InvestmentGrade;
   label?: string;
   summary?: string;
