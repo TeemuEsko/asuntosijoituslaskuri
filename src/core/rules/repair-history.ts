@@ -2,7 +2,7 @@ import type { ConfidenceLevel, RenovationComponent, RenovationFinding } from "..
 
 export type RepairScale = "maintenance" | "partial" | "major" | "study";
 export type RepairHistoryStatus = "major_recognized" | "partial_recognized" | "major_status_check" | "history_incomplete" | "insufficient_information";
-export type RepairDocumentKind = "listing" | "manager_certificate" | "maintenance_plan" | "financial_statements" | "annual_report" | "meeting_minutes";
+export type RepairDocumentKind = "listing" | "manager_certificate" | "maintenance_plan" | "financial_statements" | "annual_report" | "meeting_minutes" | "shareholder_register";
 export type MajorRepairSystem = "plumbing" | "facade_balconies" | "roof" | "drainage_foundations" | "heating" | "ventilation" | "elevators" | "yard_structures" | "energy";
 
 export type ClassifiedRepair = RenovationFinding & { scale: RepairScale; system?: MajorRepairSystem; classificationReason: string };

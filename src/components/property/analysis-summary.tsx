@@ -1,19 +1,22 @@
 import { AlertTriangle, CheckCircle2, FileQuestion } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatFinnishNumber } from "@/core/parser/normalization";
+import { effectiveAnnualRent, occupancyFromVacancyMonths } from "@/core/calculations/occupancy";
 import type { InvestmentOverallScoreData } from "@/core/analysis/investment-overall-score";
 import type { ImportedPropertyData } from "./property-workspace";
 
-export function KeyMetrics({ data }: { data: ImportedPropertyData }) {
+export function KeyMetrics({ data, vacancyMonths = 1 }: { data: ImportedPropertyData; vacancyMonths?: number }) {
   const price = typeof data.debtFreePrice === "number" && data.debtFreePrice > 0 ? data.debtFreePrice : undefined;
   const rent = typeof data.currentRentMonthly === "number" ? data.currentRentMonthly : undefined;
   const maintenance = typeof data.maintenanceFeeMonthly === "number" ? data.maintenanceFeeMonthly : undefined;
   const financing = typeof data.financingFeeMonthly === "number" ? data.financingFeeMonthly : 0;
-  const yieldValue = price && rent ? rent * 12 / price * 100 : undefined;
-  const cashFlow = rent !== undefined && maintenance !== undefined ? rent - maintenance - financing : undefined;
+  const occupancy = occupancyFromVacancyMonths(vacancyMonths);
+  const annualRent = rent === undefined ? undefined : effectiveAnnualRent(rent, vacancyMonths);
+  const yieldValue = price && annualRent !== undefined ? annualRent / price * 100 : undefined;
+  const cashFlow = annualRent !== undefined && maintenance !== undefined ? (annualRent - (maintenance + financing) * 12) / 12 : undefined;
   const equity = price !== undefined && typeof data.companyLoanShare === "number" ? price - data.companyLoanShare : undefined;
-  const metrics = [["Kassavirta ennen pankkilainaa", cashFlow === undefined ? "Tarkentuu" : `${formatFinnishNumber(cashFlow)} €/kk`], ["Bruttovuokratuotto", yieldValue === undefined ? "Tarkentuu" : `${formatFinnishNumber(yieldValue, 1)} %`], ["Velaton pääomatarve", equity === undefined ? "Tarkentuu" : `${formatFinnishNumber(equity)} €`]];
-  return <Card><CardContent><dl className="grid gap-4 sm:grid-cols-3">{metrics.map(([label, value]) => <div key={label} className="rounded-lg bg-muted/35 p-4"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold">{value}</dd></div>)}</dl></CardContent></Card>;
+  const metrics = [["Kassavirta ennen pankkilainaa", cashFlow === undefined ? "Tarkentuu" : `${formatFinnishNumber(cashFlow)} €/kk`], ["Toteutuva vuokratuotto", yieldValue === undefined ? "Tarkentuu" : `${formatFinnishNumber(yieldValue, 1)} %`], ["Velaton pääomatarve", equity === undefined ? "Tarkentuu" : `${formatFinnishNumber(equity)} €`], ["Vuokrattuna", `${occupancy.occupiedMonths} kk / vuosi`]];
+  return <Card><CardContent><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{metrics.map(([label, value]) => <div key={label} className="rounded-lg bg-muted/35 p-4"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold">{value}</dd></div>)}</dl></CardContent></Card>;
 }
 
 export function AnalysisHighlights({ rating }: { rating: InvestmentOverallScoreData }) {

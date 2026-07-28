@@ -27,6 +27,7 @@ export function PropertyApplication() {
       if (/tilinpäätös|tilinpaatos/.test(name)) kinds.add("financial_statements");
       if (/toimintakertomus/.test(name)) kinds.add("annual_report");
       if (/yhtiökokous|yhtiokokous|pöytäkirja|poytakirja/.test(name)) kinds.add("meeting_minutes");
+      if (/osakeluettelo/.test(name)) kinds.add("shareholder_register");
     }
     openWorkspace({ documentKinds: [...kinds] });
   }

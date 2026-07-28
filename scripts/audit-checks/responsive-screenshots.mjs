@@ -62,6 +62,23 @@ try {
     await page.getByRole("button", { name: "Aloita tyhjästä" }).click();
     await page.getByRole("heading", { name: "Analysoitu sijoituskohde", exact: true }).first().waitFor();
     await page.getByText("Sijoitusmahdollisuus", { exact: true }).waitFor();
+    if (width === 1280) {
+      const debtShare = page.locator("#purchase-companyLoanShare");
+      const debtFreePrice = page.locator("#purchase-debtFreePrice");
+      const salePrice = page.locator("#purchase-salePrice");
+      await debtShare.fill("15000"); await debtShare.blur();
+      await debtFreePrice.fill("158989"); await debtFreePrice.blur();
+      const normalizedSalePrice = (await salePrice.inputValue()).replace(/[\s\u00a0]/g, "");
+      if (normalizedSalePrice !== "143989") throw new Error(`Myyntihinta ei päivittynyt velattomasta hinnasta: ${normalizedSalePrice}`);
+      if (await page.getByText("Hintatiedot eivät täsmää", { exact: true }).count()) throw new Error("Normaali hintojen haarukointi näytti ristiriitavirheen");
+      await page.getByText("kk / vuosi", { exact: true }).waitFor();
+      const coverageCard = page.getByText("Analyysin kattavuus", { exact: true }).locator("xpath=ancestor::*[@data-slot='card']");
+      const financialInput = coverageCard.locator('input[type="file"]');
+      await coverageCard.getByRole("button", { name: "Lisää asiakirja" }).first().click();
+      await financialInput.setInputFiles({ name: "tilinpaatos.pdf", mimeType: "application/pdf", buffer: Buffer.from("test") });
+      await coverageCard.getByText("Analysoitu", { exact: true }).waitFor();
+      await coverageCard.getByText("70 %", { exact: true }).waitFor();
+    }
     const layout = await page.evaluate(() => {
       const header = document.querySelector("header");
       const headerChildren = header ? Array.from(header.children).map((element) => element.getBoundingClientRect()) : [];

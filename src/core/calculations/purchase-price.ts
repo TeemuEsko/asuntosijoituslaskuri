@@ -56,6 +56,16 @@ export function expectedDebtFreePrice(
   return roundCurrency(salePrice + companyLoanShare);
 }
 
+export type PrimaryPriceField = "debtFreePrice" | "salePrice";
+export type SynchronizedPrices = { debtFreePrice: number; salePrice: number; companyLoanShare: number };
+
+export function synchronizePrices(current: SynchronizedPrices, changedField: keyof SynchronizedPrices, value: number, primaryField: PrimaryPriceField): SynchronizedPrices {
+  const nextValue = roundCurrency(Math.max(0, Number.isFinite(value) ? value : 0));
+  if (changedField === "debtFreePrice") return { ...current, debtFreePrice: nextValue, salePrice: roundCurrency(Math.max(0, nextValue - current.companyLoanShare)) };
+  if (changedField === "salePrice") return { ...current, salePrice: nextValue, debtFreePrice: roundCurrency(nextValue + current.companyLoanShare) };
+  return primaryField === "debtFreePrice" ? { ...current, companyLoanShare: nextValue, salePrice: roundCurrency(Math.max(0, current.debtFreePrice - nextValue)) } : { ...current, companyLoanShare: nextValue, debtFreePrice: roundCurrency(current.salePrice + nextValue) };
+}
+
 export function pricesAreConsistent(
   debtFreePrice: number,
   salePrice: number,

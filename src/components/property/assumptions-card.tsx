@@ -9,14 +9,14 @@ import { RentalDemandSelector } from "./rental-demand-selector";
 import { SourceBadge } from "./status-badge";
 import type { ImportedPropertyData } from "./property-workspace";
 
-export function AssumptionsCard({ importedData = {} }: { importedData?: ImportedPropertyData }) {
+export function AssumptionsCard({ importedData = {}, vacancyMonths = 1, onVacancyMonthsChange }: { importedData?: ImportedPropertyData; vacancyMonths?: number; onVacancyMonthsChange?: (value: number) => void }) {
   const [demand, setDemand] = useState(3);
   const [repaymentType, setRepaymentType] = useState("annuity");
   const repaymentLabels: Record<string, string> = { annuity: "Annuiteetti", equal: "Tasalyhennys", bullet: "Kertalyhenteinen laina" };
   return (
     <Card><CardHeader className="border-b"><CardTitle>Sijoittajan oletukset</CardTitle><CardDescription>Muokkaa strategiaasi ja rahoitustasi vastaaviksi</CardDescription></CardHeader><CardContent className="space-y-8"><div className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 min-[1600px]:grid-cols-3">
       <PropertyField id="market-rent" label="Markkinavuokra" status={importedData.currentRentMonthly === undefined ? "user" : "parser"} suffix="€/kk" type="number" defaultValue={typeof importedData.currentRentMonthly === "number" ? importedData.currentRentMonthly : 650} help="Käytä realistista pitkän vuokrauksen markkinavuokraa." />
-      <PropertyField id="occupancy" label="Käyttöaste" status="user" suffix="%" type="number" defaultValue={97} help="Osuus vuodesta, jolloin asunto on vuokrattuna." />
+      <PropertyField id="vacancy-months" label="Arvioitu tyhjäkäynti" status="user" suffix="kk / vuosi" type="number" min={0} max={12} step={1} value={vacancyMonths} onChange={(event) => onVacancyMonthsChange?.(Math.min(12, Math.max(0, Math.round(event.currentTarget.valueAsNumber || 0))))} help={vacancyMonths === 0 ? "Vuokrattuna koko vuoden" : `Vuokrattuna arviolta ${12 - vacancyMonths} kk vuodessa.`} />
       <PropertyField id="interest" label="Pankkilainan kokonaiskorko" status="user" suffix="%" type="number" step="0.1" defaultValue={4.5} help="Viitekorko ja pankin marginaali yhteensä." />
       <PropertyField id="loan-term" label="Laina-aika" status="user" suffix="vuotta" type="number" defaultValue={20} help="Pankkilainan suunniteltu takaisinmaksuaika." />
       <PropertyField id="equity" label="Sijoitettu oma pääoma" status="user" suffix="€" type="number" defaultValue={20000} help="Kauppaan sidottava oma raha." />
