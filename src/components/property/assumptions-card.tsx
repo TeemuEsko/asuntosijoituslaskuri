@@ -9,7 +9,7 @@ import { PropertyField } from "./property-field";
 import { RentalDemandSelector } from "./rental-demand-selector";
 import { SourceBadge } from "./status-badge";
 
-export type AssumptionValues = { monthlyRent: number; vacancyMonths: number; annualInterestRate: number; loanTermYears: number; equity: number; repaymentType: RepaymentType; rentalDemand: number; otherCostsMonthly: number; maintenanceReserveMonthly: number; collateralValue: number; transferTaxRate: number; transactionCosts: number; locationRisk: number; resaleLiquidity: number };
+export type AssumptionValues = { monthlyRent: number; maintenanceFeeMonthly: number; vacancyMonths: number; annualInterestRate: number; loanTermYears: number; equity: number; repaymentType: RepaymentType; rentalDemand: number; otherCostsMonthly: number; maintenanceReserveMonthly: number; collateralValue: number; transferTaxRate: number; transactionCosts: number; locationRisk: number; resaleLiquidity: number };
 
 function DebouncedRentField({ value, onChange, onUpdating }: { value: number; onChange: (value: number) => void; onUpdating: (value: boolean) => void }) {
   const [draft, setDraft] = useState(String(value));
@@ -21,6 +21,7 @@ export function AssumptionsCard({ values, onChange, onUpdating }: { values: Assu
   const repaymentLabels: Record<RepaymentType, string> = { annuity: "Annuiteetti", equal_principal: "Tasalyhennys", interest_only: "Vain korko", bullet: "Kertalyhenteinen laina" };
   return <Card><CardHeader className="border-b"><CardTitle>Sijoittajan oletukset</CardTitle><CardDescription>Kaikki muutokset päivittävät analyysin automaattisesti</CardDescription></CardHeader><CardContent className="space-y-8"><div className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 min-[1600px]:grid-cols-3">
     <DebouncedRentField value={values.monthlyRent} onChange={(value) => onChange("monthlyRent", value)} onUpdating={onUpdating} />
+    <PropertyField id="maintenance-fee" label="Hoitovastike" status="user" suffix="€/kk" type="number" min={0} value={values.maintenanceFeeMonthly} onChange={(event) => onChange("maintenanceFeeMonthly", Math.max(0, event.currentTarget.valueAsNumber || 0))} />
     <PropertyField id="vacancy-months" label="Arvioitu tyhjäkäynti" status="user" suffix="kk / vuosi" type="number" min={0} max={12} step={1} value={values.vacancyMonths} onChange={(event) => onChange("vacancyMonths", Math.min(12, Math.max(0, Math.round(event.currentTarget.valueAsNumber || 0))))} help={`Vuokrattuna arviolta ${12 - values.vacancyMonths} kk vuodessa.`} />
     <PropertyField id="interest" label="Pankkilainan kokonaiskorko" status="user" suffix="%" type="number" min={0} step="0.1" value={values.annualInterestRate} onChange={(event) => onChange("annualInterestRate", Math.max(0, event.currentTarget.valueAsNumber || 0))} />
     <PropertyField id="loan-term" label="Laina-aika" status="user" suffix="vuotta" type="number" min={1} value={values.loanTermYears} onChange={(event) => onChange("loanTermYears", Math.max(1, event.currentTarget.valueAsNumber || 1))} />

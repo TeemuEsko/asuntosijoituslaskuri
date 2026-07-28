@@ -61,13 +61,21 @@ try {
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Aloita tyhjästä" }).click();
     await page.getByRole("heading", { name: "Analysoitu sijoituskohde", exact: true }).first().waitFor();
+    await page.getByText("Täydennä analyysin lähtötiedot", { exact: true }).waitFor();
+    if (await page.getByText("Sijoitusmahdollisuus", { exact: true }).count()) throw new Error("Score näkyi ennen kriittisten tietojen täydentämistä");
+    await page.locator("#purchase-debtFreePrice").fill("158989"); await page.locator("#purchase-debtFreePrice").blur();
+    await page.locator("#maintenance-fee").fill("280");
+    await page.locator("#market-rent").fill("750");
     await page.getByText("Sijoitusmahdollisuus", { exact: true }).waitFor();
     if (width === 1280) {
       const debtShare = page.locator("#purchase-companyLoanShare");
       const debtFreePrice = page.locator("#purchase-debtFreePrice");
       const salePrice = page.locator("#purchase-salePrice");
       await debtShare.fill("15000"); await debtShare.blur();
+      if (await page.locator('[aria-label^="Sijoitusmahdollisuus"]').count()) throw new Error("Score jäi näkyviin, vaikka yhtiölainan rahoitusvastike puuttui");
+      await page.locator("#purchase-financingFeeMonthly").fill("120"); await page.locator("#purchase-financingFeeMonthly").blur();
       await debtFreePrice.fill("158989"); await debtFreePrice.blur();
+      await page.locator('[aria-label^="Sijoitusmahdollisuus"]').waitFor();
       const normalizedSalePrice = (await salePrice.inputValue()).replace(/[\s\u00a0]/g, "");
       if (normalizedSalePrice !== "143989") throw new Error(`Myyntihinta ei päivittynyt velattomasta hinnasta: ${normalizedSalePrice}`);
       if (await page.getByText("Hintatiedot eivät täsmää", { exact: true }).count()) throw new Error("Normaali hintojen haarukointi näytti ristiriitavirheen");
