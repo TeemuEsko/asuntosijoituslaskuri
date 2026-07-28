@@ -484,6 +484,7 @@ export function ListingImport({
               </div>
             </CardContent>
           </Card>
+          {result.warnings.length ? <div role="alert" className="rounded-lg border border-warning/30 bg-warning-soft p-4 text-sm text-warning"><div className="flex items-center gap-2 font-medium"><AlertCircle className="size-4" />Tekninen tarkistus tarvitaan</div>{result.warnings.map((warning) => <p key={warning} className="mt-2">{warning}</p>)}</div> : null}
           <div className="flex flex-wrap gap-2">
             <Button onClick={acceptAllCertain}>
               <ShieldCheck /> Hyväksy kaikki varmat tiedot

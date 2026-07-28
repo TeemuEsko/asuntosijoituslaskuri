@@ -16,6 +16,9 @@ export type NormalizedFieldKey =
   | "district"
   | "apartmentIdentifier"
   | "listingTitle"
+  | "listingId"
+  | "buildingType"
+  | "currentRentMonthly"
   | "city"
   | "housingCompanyName"
   | "apartmentCount"
@@ -43,6 +46,9 @@ export const fieldDisplayNames: Record<NormalizedFieldKey, string> = {
   district: "Kaupunginosa",
   apartmentIdentifier: "Huoneiston tunnus",
   listingTitle: "Ilmoituksen otsikko",
+  listingId: "Kohdenumero",
+  buildingType: "Talotyyppi",
+  currentRentMonthly: "Nykyinen vuokra",
   city: "Kunta tai kaupunki",
   housingCompanyName: "Taloyhtiön nimi",
   apartmentCount: "Huoneistojen lukumäärä",
@@ -71,6 +77,9 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   district: ["kaupunginosa", "alue"],
   apartmentIdentifier: ["huoneiston tunnus", "asunnon tunnus"],
   listingTitle: ["ilmoituksen otsikko", "kohteen otsikko"],
+  listingId: ["kohdenumero", "kohde nro", "kohde-id"],
+  buildingType: ["talotyyppi", "rakennustyyppi"],
+  currentRentMonthly: ["nykyinen vuokra", "vuokra", "vuokrattu"],
   city: ["kunta", "kaupunki", "sijaintikunta"],
   housingCompanyName: ["taloyhtiö", "asunto-osakeyhtiö", "yhtiön nimi", "asunto oy", "as oy"],
   apartmentCount: ["huoneistoja", "asuntojen lukumäärä", "asuinhuoneistoja", "huoneistojen määrä"],

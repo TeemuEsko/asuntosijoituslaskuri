@@ -64,6 +64,14 @@ export type ListingAcquisitionDiagnostics = {
   missingEssentialFields: string[];
   warnings: string[];
   errors: string[];
+  fetchStatus?: number;
+  htmlLength: number;
+  cleanedTextLength: number;
+  legacyParserFieldsFound: Record<string, unknown>;
+  canonicalFieldsMapped: string[];
+  fieldsRejected: number;
+  rejectionReasons: string[];
+  finalFieldsShownInReview: string[];
   browserFallbackReason?: string;
   staticLoadTimeMs: number;
   browser?: BrowserAcquisitionDiagnostics;

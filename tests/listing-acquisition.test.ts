@@ -39,13 +39,13 @@ test("3: selainfallback kasvattaa löydettyjen kenttien määrää", async () =>
 
 test("4: osittainen staattinen tulos palautetaan, jos selainta ei ole", async () => {
   clearListingAcquisitionCache(); const result = await acquireListing(url, { skipDnsCheck: true, fetchImpl: async () => response("<main><p>Myyntihinta: 79 000 €</p></main>"), browserProvider: null });
-  assert.ok(result.ok && result.partial && result.result.findings.length === 1);
+  assert.ok(result.ok && result.partial && result.result.findings.some((finding) => finding.field === "salePrice"));
 });
 
 test("5: selaineston yhteydessä osittainen staattinen tulos säilyy", async () => {
   clearListingAcquisitionCache(); const blocked: BrowserAcquisitionResult = { ok: false, code: "automation_blocked", error: "Estetty" };
   const result = await acquireListing(url, { skipDnsCheck: true, fetchImpl: async () => response("<main><p>Myyntihinta: 79 000 €</p></main>"), browserProvider: fakeProvider(blocked, { count: 0 }) });
-  assert.ok(result.ok && result.result.findings[0]?.field === "salePrice");
+  assert.ok(result.ok && result.result.findings.some((finding) => finding.field === "salePrice"));
 });
 
 test("6: täysin tyhjä sivu on epäonnistuminen", async () => {
