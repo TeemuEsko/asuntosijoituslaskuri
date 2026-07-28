@@ -40,6 +40,24 @@ try {
   await urlInput.press("Enter");
   await startPage.getByText("Analyysi valmis", { exact: true }).waitFor();
   await startPage.close();
+  const automaticRentPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const rentEstimate = { monthlyRent: 795, exactEstimatedMonthlyRent: 793.4, rentPerSquareMeter: 15.9, source: "statistics_finland", sourceName: "Tilastokeskus, asuntojen vuokrat", sourceArea: "Vaasa", sourceAreaLevel: "municipality", roomCategory: "TWO_ROOMS", referencePeriod: "2026Q2", metricType: "average", housingFinanceType: "non_subsidised", confidence: "medium", sampleSize: 120, rawSourceValue: 15.9, userOverridden: false, fetchedAt: "2026-07-16T05:00:00Z", datasetId: "15fa" };
+  await automaticRentPage.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings: findings.filter((finding) => finding.field !== "currentRentMonthly"), rentEstimate, renovations: [], missingCriticalFields: [], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length - 1, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length - 1, acceptedFields: findings.length - 1, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [] } }) }));
+  await automaticRentPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
+  await automaticRentPage.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki").fill("https://www.etuovi.com/kohde/789");
+  await automaticRentPage.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki").press("Enter");
+  await automaticRentPage.getByText("Tilastokeskuksen arvio", { exact: true }).waitFor();
+  await automaticRentPage.getByText(/Vaasa.*15,9 €\/m²\/kk.*2026Q2/).waitFor();
+  await automaticRentPage.getByRole("button", { name: "Täsmennä vuokraa" }).click();
+  const automaticRentInput = automaticRentPage.locator("#market-rent");
+  await automaticRentInput.fill("850");
+  if (await automaticRentInput.inputValue() !== "850" || !await automaticRentInput.evaluate((element) => document.activeElement === element)) throw new Error("Automaattisen vuokran täsmennyskenttä ei säilyttänyt arvoa tai fokusta");
+  await automaticRentPage.getByRole("button", { name: "Käytä tätä vuokraa" }).click();
+  await automaticRentPage.getByText("Käyttäjän määrittämä vuokra", { exact: true }).waitFor();
+  await automaticRentPage.getByText(/Alueellinen vertailuarvio 795 €\/kk/).waitFor();
+  await automaticRentPage.getByRole("button", { name: "Palauta automaattinen arvio" }).click();
+  await automaticRentPage.getByText("Tilastokeskuksen arvio", { exact: true }).waitFor();
+  await automaticRentPage.close();
   const missingPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await missingPage.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings: findings.filter((finding) => !["currentRentMonthly", "companyLoanShare"].includes(finding.field)), renovations: [], missingCriticalFields: [], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length - 2, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length - 2, acceptedFields: findings.length - 2, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [] } }) }));
   await missingPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
@@ -66,7 +84,9 @@ try {
     await page.locator("#purchase-debtFreePrice").fill("158989"); await page.locator("#purchase-debtFreePrice").blur();
     await page.locator("#purchase-companyLoanShare").fill("0"); await page.locator("#purchase-companyLoanShare").blur();
     await page.locator("#maintenance-fee").fill("280");
+    await page.getByRole("button", { name: "Täsmennä vuokraa" }).click();
     await page.locator("#market-rent").fill("750");
+    await page.getByRole("button", { name: "Käytä tätä vuokraa" }).click();
     await page.getByText("Sijoitusmahdollisuus", { exact: true }).waitFor();
     if (width === 1280) {
       const debtShare = page.locator("#purchase-companyLoanShare");
@@ -80,10 +100,12 @@ try {
       const normalizedSalePrice = (await salePrice.inputValue()).replace(/[\s\u00a0]/g, "");
       if (normalizedSalePrice !== "143989") throw new Error(`Myyntihinta ei päivittynyt velattomasta hinnasta: ${normalizedSalePrice}`);
       if (await page.getByText("Hintatiedot eivät täsmää", { exact: true }).count()) throw new Error("Normaali hintojen haarukointi näytti ristiriitavirheen");
-      const assumptionRent = page.locator("#market-rent");
       const scoreBeforeRentChange = await page.locator('[aria-label^="Sijoitusmahdollisuus"]').getAttribute("aria-label");
+      await page.getByRole("button", { name: "Täsmennä vuokraa" }).click();
+      const assumptionRent = page.locator("#market-rent");
       await assumptionRent.fill("1100");
       if (!await assumptionRent.evaluate((element) => document.activeElement === element) || await assumptionRent.inputValue() !== "1100") throw new Error("Oletusvuokran fokus tai luonnos katosi muutoksen aikana");
+      await page.getByRole("button", { name: "Käytä tätä vuokraa" }).click();
       const updatingStatus = page.getByText("Päivitetään analyysiä…", { exact: true });
       await updatingStatus.waitFor();
       await updatingStatus.waitFor({ state: "detached" });

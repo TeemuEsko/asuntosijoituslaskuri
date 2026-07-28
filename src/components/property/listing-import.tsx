@@ -56,6 +56,16 @@ type DecisionState = Record<
 >;
 type ImportError = { code?: string; error: string };
 
+function automaticValuesWithRent(result: ListingParseResult) {
+  const values = automaticValues(result);
+  if (values.currentRentMonthly === undefined && result.rentEstimate?.monthlyRent) values.currentRentMonthly = result.rentEstimate.monthlyRent;
+  return values;
+}
+
+function rentAwareReliability(result: ListingParseResult, values: Partial<Record<NormalizedFieldKey, number | string>>, userCompletedFields: readonly NormalizedFieldKey[] = []) {
+  return result.rentEstimate?.confidence === "low" ? "preliminary" as const : analysisReliability(result, values, userCompletedFields);
+}
+
 function displayFindingValue(
   finding: ListingFinding,
   correctedValue?: string,
@@ -242,8 +252,8 @@ export function ListingImport({
       setUserValues({});
       setDebtChoice(null);
       setDecisions(Object.fromEntries(payload.findings.map((finding) => [finding.id, { decision: "pending" }])));
-      const parsedValues = automaticValues(payload);
-      if (!missingAnalysisFields(parsedValues).length && debtShareStatus(parsedValues) !== "unknown") onComplete({ ...parsedValues, renovations: payload.renovations, documentKinds: ["listing"], importReview: payload, analysisReliability: analysisReliability(payload, parsedValues) });
+      const parsedValues = automaticValuesWithRent(payload);
+      if (!missingAnalysisFields(parsedValues).length && debtShareStatus(parsedValues) !== "unknown") onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues) });
     } catch (caught) {
       setError(
         typeof caught === "object" && caught !== null && "error" in caught
@@ -305,6 +315,7 @@ export function ListingImport({
     const importedValues: ImportedPropertyData = {
       renovations: result?.renovations ?? [],
       documentKinds: ["listing"],
+      rentEstimate: result?.rentEstimate,
     };
     for (const finding of result?.findings ?? []) {
       const state = decisions[finding.id];
@@ -333,7 +344,7 @@ export function ListingImport({
     setAnalysisUpdateError(null);
     try {
       if (!result) throw new Error("Parserin tulos puuttuu");
-      const parsedValues = automaticValues(result);
+      const parsedValues = automaticValuesWithRent(result);
       const suggestedValues = Object.fromEntries(result.findings.filter((finding) => finding.validationResult === "accepted" && !finding.conflicts.length && missingAnalysisFields(parsedValues).includes(finding.field)).map((finding) => [finding.field, finding.normalizedValue])) as Partial<Record<NormalizedFieldKey, number | string>>;
       const combined = { ...parsedValues, ...suggestedValues, ...userValues };
       const validationErrors: string[] = [];
@@ -343,7 +354,7 @@ export function ListingImport({
       if (detectedDebt === "unknown" && debtChoice === null) validationErrors.push("hasDebtShare: valitse kyllä tai ei");
       if (detectedDebt === "unknown" && debtChoice === "no") { combined.companyLoanShare = 0; combined.financingFeeMonthly = 0; }
       if (debtChoice === "yes" && (typeof combined.companyLoanShare !== "number" || combined.companyLoanShare < 0 || typeof combined.financingFeeMonthly !== "number" || combined.financingFeeMonthly < 0)) validationErrors.push("Yhtiölainaosuus ja rahoitusvastike tarvitaan");
-      const canonicalPayload: ImportedPropertyData = { ...combined, renovations: result.renovations, documentKinds: ["listing"], importReview: result, analysisReliability: analysisReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues), ...Object.keys(userValues) as NormalizedFieldKey[]])]) };
+      const canonicalPayload: ImportedPropertyData = { ...combined, rentEstimate: result.rentEstimate, renovations: result.renovations, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues), ...Object.keys(userValues) as NormalizedFieldKey[]])]) };
       if (process.env.NODE_ENV === "development") console.info("[analysis-update]", { submittedMissingFields: userValues, parsedNumericValues: Object.fromEntries(Object.entries(userValues).filter(([, value]) => typeof value === "number")), hasDebtShare: detectedDebt === "unknown" ? debtChoice : detectedDebt, debtShare: combined.companyLoanShare, financingFee: combined.financingFeeMonthly, canonicalPayload, validationErrors, analysisResult: validationErrors.length ? "invalid" : "ready", navigationTarget: "workspace" });
       if (validationErrors.length) throw new Error(validationErrors.join(", "));
       onComplete(canonicalPayload);
@@ -374,7 +385,7 @@ export function ListingImport({
   const canCreate = Boolean(result?.findings.length) && !unresolved;
 
   if (result && typeof window !== "undefined") {
-    const parsedValues = automaticValues(result);
+    const parsedValues = automaticValuesWithRent(result);
     // Pidä parserin määrittämä täydennyslomake vakaana koko syöttämisen ajan.
     // Käyttäjän keskeneräinen arvo validoidaan vasta Päivitä analyysi -painalluksessa.
     const missing = missingAnalysisFields(parsedValues);

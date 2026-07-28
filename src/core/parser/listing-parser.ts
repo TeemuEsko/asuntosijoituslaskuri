@@ -1,5 +1,6 @@
 import { confidenceLabels } from "../i18n/display-values.ts";
 import { formatEuro, formatMonthlyEuro, parseArea, parseBuildingType, parseFinnishNumber, parseFloor, parseMonthlyAmount, parseRoomConfiguration, parseSquareMeterRate, parseTimeExpression, type TimeStatus } from "./normalization.ts";
+import type { RentEstimate } from "../rent-data/types.ts";
 import { criticalFields, excludedCompanyLoanLabels, fieldDisplayNames, fieldSynonyms, type NormalizedFieldKey } from "./synonyms.ts";
 
 export const LISTING_PARSER_VERSION = "0.3.1";
@@ -45,7 +46,7 @@ export type RenovationFinding = { component: RenovationComponent; status: TimeSt
 export type RejectedCandidate = { excerpt: string; field?: NormalizedFieldKey; fieldName?: string; rawValue?: string; normalizedValue?: number | string; source?: ListingSourceType; sourcePath?: string; sourceConfidence?: number; fieldMatchConfidence?: number; validationConfidence?: number; validationResult?: "accepted" | "rejected"; reason: string; rejectionReason?: string };
 export type FieldDiagnostic = { fieldName: string; rawValue: string; normalizedValue?: number | string; source: ListingSourceType; sourcePath: string; sourceConfidence: number; fieldMatchConfidence: number; validationConfidence: number; finalConfidence: number; validationResult: "accepted" | "rejected"; rejectionReason?: string };
 export type ParserDiagnostics = { parserVersion: string; site: ListingSourceType; sections: ListingSection[]; rawCandidateCount: number; rejectedCandidates: RejectedCandidate[]; fieldDiagnostics: FieldDiagnostic[]; mergedFindingCount: number; acceptedFields: number; rejectedFields: number; conflicts: string[]; missingEssentialFields: string[]; warnings: string[]; errors: string[]; acquisition?: Record<string, unknown> };
-export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics };
+export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics; rentEstimate?: RentEstimate };
 export type StructuredListingValue = { field: NormalizedFieldKey; value: number | string; unit?: ListingFinding["unit"]; label: string; excerpt: string; sourcePath?: string; matchQuality?: "exact" | "general" };
 
 type RawCandidate = { field: NormalizedFieldKey; label: string; originalValue: string; value: number | string; unit?: ListingFinding["unit"]; source: ListingSourceType; excerpt: string; semanticSource: SemanticSource; section: ListingSection; exactSynonym: boolean; hasUnit: boolean; ambiguous?: boolean; calculationBasis?: string; sourcePath?: string };
@@ -218,6 +219,9 @@ export function parseListingText(text: string, source: ListingSourceType = "past
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   for (const line of lines) {
     const heading = detectHeading(line); if (heading) { section = heading; continue; }
+    const rentContext = /vuokrattu|nykyinen vuokra|vuokrasopim(?:us|uksen)|vuokratuotto|vuokralainen|sijoittajalle/i.test(line) && !/hoitovastike|rahoitusvastike|vesimaksu|autopaikka|tontinvuokra|yhtiön saamat vuokrat|liikehuoneistojen vuokrat/i.test(line);
+    const contextualRent = rentContext ? parseMonthlyAmount(line) ?? (/euron\s+kuukausivuokra/i.test(line) ? parseFinnishNumber(line) : null) : null;
+    if (contextualRent !== null) candidates.push({ field: "currentRentMonthly", label: "Nykyinen vuokra", originalValue: String(contextualRent), value: contextualRent, unit: "€/kk", source, excerpt: line, semanticSource: "section_content", section, exactSynonym: true, hasUnit: true });
     const match = findField(line); if (!match) continue;
     if (match.field === "companyLoanShare" && ["housing_company", "building"].includes(section) && !/huoneisto|osakkeisiin kohdistuva|lainaosuus|velkaosuus/i.test(match.label)) { rejectedCandidates.push({ excerpt: line, field: match.field, reason: "Taloyhtiön kokonaislaina ei ole huoneistokohtainen lainaosuus" }); continue; }
     const normalized = normalizeFieldValue(match.field, match.valueText, line);
