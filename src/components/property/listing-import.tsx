@@ -44,6 +44,7 @@ import type {
   ListingFinding,
   ListingParseResult,
 } from "@/core/parser/listing-parser";
+import { canDeterminePreparationNextStep, type AnalysisPreparationStatus } from "@/core/analysis/preparation-types";
 import type { ImportedPropertyData } from "./property-workspace";
 import { analysisReliability, automaticValues, debtShareStatus, missingAnalysisFields } from "@/core/analysis/requirements";
 import type { NormalizedFieldKey } from "@/core/parser/synonyms";
@@ -58,7 +59,7 @@ type ImportError = { code?: string; error: string };
 
 function automaticValuesWithRent(result: ListingParseResult) {
   const values = automaticValues(result);
-  if (values.currentRentMonthly === undefined && result.rentEstimate?.monthlyRent) values.currentRentMonthly = result.rentEstimate.monthlyRent;
+  if (values.currentRentMonthly === undefined && result.rentEstimate?.effectiveMonthlyRent) values.currentRentMonthly = result.rentEstimate.effectiveMonthlyRent;
   return values;
 }
 
@@ -209,6 +210,17 @@ function FindingCard({
   );
 }
 
+function PreparationProgress({ status }: { status: AnalysisPreparationStatus }) {
+  const estimatingRent = ["estimating_rent", "running_enrichments", "validating_inputs"].includes(status);
+  const steps = [
+    { label: "Myynti-ilmoitus luettu", complete: status !== "parsing_listing" },
+    { label: "Kohteen perustiedot tunnistettu", complete: estimatingRent },
+    { label: "Arvioidaan markkinavuokraa", complete: ["running_enrichments", "validating_inputs"].includes(status), active: status === "estimating_rent" },
+    { label: "Muodostetaan sijoitusanalyysi", complete: status === "validating_inputs", active: ["running_enrichments", "validating_inputs"].includes(status) },
+  ];
+  return <Card className="mt-8 border-success/25"><CardContent className="space-y-5 py-2"><div className="flex gap-3"><LoaderCircle className="mt-0.5 size-5 shrink-0 animate-spin text-success" /><div><p className="font-semibold">{estimatingRent ? "Arvioimme kohteen markkinavuokraa…" : "Valmistelemme kohteen analyysiä…"}</p><p className="mt-1 text-sm text-muted-foreground">{estimatingRent ? "Haemme alueellisen vertailuvuokran kohteen sijainnin, pinta-alan ja huoneluvun perusteella." : "Luemme ja normalisoimme myynti-ilmoituksen tiedot."}</p></div></div><ol className="space-y-2 text-sm">{steps.map((step) => <li key={step.label} className={`flex items-center gap-2 ${step.complete ? "text-success" : step.active ? "font-medium text-foreground" : "text-muted-foreground"}`}><span aria-hidden="true">{step.complete ? "✓" : step.active ? "•" : "○"}</span>{step.label}</li>)}</ol></CardContent></Card>;
+}
+
 export function ListingImport({
   initialUrl,
   onBack,
@@ -223,6 +235,7 @@ export function ListingImport({
   const [result, setResult] = useState<ListingParseResult | null>(null);
   const [decisions, setDecisions] = useState<DecisionState>({});
   const [loading, setLoading] = useState(false);
+  const [preparationStatus, setPreparationStatus] = useState<AnalysisPreparationStatus | "idle">("idle");
   const [error, setError] = useState<ImportError | null>(null);
   const [userValues, setUserValues] = useState<Partial<Record<NormalizedFieldKey, number | string>>>({});
   const [debtChoice, setDebtChoice] = useState<"yes" | "no" | null>(null);
@@ -232,8 +245,14 @@ export function ListingImport({
 
   async function searchListing(forceRefresh: boolean | unknown = false) {
     setLoading(true);
+    setPreparationStatus("parsing_listing");
     setError(null);
     setResult(null);
+    const phaseTimers = [
+      window.setTimeout(() => setPreparationStatus("normalizing_data"), 150),
+      window.setTimeout(() => setPreparationStatus("resolving_location"), 350),
+      window.setTimeout(() => setPreparationStatus("estimating_rent"), 550),
+    ];
     try {
       const response = await fetch("/api/listing-import", {
         method: "POST",
@@ -248,13 +267,21 @@ export function ListingImport({
         | ListingParseResult
         | ImportError;
       if (!response.ok || "error" in payload) throw payload;
-      setResult(payload);
+      setPreparationStatus("validating_inputs");
+      if (!canDeterminePreparationNextStep(payload.preparation)) throw new Error("Automaattinen tietojen rikastus ei valmistunut hallitusti.");
       setUserValues({});
       setDebtChoice(null);
       setDecisions(Object.fromEntries(payload.findings.map((finding) => [finding.id, { decision: "pending" }])));
       const parsedValues = automaticValuesWithRent(payload);
-      if (!missingAnalysisFields(parsedValues).length && debtShareStatus(parsedValues) !== "unknown") onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues) });
+      if (payload.preparation?.nextStep === "analysis") {
+        setPreparationStatus("ready");
+        onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues) });
+      } else {
+        setResult(payload);
+        setPreparationStatus("needs_user_input");
+      }
     } catch (caught) {
+      setPreparationStatus("failed");
       setError(
         typeof caught === "object" && caught !== null && "error" in caught
           ? (caught as ImportError)
@@ -264,6 +291,7 @@ export function ListingImport({
             },
       );
     } finally {
+      for (const timer of phaseTimers) window.clearTimeout(timer);
       setLoading(false);
     }
   }
@@ -345,16 +373,17 @@ export function ListingImport({
     try {
       if (!result) throw new Error("Parserin tulos puuttuu");
       const parsedValues = automaticValuesWithRent(result);
-      const suggestedValues = Object.fromEntries(result.findings.filter((finding) => finding.validationResult === "accepted" && !finding.conflicts.length && missingAnalysisFields(parsedValues).includes(finding.field)).map((finding) => [finding.field, finding.normalizedValue])) as Partial<Record<NormalizedFieldKey, number | string>>;
+      const suggestedValues = Object.fromEntries(result.findings.filter((finding) => finding.validationResult === "accepted" && !finding.conflicts.length && missingAnalysisFields(parsedValues, result.rentEstimate).includes(finding.field)).map((finding) => [finding.field, finding.normalizedValue])) as Partial<Record<NormalizedFieldKey, number | string>>;
       const combined = { ...parsedValues, ...suggestedValues, ...userValues };
       const validationErrors: string[] = [];
-      for (const field of missingAnalysisFields(combined)) validationErrors.push(`${field}: arvo puuttuu`);
+      const rentForValidation = typeof userValues.currentRentMonthly === "number" && userValues.currentRentMonthly > 0 ? { ...result.rentEstimate!, effectiveMonthlyRent: userValues.currentRentMonthly, source: "user" as const, sourceName: "Käyttäjän määrittämä vuokra", confidence: "high" as const, userOverridden: true, previousAutomaticEstimate: result.rentEstimate?.effectiveMonthlyRent ?? null, benchmark: result.rentEstimate?.effectiveMonthlyRent ? result.rentEstimate : null, resolutionStatus: "resolved" as const, attemptedSources: ["user" as const] } : result.rentEstimate;
+      for (const field of missingAnalysisFields(combined, rentForValidation)) validationErrors.push(`${field}: arvo puuttuu`);
       for (const field of ["debtFreePrice", "maintenanceFeeMonthly", "areaSqm", "constructionYear", "currentRentMonthly"] as const) if (typeof combined[field] !== "number" || !Number.isFinite(combined[field]) || combined[field] <= 0) validationErrors.push(`${field}: anna positiivinen numero`);
       const detectedDebt = debtShareStatus(combined);
       if (detectedDebt === "unknown" && debtChoice === null) validationErrors.push("hasDebtShare: valitse kyllä tai ei");
       if (detectedDebt === "unknown" && debtChoice === "no") { combined.companyLoanShare = 0; combined.financingFeeMonthly = 0; }
       if (debtChoice === "yes" && (typeof combined.companyLoanShare !== "number" || combined.companyLoanShare < 0 || typeof combined.financingFeeMonthly !== "number" || combined.financingFeeMonthly < 0)) validationErrors.push("Yhtiölainaosuus ja rahoitusvastike tarvitaan");
-      const canonicalPayload: ImportedPropertyData = { ...combined, rentEstimate: result.rentEstimate, renovations: result.renovations, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues), ...Object.keys(userValues) as NormalizedFieldKey[]])]) };
+      const canonicalPayload: ImportedPropertyData = { ...combined, rentEstimate: rentForValidation, renovations: result.renovations, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]) };
       if (process.env.NODE_ENV === "development") console.info("[analysis-update]", { submittedMissingFields: userValues, parsedNumericValues: Object.fromEntries(Object.entries(userValues).filter(([, value]) => typeof value === "number")), hasDebtShare: detectedDebt === "unknown" ? debtChoice : detectedDebt, debtShare: combined.companyLoanShare, financingFee: combined.financingFeeMonthly, canonicalPayload, validationErrors, analysisResult: validationErrors.length ? "invalid" : "ready", navigationTarget: "workspace" });
       if (validationErrors.length) throw new Error(validationErrors.join(", "));
       onComplete(canonicalPayload);
@@ -387,14 +416,15 @@ export function ListingImport({
   if (result && typeof window !== "undefined") {
     const parsedValues = automaticValuesWithRent(result);
     // Pidä parserin määrittämä täydennyslomake vakaana koko syöttämisen ajan.
-    // Käyttäjän keskeneräinen arvo validoidaan vasta Päivitä analyysi -painalluksessa.
-    const missing = missingAnalysisFields(parsedValues);
+    // Käyttäjän keskeneräinen arvo validoidaan vasta Viimeistele analyysi -painalluksessa.
+    const missing = missingAnalysisFields(parsedValues, result.rentEstimate);
     const detectedDebt = debtShareStatus(parsedValues);
     const askDebt = detectedDebt === "unknown";
     const needsDebtAmounts = (detectedDebt === "yes" || debtChoice === "yes") && (parsedValues.companyLoanShare === undefined || parsedValues.financingFeeMonthly === undefined);
     const fieldLabels: Partial<Record<NormalizedFieldKey, string>> = { debtFreePrice: "Velaton hinta", maintenanceFeeMonthly: "Hoitovastike / kk", areaSqm: "Pinta-ala", constructionYear: "Rakennusvuosi", buildingType: "Talotyyppi", heatingType: "Lämmitysmuoto", currentRentMonthly: "Kuukausivuokra" };
     const tooManyMissing = missing.length > 3;
-    return <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 md:px-8 md:py-12"><Button variant="ghost" onClick={onBack}><ArrowLeft /> Takaisin</Button><section className="mt-8"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-success">asuntosijoituslaskuri.fi</p><h1 className="mt-2 text-3xl font-semibold">{tooManyMissing ? "Ilmoituksesta ei löytynyt riittävästi tietoa" : `Tarvitsen vielä ${missing.length + (askDebt ? 1 : 0)} ${missing.length + (askDebt ? 1 : 0) === 1 ? "tiedon" : "tietoa"} analyysiä varten`}</h1><p className="mt-2 text-muted-foreground">{tooManyMissing ? "Täydennä kohde käsin tai kokeile hakua uudelleen." : "Löysimme suurimman osan kohteen tiedoista automaattisesti. Täydennä vielä puuttuvat tiedot, niin viimeistelemme analyysin."}</p>{tooManyMissing ? <div className="mt-6 flex flex-wrap gap-3"><Button onClick={onBack}>Yritä uudelleen</Button><Button variant="outline" onClick={() => onComplete({})}>Syötä kaikki tiedot käsin</Button></div> : <Card className="mt-6"><CardContent className="space-y-5 pt-2">{missing.map((field) => { const suggestion = result.findings.find((finding) => finding.field === field)?.normalizedValue; return <div key={field} className="space-y-2"><Label htmlFor={`missing-${field}`}>{fieldLabels[field] ?? field}</Label><Input id={`missing-${field}`} value={String(userValues[field] ?? suggestion ?? "")} onChange={(event) => { const raw = event.currentTarget.value; setAnalysisUpdateError(null); setUserValues((current) => ({ ...current, [field]: ["buildingType", "heatingType"].includes(field) ? raw : raw === "" ? "" : Number(raw.replace(",", ".")) })); }} />{suggestion !== undefined ? <p className="text-xs text-muted-foreground">Ilmoituksesta arvioitu. Tarkista tarvittaessa.</p> : null}</div>; })}{askDebt ? <div className="space-y-2"><Label>Onko huoneistolla yhtiölainaosuutta?</Label><div className="flex gap-2"><Button type="button" variant={debtChoice === "no" ? "default" : "outline"} onClick={() => { setDebtChoice("no"); setAnalysisUpdateError(null); }}>Ei</Button><Button type="button" variant={debtChoice === "yes" ? "default" : "outline"} onClick={() => { setDebtChoice("yes"); setAnalysisUpdateError(null); }}>Kyllä</Button></div></div> : null}{needsDebtAmounts ? <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="missing-debt">Yhtiölainaosuus</Label><Input id="missing-debt" type="number" value={String(userValues.companyLoanShare ?? parsedValues.companyLoanShare ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, companyLoanShare: event.currentTarget.value === "" ? "" : Number(event.currentTarget.value) }))} /></div><div className="space-y-2"><Label htmlFor="missing-fee">Pääomavastike / rahoitusvastike / kk</Label><Input id="missing-fee" type="number" value={String(userValues.financingFeeMonthly ?? parsedValues.financingFeeMonthly ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, financingFeeMonthly: event.currentTarget.value === "" ? "" : Number(event.currentTarget.value) }))} /></div></div> : null}{analysisUpdateError ? <p role="alert" className="rounded-md border border-danger/25 bg-danger-soft p-3 text-sm text-danger">{analysisUpdateError}</p> : null}<Button size="lg" onClick={finishAutomaticAnalysis}>Päivitä analyysi</Button></CardContent></Card>}<div className="mt-6"><ImportSourceReview result={result} onChange={(field, value) => setUserValues((current) => ({ ...current, [field]: value ?? "" }))} /></div></section></main>;
+    const onlyRentMissing = missing.length === 1 && missing[0] === "currentRentMonthly" && !askDebt;
+    return <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 md:px-8 md:py-12"><Button variant="ghost" onClick={onBack}><ArrowLeft /> Takaisin</Button><section className="mt-8"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-success">asuntosijoituslaskuri.fi</p><h1 className="mt-2 text-3xl font-semibold">{tooManyMissing ? "Ilmoituksesta ei löytynyt riittävästi tietoa" : onlyRentMissing ? "Emme pystyneet arvioimaan kohteen vuokraa automaattisesti" : `Tarvitsen vielä ${missing.length + (askDebt ? 1 : 0)} ${missing.length + (askDebt ? 1 : 0) === 1 ? "tiedon" : "tietoa"} analyysiä varten`}</h1><p className="mt-2 text-muted-foreground">{tooManyMissing ? "Täydennä kohde käsin tai kokeile hakua uudelleen." : onlyRentMissing ? "Syötä arvioitu kuukausivuokra, jotta voimme viimeistellä analyysin." : "Automaattiset tietolähteet on käyty läpi. Täydennä vielä puuttuvat tiedot, niin viimeistelemme analyysin."}</p>{tooManyMissing ? <div className="mt-6 flex flex-wrap gap-3"><Button onClick={onBack}>Yritä uudelleen</Button><Button variant="outline" onClick={() => onComplete({})}>Syötä kaikki tiedot käsin</Button></div> : <Card className="mt-6"><CardContent className="space-y-5 pt-2">{missing.map((field) => { const suggestion = result.findings.find((finding) => finding.field === field)?.normalizedValue; const numeric = !["buildingType", "heatingType"].includes(field); return <div key={field} className="space-y-2"><Label htmlFor={`missing-${field}`}>{fieldLabels[field] ?? field}</Label><Input id={`missing-${field}`} type={numeric ? "number" : "text"} inputMode={numeric ? "decimal" : undefined} value={String(userValues[field] ?? suggestion ?? "")} onChange={(event) => { const raw = event.currentTarget.value; setAnalysisUpdateError(null); setUserValues((current) => ({ ...current, [field]: numeric ? raw === "" ? "" : Number(raw.replace(",", ".")) : raw })); }} />{field === "currentRentMonthly" ? <p className="text-xs text-muted-foreground">€ / kk</p> : null}{suggestion !== undefined ? <p className="text-xs text-muted-foreground">Ilmoituksesta arvioitu. Tarkista tarvittaessa.</p> : null}</div>; })}{askDebt ? <div className="space-y-2"><Label>Onko huoneistolla yhtiölainaosuutta?</Label><div className="flex gap-2"><Button type="button" variant={debtChoice === "no" ? "default" : "outline"} onClick={() => { setDebtChoice("no"); setAnalysisUpdateError(null); }}>Ei</Button><Button type="button" variant={debtChoice === "yes" ? "default" : "outline"} onClick={() => { setDebtChoice("yes"); setAnalysisUpdateError(null); }}>Kyllä</Button></div></div> : null}{needsDebtAmounts ? <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="missing-debt">Yhtiölainaosuus</Label><Input id="missing-debt" type="number" value={String(userValues.companyLoanShare ?? parsedValues.companyLoanShare ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, companyLoanShare: event.currentTarget.value === "" ? "" : Number(event.currentTarget.value) }))} /></div><div className="space-y-2"><Label htmlFor="missing-fee">Pääomavastike / rahoitusvastike / kk</Label><Input id="missing-fee" type="number" value={String(userValues.financingFeeMonthly ?? parsedValues.financingFeeMonthly ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, financingFeeMonthly: event.currentTarget.value === "" ? "" : Number(event.currentTarget.value) }))} /></div></div> : null}{analysisUpdateError ? <p role="alert" className="rounded-md border border-danger/25 bg-danger-soft p-3 text-sm text-danger">{analysisUpdateError}</p> : null}<Button size="lg" onClick={finishAutomaticAnalysis}>Viimeistele analyysi</Button></CardContent></Card>}<div className="mt-6"><ImportSourceReview result={result} onChange={(field, value) => setUserValues((current) => ({ ...current, [field]: value ?? "" }))} /></div></section></main>;
   }
 
   return (
@@ -499,7 +529,7 @@ export function ListingImport({
             </div>
           ) : null}
         </CardContent>
-      </Card> : loading && !result ? <div role="status" className="mt-10 flex items-center justify-center gap-3 text-muted-foreground"><LoaderCircle className="animate-spin" /> Haetaan ilmoituksen tietoja…</div> : null}
+      </Card> : loading && !result && preparationStatus !== "idle" ? <PreparationProgress status={preparationStatus} /> : null}
       {result ? (
         <section className="mt-8 space-y-7">
           <div><h1 className="text-2xl font-semibold">Tarkista löydetyt tiedot</h1><p className="mt-1 text-sm text-muted-foreground">Tiedot tallennetaan kohteelle vasta, kun hyväksyt ne.</p></div>

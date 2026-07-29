@@ -1,6 +1,7 @@
 import { confidenceLabels } from "../i18n/display-values.ts";
 import { formatEuro, formatMonthlyEuro, parseArea, parseBuildingType, parseFinnishNumber, parseFloor, parseMonthlyAmount, parseRoomConfiguration, parseSquareMeterRate, parseTimeExpression, type TimeStatus } from "./normalization.ts";
 import type { RentEstimate } from "../rent-data/types.ts";
+import type { AnalysisPreparation } from "../analysis/preparation-types.ts";
 import { criticalFields, excludedCompanyLoanLabels, fieldDisplayNames, fieldSynonyms, type NormalizedFieldKey } from "./synonyms.ts";
 
 export const LISTING_PARSER_VERSION = "0.3.1";
@@ -46,7 +47,7 @@ export type RenovationFinding = { component: RenovationComponent; status: TimeSt
 export type RejectedCandidate = { excerpt: string; field?: NormalizedFieldKey; fieldName?: string; rawValue?: string; normalizedValue?: number | string; source?: ListingSourceType; sourcePath?: string; sourceConfidence?: number; fieldMatchConfidence?: number; validationConfidence?: number; validationResult?: "accepted" | "rejected"; reason: string; rejectionReason?: string };
 export type FieldDiagnostic = { fieldName: string; rawValue: string; normalizedValue?: number | string; source: ListingSourceType; sourcePath: string; sourceConfidence: number; fieldMatchConfidence: number; validationConfidence: number; finalConfidence: number; validationResult: "accepted" | "rejected"; rejectionReason?: string };
 export type ParserDiagnostics = { parserVersion: string; site: ListingSourceType; sections: ListingSection[]; rawCandidateCount: number; rejectedCandidates: RejectedCandidate[]; fieldDiagnostics: FieldDiagnostic[]; mergedFindingCount: number; acceptedFields: number; rejectedFields: number; conflicts: string[]; missingEssentialFields: string[]; warnings: string[]; errors: string[]; acquisition?: Record<string, unknown> };
-export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics; rentEstimate?: RentEstimate };
+export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics; rentEstimate?: RentEstimate; preparation?: AnalysisPreparation };
 export type StructuredListingValue = { field: NormalizedFieldKey; value: number | string; unit?: ListingFinding["unit"]; label: string; excerpt: string; sourcePath?: string; matchQuality?: "exact" | "general" };
 
 type RawCandidate = { field: NormalizedFieldKey; label: string; originalValue: string; value: number | string; unit?: ListingFinding["unit"]; source: ListingSourceType; excerpt: string; semanticSource: SemanticSource; section: ListingSection; exactSynonym: boolean; hasUnit: boolean; ambiguous?: boolean; calculationBasis?: string; sourcePath?: string };

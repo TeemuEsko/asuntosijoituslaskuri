@@ -27,6 +27,22 @@ Taulu sisältää aritmeettisen keskineliövuokran. Sitä ei nimetä mediaaniksi
 
 Käyttäjän arvo säilyttää edellisen automaattisen arvion vertailuna. Automaattisen arvion palautus valitsee uudelleen korkeimman prioriteetin automaattisen lähteen.
 
+Kaikki laskelmat ja puuttuvien tietojen tarkistus lukevat saman `rentEstimate.effectiveMonthlyRent`-arvon. Arvoa ei päätellä erikseen parserin raakadatasta tai lomakkeen paikallisesta tilasta. `null` tarkoittaa puuttuvaa arvoa; sitä ei muuteta nollaksi.
+
+## URL-analyysin valmistelujärjestys
+
+`prepareListingAnalysis()` orkestroi URL-polun yhtenä odotettavana ketjuna:
+
+1. ilmoituksen haku ja parseri
+2. normalisoidut löydökset
+3. kunnan ja huonelukuluokan ratkaisu
+4. ilmoitusvuokran tarkistus ja palvelinpuolinen StatFin-haku
+5. canonical-vuokratilan päivitys
+6. automaattisten enrichment-vaiheiden valmistumisen merkintä
+7. kriittisten tietojen tarkistus ja seuraavan näkymän päätös
+
+Vastaus sisältää `preparation.allAutomaticEnrichmentsCompleted`-guardin ja seuraavan vaiheen `analysis` tai `missing_data`. Käyttöliittymä ei saa näyttää käsinsyöttöä ennen guardin valmistumista. Haun aikana näkyvät erilliset valmistelutilat, mukaan lukien `estimating_rent`.
+
 ## Huoneluvun normalisointi
 
 - `1h`, `1h + kk`, `1h + k`, yksiö → `ONE_ROOM`
@@ -37,7 +53,7 @@ Keittiötä ei lasketa huoneeksi. Jos huonejakoa ei löydy, käytetään läpin�
 
 ## Alueen normalisointi ja fallback
 
-Kuntanimi normalisoidaan keskitetysti, mukaan lukien tavallisimmat kaksikieliset nimet kuten Vaasa/Vasa ja Helsinki/Helsingfors. Adapteri sovittaa normalisoidun nimen taulun kulloisiinkin aluekoodeihin.
+Kuntanimi normalisoidaan keskitetysti, mukaan lukien tavallisimmat kaksikieliset nimet kuten Vaasa/Vasa ja Helsinki/Helsingfors. Tunnetut postitoimipaikat ratkaistaan ensin oikeaksi kunnaksi: esimerkiksi Nummela → Vihti. Adapteri sovittaa tämän jälkeen normalisoidun kunnan taulun kulloisiinkin aluekoodeihin.
 
 Fallback-järjestys nykyisessä `15fa`-adapterissa:
 
@@ -69,6 +85,10 @@ Matala arvio näytetään suuntaa-antavana ja varoituksella. Hyväksytyn vähimm
 ## Välimuisti ja virheet
 
 Onnistunut arvio tallennetaan palvelinprosessin muistivälimuistiin 12 tunniksi sijainnin, huoneluokan ja pinta-alan yhdistelmälle. Rajapintavirhe ei kaada ilmoitushakua. Jos vanha arvo on saatavilla, se palautetaan vanhentuneeksi ja matalan luotettavuuden arvoksi; muuten vuokra jää tuntemattomaksi ilman `0 €/kk` -korvausarvoa.
+
+Virhediagnostiikka erottaa koodit `DATA_NOT_AVAILABLE`, `INVALID_LOCATION`, `INVALID_ROOM_CATEGORY`, `EXTERNAL_API_ERROR`, `INVALID_API_RESPONSE`, `CACHE_MISS` ja `NO_ACCEPTABLE_FALLBACK`. Tekninen palvelinvirhe lokitetaan vaihe-, alue-, huoneluokka-, datasetti- ja statusmetadatan kanssa. Käsinsyöttöön siirrytään vasta, kun cache ja hyväksytyt fallbackit eivät tuota käyttökelpoista arvoa.
+
+Valmistunut analyysiluonnos tallennetaan selaimen istuntotallennukseen canonical-vuokrametadatan kanssa. Sivun päivitys palauttaa saman analyysin eikä tee tarpeetonta vuokrahakua saman istunnon aikana. Etusivulle palaaminen tyhjentää luonnoksen.
 
 ## Esimerkkitilanteet
 

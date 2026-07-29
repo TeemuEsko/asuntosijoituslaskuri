@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeMunicipalityName, resolveStatFinArea } from "../src/core/rent-data/area-resolver.ts";
+import { normalizeMunicipalityName, resolveMunicipalityName, resolveStatFinArea } from "../src/core/rent-data/area-resolver.ts";
 import { calculateEstimatedRent, normalizeRoomCategory, rentDifference, resolveEffectiveRent, restoreAutomaticRent } from "../src/core/rent-data/rent-estimation.ts";
 import { clearRentBenchmarkCache, fetchStatisticsFinlandRentBenchmark, validateStatFinMetadata } from "../src/core/rent-data/statistics-finland.ts";
 import { parseListingText } from "../src/core/parser/listing-parser.ts";
 import { readFile } from "node:fs/promises";
 import { addAutomaticRentEstimate } from "../src/core/rent-data/enrich-listing-rent.ts";
+import { prepareListingAnalysis } from "../src/core/analysis/prepare-listing-analysis.ts";
+import { hasEffectiveMonthlyRent, missingAnalysisFields } from "../src/core/analysis/requirements.ts";
 
 const metadata = { title: "Vuokraindeksi (2025=100) ja keskineliövuokrat muuttujina", variables: [
   { code: "finance", text: "Vuokra-asunnon rahoitusmuoto", values: ["SSS", "1", "2"], valueTexts: ["Yhteensä", "Vapaarahoitteinen", "Valtion tukema"] },
@@ -18,11 +20,65 @@ const response = (value: unknown, status = 200) => new Response(JSON.stringify(v
 
 test("huonejako normalisoituu ilman keittiön laskemista huoneeksi", () => { for (const value of ["1h", "1h + kk", "Yksiö"]) assert.equal(normalizeRoomCategory(value), "ONE_ROOM"); for (const value of ["2h + k", "Kaksio"]) assert.equal(normalizeRoomCategory(value), "TWO_ROOMS"); for (const value of ["3h + k", "Kolmio", "5h + k"]) assert.equal(normalizeRoomCategory(value), "THREE_PLUS_ROOMS"); assert.equal(normalizeRoomCategory(undefined, 45), "TWO_ROOMS"); assert.equal(normalizeRoomCategory(undefined), "UNKNOWN"); });
 test("kuntanimet ja StatFin-alueet normalisoituvat kaksikielisesti", () => { assert.equal(normalizeMunicipalityName("Vasa"), "vaasa"); assert.equal(normalizeMunicipalityName("Helsingfors"), "helsinki"); assert.deepEqual(resolveStatFinArea("Vaasa", ["MK15", "905"], ["MK15 Pohjanmaa", "Vaasa"]), { code: "905", label: "Vaasa", level: "municipality", confidence: "medium" }); const laihia = resolveStatFinArea("Laihia", ["MK15", "905"], ["MK15 Pohjanmaa", "Vaasa"]); assert.equal(laihia?.code, "MK15"); assert.equal(laihia?.level, "region"); assert.equal(laihia?.confidence, "low"); });
+test("postitoimipaikkaa ei käytetä kuntana vaan Nummela ratkaistaan Vihdiksi", () => { assert.deepEqual(resolveMunicipalityName({ city: "Nummela" }), { municipality: "vihti", usedFallback: true, warning: "Postitoimipaikka Nummela ratkaistiin kunnaksi Vihti." }); });
 test("metatieto validoidaan ja uusin ajanjakso valitaan automaattisesti", () => { const parsed = validateStatFinMetadata(metadata); assert.equal(parsed.latestPeriod, "2026Q2"); assert.equal(parsed.nonSubsidised, "1"); assert.equal(parsed.rentMetric, "rent"); assert.throws(() => validateStatFinMetadata({ ...metadata, title: "Väärä taulu" }), /hyväksytty/); });
 test("vuokra-arvio säilyttää tarkan arvon ja pyöristyy lähimpään viiteen euroon", () => { assert.deepEqual(calculateEstimatedRent(14.23, 52.5), { exact: 747.075, rounded: 745 }); });
-test("StatFin-adapteri validoi, kysyy keskiarvon ja palauttaa metadatan", async () => { clearRentBenchmarkCache(); const requests: Array<{ method?: string; body?: string }> = []; const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => { requests.push({ method: init?.method, body: init?.body as string | undefined }); return init?.method === "POST" ? response({ value: [12.7, 1334] }) : response(metadata); }) as typeof fetch; const estimate = await fetchStatisticsFinlandRentBenchmark({ municipality: "Vaasa", roomDescription: "2h + k", areaSqm: 52.5, fetcher, now: 1_000 }); assert.equal(estimate.monthlyRent, 665); assert.equal(estimate.exactEstimatedMonthlyRent, 666.75); assert.equal(estimate.metricType, "average"); assert.equal(estimate.referencePeriod, "2026Q2"); assert.equal(estimate.sourceArea, "Vaasa"); assert.equal(estimate.roomCategory, "TWO_ROOMS"); assert.equal(estimate.sampleSize, 1334); const query = JSON.parse(requests[1]!.body!); assert.deepEqual(query.query.map((item: { selection: { values: string[] } }) => item.selection.values[0]), ["1", "2", "905", "2026Q2", "rent"]); });
-test("cache estää turhat haut ja vanha arvo toimii hallittuna fallbackina", async () => { clearRentBenchmarkCache(); let calls = 0; const success = (async (_input: RequestInfo | URL, init?: RequestInit) => { calls += 1; return init?.method === "POST" ? response({ value: [13, 30] }) : response(metadata); }) as typeof fetch; await fetchStatisticsFinlandRentBenchmark({ municipality: "Vaasa", roomDescription: "1h", areaSqm: 30, fetcher: success, now: 10 }); await fetchStatisticsFinlandRentBenchmark({ municipality: "Vaasa", roomDescription: "1h", areaSqm: 30, fetcher: success, now: 11 }); assert.equal(calls, 2); const failure = (async () => { throw new Error("API ei vastaa"); }) as typeof fetch; const stale = await fetchStatisticsFinlandRentBenchmark({ municipality: "Vaasa", roomDescription: "1h", areaSqm: 30, fetcher: failure, now: 13 * 60 * 60 * 1000 }); assert.equal(stale.monthlyRent, 390); assert.equal(stale.stale, true); assert.equal(stale.confidence, "low"); });
-test("effectiveRent noudattaa prioriteettia, säilyttää vertailun ja palautuu automaattiseksi", () => { const statistics = { monthlyRent: 795, rentPerSquareMeter: 15.9, source: "statistics_finland" as const, confidence: "medium" as const, userOverridden: false }; assert.equal(resolveEffectiveRent({ listingRent: 750, statisticsEstimate: statistics }).effectiveRent, 750); const user = resolveEffectiveRent({ userRent: 700, userOverridden: true, listingRent: 750, statisticsEstimate: statistics }); assert.equal(user.estimate.source, "user"); assert.equal(user.estimate.previousAutomaticEstimate, 750); assert.equal(restoreAutomaticRent(user.estimate, statistics).monthlyRent, 795); assert.deepEqual(rentDifference(750, 795), { euros: -45, percent: -45 / 795 * 100 }); });
+test("StatFin-adapteri validoi, kysyy keskiarvon ja palauttaa metadatan", async () => { clearRentBenchmarkCache(); const requests: Array<{ method?: string; body?: string }> = []; const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => { requests.push({ method: init?.method, body: init?.body as string | undefined }); return init?.method === "POST" ? response({ value: [12.7, 1334] }) : response(metadata); }) as typeof fetch; const estimate = await fetchStatisticsFinlandRentBenchmark({ municipality: "Vaasa", roomDescription: "2h + k", areaSqm: 52.5, fetcher, now: 1_000 }); assert.equal(estimate.effectiveMonthlyRent, 665); assert.equal(estimate.exactEstimatedMonthlyRent, 666.75); assert.equal(estimate.metricType, "average"); assert.equal(estimate.referencePeriod, "2026Q2"); assert.equal(estimate.sourceArea, "Vaasa"); assert.equal(estimate.roomCategory, "TWO_ROOMS"); assert.equal(estimate.sampleSize, 1334); const query = JSON.parse(requests[1]!.body!); assert.deepEqual(query.query.map((item: { selection: { values: string[] } }) => item.selection.values[0]), ["1", "2", "905", "2026Q2", "rent"]); });
+test("pienen kunnan maakuntafallback tuottaa hyväksytyn matalan luotettavuuden arvion", async () => { clearRentBenchmarkCache(); const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => init?.method === "POST" ? response({ value: [10, 15] }) : response(metadata)) as typeof fetch; const estimate = await fetchStatisticsFinlandRentBenchmark({ municipality: "Laihia", roomDescription: "3h + k", areaSqm: 71, fetcher, now: 2_000 }); assert.equal(estimate.effectiveMonthlyRent, 710); assert.equal(estimate.source, "fallback"); assert.equal(estimate.sourceArea, "Pohjanmaa"); assert.equal(estimate.confidence, "low"); assert.equal(hasEffectiveMonthlyRent(estimate), true); });
+test("cache estää turhat haut ja vanha arvo toimii hallittuna fallbackina", async () => { clearRentBenchmarkCache(); let calls = 0; const success = (async (_input: RequestInfo | URL, init?: RequestInit) => { calls += 1; return init?.method === "POST" ? response({ value: [13, 30] }) : response(metadata); }) as typeof fetch; await fetchStatisticsFinlandRentBenchmark({ municipality: "Vaasa", roomDescription: "1h", areaSqm: 30, fetcher: success, now: 10 }); await fetchStatisticsFinlandRentBenchmark({ municipality: "Vaasa", roomDescription: "1h", areaSqm: 30, fetcher: success, now: 11 }); assert.equal(calls, 2); const failure = (async () => { throw new Error("API ei vastaa"); }) as typeof fetch; const stale = await fetchStatisticsFinlandRentBenchmark({ municipality: "Vaasa", roomDescription: "1h", areaSqm: 30, fetcher: failure, now: 13 * 60 * 60 * 1000 }); assert.equal(stale.effectiveMonthlyRent, 390); assert.equal(stale.stale, true); assert.equal(stale.confidence, "low"); });
+test("effectiveRent noudattaa prioriteettia, säilyttää vertailun ja palautuu automaattiseksi", () => { const statistics = { effectiveMonthlyRent: 795, rentPerSquareMeter: 15.9, source: "statistics_finland" as const, confidence: "medium" as const, userOverridden: false }; assert.equal(resolveEffectiveRent({ listingRent: 750, statisticsEstimate: statistics }).effectiveRent, 750); const user = resolveEffectiveRent({ userRent: 700, userOverridden: true, listingRent: 750, statisticsEstimate: statistics }); assert.equal(user.estimate.source, "user"); assert.equal(user.estimate.previousAutomaticEstimate, 750); assert.equal(restoreAutomaticRent(user.estimate, statistics).effectiveMonthlyRent, 795); assert.deepEqual(rentDifference(750, 795), { euros: -45, percent: -45 / 795 * 100 }); });
 test("parseri löytää vuokrasopimuksen vuokran mutta ei sekoita erillismaksuja", () => { for (const text of ["Vuokra 750 €/kk", "Nykyinen vuokra: 750 euroa kuukaudessa", "Vuokrattu 750 € / kk", "Vuokrasopimuksen mukainen vuokra 750,00 €/kk", "Vuokratuotto perustuu 750 euron kuukausivuokraan"]) assert.equal(parseListingText(text).findings.find((item) => item.field === "currentRentMonthly")?.normalizedValue, 750, text); const excluded = parseListingText("Vesimaksu vuokralaiselta 25 €/kk"); assert.equal(excluded.findings.some((item) => item.field === "currentRentMonthly"), false); });
-test("tekstiparserin ja StatFin-adapterin integraatio poistaa vuokran puuttuvista tiedoista", async () => { clearRentBenchmarkCache(); const originalFetch = globalThis.fetch; globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => init?.method === "POST" ? response({ value: [12.7, 1334] }) : response(metadata)) as typeof fetch; try { const parsed = parseListingText("Kunta: Vaasa\nPinta-ala: 52,5 m²\nHuoneet: 2h + k\nVelaton hinta: 100 000 €\nHoitovastike: 250 €/kk"); const payload = await addAutomaticRentEstimate(parsed); assert.equal(payload.rentEstimate?.monthlyRent, 665); assert.equal(payload.rentEstimate?.source, "statistics_finland"); assert.equal(payload.missingCriticalFields.includes("Nykyinen vuokra"), false); } finally { globalThis.fetch = originalFetch; } });
-test("vuokran käyttöliittymä näyttää lähteen, muokkauksen ja palautuksen", async () => { const source = await readFile(new URL("../src/components/property/assumptions-card.tsx", import.meta.url), "utf8"); for (const text of ["Tilastokeskuksen arvio", "Löydetty myynti-ilmoituksesta", "Täsmennä vuokraa", "Palauta automaattinen arvio", "Käytä tätä vuokraa", "sourceArea", "referencePeriod"]) assert.ok(source.includes(text)); assert.doesNotMatch(source, /0 €\/kk.*Vuokra ei ole tiedossa/); });
+test("tekstiparserin ja StatFin-adapterin integraatio poistaa vuokran puuttuvista tiedoista", async () => { clearRentBenchmarkCache(); const fetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => init?.method === "POST" ? response({ value: [12.7, 1334] }) : response(metadata)) as typeof fetch; const parsed = parseListingText("Kunta: Vaasa\nPinta-ala: 52,5 m²\nHuoneet: 2h + k\nVelaton hinta: 100 000 €\nHoitovastike: 250 €/kk"); const payload = await addAutomaticRentEstimate(parsed, { fetcher }); assert.equal(payload.rentEstimate?.effectiveMonthlyRent, 665); assert.equal(payload.rentEstimate?.source, "statistics_finland"); assert.equal(payload.missingCriticalFields.includes("Nykyinen vuokra"), false); });
+test("vuokran käyttöliittymä näyttää lähteen, muokkauksen ja palautuksen", async () => { const source = await readFile(new URL("../src/components/property/assumptions-card.tsx", import.meta.url), "utf8"); for (const text of ["Tilastokeskuksen arvio", "Löydetty myynti-ilmoituksesta", "Täsmennä tarvittaessa", "Palauta automaattinen arvio", "Käytä tätä vuokraa", "sourceArea", "referencePeriod"]) assert.ok(source.includes(text)); assert.doesNotMatch(source, /0 €\/kk.*Vuokra ei ole tiedossa/); });
+
+test("vuokran prioriteetti on käyttäjä, vuokrasopimus, ilmoitus, tilasto ja markkinadata", () => {
+  const statistics = { effectiveMonthlyRent: 700, source: "statistics_finland" as const, confidence: "medium" as const, userOverridden: false };
+  const market = { effectiveMonthlyRent: 690, source: "market_data" as const, confidence: "medium" as const, userOverridden: false };
+  assert.equal(resolveEffectiveRent({ statisticsEstimate: statistics, marketEstimate: market }).estimate.source, "statistics_finland");
+  assert.equal(resolveEffectiveRent({ listingRent: 750, statisticsEstimate: statistics }).estimate.source, "listing");
+  assert.equal(resolveEffectiveRent({ leaseRent: 775, listingRent: 750, statisticsEstimate: statistics }).estimate.source, "lease");
+  const overridden = resolveEffectiveRent({ userRent: 800, userOverridden: true, leaseRent: 775, listingRent: 750, statisticsEstimate: statistics });
+  assert.equal(overridden.effectiveRent, 800);
+  assert.equal(overridden.estimate.source, "user");
+});
+
+test("unknown ei muutu nollaksi ja confidence-raja hyväksyy low-arvion", () => {
+  const unknown = resolveEffectiveRent({ statisticsEstimate: { effectiveMonthlyRent: null, source: "unknown", confidence: "unknown", userOverridden: false } });
+  assert.equal(unknown.effectiveRent, null);
+  assert.equal(unknown.estimate.effectiveMonthlyRent, null);
+  assert.equal(hasEffectiveMonthlyRent({ effectiveMonthlyRent: 710, source: "fallback", confidence: "low", userOverridden: false, resolutionStatus: "resolved" }), true);
+});
+
+test("puuttuvien tietojen tarkistus käyttää canonical effectiveMonthlyRent-arvoa", () => {
+  const values = { debtFreePrice: 100_000, maintenanceFeeMonthly: 250, areaSqm: 50, constructionYear: 2000, buildingType: "apartment", heatingType: "district" };
+  assert.equal(missingAnalysisFields(values).includes("currentRentMonthly"), true);
+  assert.equal(missingAnalysisFields({ ...values, currentRentMonthly: 0 }).includes("currentRentMonthly"), true);
+  assert.equal(missingAnalysisFields(values, { effectiveMonthlyRent: 700, source: "statistics_finland", confidence: "medium", userOverridden: false, resolutionStatus: "resolved" }).includes("currentRentMonthly"), false);
+});
+
+test("URL-valmistelu odottaa vuokra-arvion ja tekee next step -päätöksen vasta enrichmentin jälkeen", async () => {
+  clearRentBenchmarkCache();
+  let rentFinished = false;
+  const delayedFetcher = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") { await new Promise((resolve) => setTimeout(resolve, 30)); rentFinished = true; return response({ value: [14, 50] }); }
+    return response(metadata);
+  }) as typeof fetch;
+  const parsed = parseListingText("Kunta: Vaasa\nPinta-ala: 50 m²\nHuoneet: 2h + k\nVelaton hinta: 100 000 €\nHoitovastike: 250 €/kk\nRakennusvuosi: 2000\nTalotyyppi: kerrostalo\nLämmitysmuoto: kaukolämpö\nMyyntihinta: 100 000 €\nYhtiölainaosuus: 0 €");
+  const pending = prepareListingAnalysis(parsed, { fetcher: delayedFetcher });
+  assert.equal(rentFinished, false);
+  const prepared = await pending;
+  assert.equal(rentFinished, true);
+  assert.equal(prepared.rentEstimate?.effectiveMonthlyRent, 700);
+  assert.equal(prepared.preparation?.allAutomaticEnrichmentsCompleted, true);
+  assert.equal(prepared.preparation?.missingCriticalFields.includes("currentRentMonthly"), false);
+});
+
+test("tekninen virhe päätyy käsinsyöttöön vasta fallbackien ja cachen jälkeen", async () => {
+  clearRentBenchmarkCache();
+  const parsed = parseListingText("Kunta: Vaasa\nPinta-ala: 50 m²\nHuoneet: 2h + k");
+  const prepared = await prepareListingAnalysis(parsed, { fetcher: (async () => { throw new Error("verkko poikki"); }) as typeof fetch, logger: { error() {} } });
+  assert.equal(prepared.rentEstimate?.effectiveMonthlyRent, null);
+  assert.equal(prepared.rentEstimate?.resolutionStatus, "unavailable");
+  assert.deepEqual(prepared.rentEstimate?.issues?.map((issue) => issue.code), ["EXTERNAL_API_ERROR", "CACHE_MISS", "NO_ACCEPTABLE_FALLBACK"]);
+  assert.equal(prepared.preparation?.status, "needs_user_input");
+});

@@ -1,5 +1,6 @@
 import type { ListingFinding, ListingParseResult } from "../parser/listing-parser.ts";
 import type { NormalizedFieldKey } from "../parser/synonyms.ts";
+import type { RentEstimate } from "../rent-data/types.ts";
 
 export const analysisBlockingFields = ["debtFreePrice", "maintenanceFeeMonthly", "areaSqm", "constructionYear", "buildingType", "heatingType", "currentRentMonthly"] as const satisfies readonly NormalizedFieldKey[];
 export const optionalRiskFields = ["companyLoanShare", "financingFeeMonthly", "landOwnership"] as const satisfies readonly NormalizedFieldKey[];
@@ -21,8 +22,15 @@ export function automaticValues(result: ListingParseResult): Partial<Record<Norm
   return values;
 }
 
-export function missingAnalysisFields(values: Partial<Record<NormalizedFieldKey, number | string>>): NormalizedFieldKey[] {
-  return analysisBlockingFields.filter((field) => values[field] === undefined || values[field] === "");
+export function hasEffectiveMonthlyRent(rent?: RentEstimate | null): boolean {
+  return typeof rent?.effectiveMonthlyRent === "number" && Number.isFinite(rent.effectiveMonthlyRent) && rent.effectiveMonthlyRent > 0 && rent.confidence !== "unknown" && rent.resolutionStatus !== "pending";
+}
+
+export function missingAnalysisFields(values: Partial<Record<NormalizedFieldKey, number | string>>, rent?: RentEstimate | null): NormalizedFieldKey[] {
+  return analysisBlockingFields.filter((field) => {
+    if (field === "currentRentMonthly") return !hasEffectiveMonthlyRent(rent) && !(typeof values[field] === "number" && Number.isFinite(values[field]) && values[field] > 0);
+    return values[field] === undefined || values[field] === "";
+  });
 }
 
 export function analysisReliability(result: ListingParseResult, values: Partial<Record<NormalizedFieldKey, number | string>>, userCompletedFields: readonly NormalizedFieldKey[] = []): AnalysisReliability {

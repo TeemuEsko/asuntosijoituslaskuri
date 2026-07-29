@@ -3,9 +3,22 @@ export type RentConfidence = "high" | "medium" | "low" | "unknown";
 export type RentMetricType = "median" | "average" | "asking_rent" | "actual_rent" | "unknown";
 export type RentAreaLevel = "postal_code" | "municipality" | "sub_region" | "region" | "comparison_area" | "unknown";
 export type RentRoomCategory = "ONE_ROOM" | "TWO_ROOMS" | "THREE_PLUS_ROOMS" | "ALL" | "UNKNOWN";
+export type RentResolutionStatus = "pending" | "resolved" | "unavailable";
+export type RentResolutionErrorCode = "DATA_NOT_AVAILABLE" | "INVALID_LOCATION" | "INVALID_ROOM_CATEGORY" | "EXTERNAL_API_ERROR" | "INVALID_API_RESPONSE" | "CACHE_MISS" | "NO_ACCEPTABLE_FALLBACK";
+
+export type RentResolutionIssue = {
+  code: RentResolutionErrorCode;
+  stage: "resolving_location" | "resolving_room_category" | "fetching_metadata" | "fetching_rent" | "reading_cache" | "selecting_fallback";
+  message: string;
+  area?: string | null;
+  roomCategory?: RentRoomCategory | null;
+  datasetId?: string | null;
+  statusCode?: number | null;
+};
 
 export type RentEstimate = {
-  monthlyRent: number | null;
+  /** Kaikkien laskelmien ja puuttuvien tietojen tarkistuksen käyttämä canonical arvo. */
+  effectiveMonthlyRent: number | null;
   exactEstimatedMonthlyRent?: number | null;
   rentPerSquareMeter?: number | null;
   source: RentValueSource;
@@ -26,8 +39,11 @@ export type RentEstimate = {
   stale?: boolean;
   warning?: string | null;
   benchmark?: RentEstimate | null;
+  resolutionStatus?: RentResolutionStatus;
+  attemptedSources?: RentValueSource[];
+  issues?: RentResolutionIssue[];
 };
 
-export type RentBenchmark = Omit<RentEstimate, "monthlyRent" | "exactEstimatedMonthlyRent" | "userOverridden"> & { rentPerSquareMeter: number };
+export type RentBenchmark = Omit<RentEstimate, "effectiveMonthlyRent" | "exactEstimatedMonthlyRent" | "userOverridden"> & { rentPerSquareMeter: number };
 
 export type EffectiveRent = { effectiveRent: number | null; estimate: RentEstimate; automaticEstimate: RentEstimate | null; warning?: string };

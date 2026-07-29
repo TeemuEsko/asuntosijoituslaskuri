@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { prepareListingAnalysis } from "@/core/analysis/prepare-listing-analysis";
 import { acquireListing } from "@/core/listing-acquisition/acquire-listing";
 import { parseListingText } from "@/core/parser/listing-parser";
-import { addAutomaticRentEstimate } from "@/core/rent-data/enrich-listing-rent";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,11 +22,11 @@ export async function POST(request: Request) {
   if (body.kind === "text") {
     const parsed = parseListingText(value, "pasted_text");
     if (!parsed.findings.length && !parsed.renovations.length) return NextResponse.json({ code: "insufficient_content", error: "Tekstistä ei löytynyt tunnistettavaa kohdedataa. Liitä ilmoituksen koko tietosisältö tai täytä tiedot itse." }, { status: 422 });
-    return NextResponse.json(await addAutomaticRentEstimate(parsed));
+    return NextResponse.json(await prepareListingAnalysis(parsed));
   }
   if (body.kind !== "url") return NextResponse.json({ code: "invalid_input", error: "Valitse linkki tai ilmoitusteksti." }, { status: 400 });
 
   const acquisition = await acquireListing(value, { forceRefresh: body.forceRefresh });
   if (!acquisition.ok) return NextResponse.json({ code: acquisition.code, error: acquisition.error, diagnostics: process.env.NODE_ENV === "development" ? acquisition.diagnostics : undefined }, { status: acquisition.status });
-  return NextResponse.json(await addAutomaticRentEstimate(acquisition.result));
+  return NextResponse.json(await prepareListingAnalysis(acquisition.result));
 }
