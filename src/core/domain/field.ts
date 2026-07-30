@@ -1,4 +1,4 @@
-export type FieldStatus = "parser" | "user" | "derived" | "missing";
+export type FieldStatus = "parser" | "user" | "derived" | "default" | "missing";
 
 export type FieldSource = {
   kind: "listing" | "document" | "user" | "calculation";

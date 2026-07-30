@@ -1,16 +1,18 @@
 import { effectiveAnnualRent, occupancyFromVacancyMonths } from "./occupancy.ts";
 import { clampInvestmentScore, getInvestmentRating, type InvestmentOverallScoreData, type RatingSubScore } from "../analysis/investment-overall-score.ts";
+import { METRIC_THRESHOLDS } from "../analysis/metric-card-status.ts";
+import type { EquitySource } from "../analysis/equity-assumption.ts";
 import { evaluateInvestmentObservations, type InvestmentObservation } from "../rules/investment-observations.ts";
 
 export type RepaymentType = "annuity" | "equal_principal" | "interest_only" | "bullet";
 export type InvestmentAnalysisInput = {
   debtFreePrice?: number; salePrice?: number; companyLoanShare?: number; monthlyRent?: number; maintenanceFeeMonthly?: number; financingFeeMonthly?: number; otherCostsMonthly?: number; maintenanceReserveMonthly?: number; vacancyMonths?: number;
-  bankLoanAmount?: number; annualInterestRate?: number; loanTermYears?: number; repaymentType?: RepaymentType; equity?: number; collateralValue?: number; rentalDemand?: number; repairRiskScore?: number; repairHistoryKnown?: boolean; monthlyBankLoanPayment?: number;
+  bankLoanAmount?: number; annualInterestRate?: number; loanTermYears?: number; repaymentType?: RepaymentType; equity?: number; equitySource?: EquitySource; equityUserOverridden?: boolean; collateralValue?: number; rentalDemand?: number; repairRiskScore?: number; repairHistoryKnown?: boolean; monthlyBankLoanPayment?: number;
   renovationReserve?: number; transferTaxRate?: number; transactionCosts?: number; annualCompanyLoanPrincipal?: number; locationRisk?: number; resaleLiquidity?: number; sellingCostsRate?: number; holdingPeriodYears?: number; annualAppreciationRate?: number;
 };
 
 export type InvestmentAnalysisResult = InvestmentOverallScoreData & {
-  preliminary: boolean; grossRentalYield?: number; netRentalYield?: number; effectiveAnnualRent?: number; cashFlowBeforeBankLoan?: number; cashFlowAfterBankLoan?: number; annualCashFlowAfterBankLoan?: number; monthlyBankLoanPayment?: number; monthlyBankLoanInterest?: number; monthlyBankLoanPrincipal?: number; annualBankLoanPrincipal?: number; bankLoanAmount?: number; equity?: number; adjustedAcquisitionPrice?: number; transferTax?: number; totalAcquisitionCosts?: number; actualEquityRequired?: number; collateralShortfall?: number; leverageRatio?: number; cashOnCashReturn?: number; returnOnEquity?: number; estimatedExitPrice?: number; estimatedExitProfit?: number; observations: InvestmentObservation[];
+  preliminary: boolean; grossRentalYield?: number; netRentalYield?: number; effectiveAnnualRent?: number; cashFlowBeforeBankLoan?: number; cashFlowAfterBankLoan?: number; annualCashFlowAfterBankLoan?: number; monthlyBankLoanPayment?: number; monthlyBankLoanInterest?: number; monthlyBankLoanPrincipal?: number; annualBankLoanPrincipal?: number; bankLoanAmount?: number; repaymentType?: RepaymentType; equity?: number; equitySource?: EquitySource; equityUserOverridden?: boolean; adjustedAcquisitionPrice?: number; transferTax?: number; totalAcquisitionCosts?: number; actualEquityRequired?: number; collateralShortfall?: number; collateralBuffer?: number; leverageRatio?: number; cashOnCashReturn?: number | null; returnOnEquity?: number | null; estimatedExitPrice?: number; estimatedExitProfit?: number; observations: InvestmentObservation[];
 };
 
 function interpolate(value: number, points: ReadonlyArray<readonly [number, number]>): number {
@@ -19,9 +21,15 @@ function interpolate(value: number, points: ReadonlyArray<readonly [number, numb
   return points.at(-1)![1];
 }
 
-export function classifyGrossRentalYield(value: number): "Heikko" | "Matala" | "Kohtalainen" | "Hyvä" | "Vahva" { return value < 4.5 ? "Heikko" : value < 5.5 ? "Matala" : value < 6.5 ? "Kohtalainen" : value < 8 ? "Hyvä" : "Vahva"; }
-export function grossYieldScore(value: number): number { return clampInvestmentScore(interpolate(value, [[0, 0], [4.5, 30], [5.5, 45], [6.5, 60], [8, 80], [10, 100]])); }
-export function netYieldScore(value: number): number { return clampInvestmentScore(interpolate(value, [[0, 0], [2.5, 25], [3.5, 40], [4.5, 60], [6, 80], [8, 100]])); }
+export function classifyGrossRentalYield(value: number): "Heikko" | "Matala" | "Kohtalainen" | "Hyvä" | "Vahva" { const threshold = METRIC_THRESHOLDS.grossRentalYield; return value < threshold.poor ? "Heikko" : value < threshold.low ? "Matala" : value < threshold.good ? "Kohtalainen" : value < threshold.strong ? "Hyvä" : "Vahva"; }
+export function grossYieldScore(value: number): number { const threshold = METRIC_THRESHOLDS.grossRentalYield; return clampInvestmentScore(interpolate(value, [[0, 0], [threshold.poor, 30], [threshold.low, 45], [threshold.good, 60], [threshold.strong, 80], [10, 100]])); }
+export function netYieldScore(value: number): number { const threshold = METRIC_THRESHOLDS.netRentalYield; return clampInvestmentScore(interpolate(value, [[0, 0], [2.5, 25], [threshold.poor, 40], [4.5, 60], [threshold.good, 80], [8, 100]])); }
+
+export function calculateBankLoanAmount(salePrice: number, equity: number): number {
+  const safeSalePrice = Number.isFinite(salePrice) ? Math.max(0, salePrice) : 0;
+  const safeEquity = Number.isFinite(equity) ? Math.max(0, equity) : 0;
+  return Math.max(0, safeSalePrice - safeEquity);
+}
 
 export function calculateBankLoanPayment(amount: number, annualInterestRate: number, loanTermYears: number, repaymentType: RepaymentType) {
   if (![amount, annualInterestRate, loanTermYears].every(Number.isFinite) || amount < 0 || annualInterestRate < 0 || loanTermYears <= 0) return undefined;
@@ -59,13 +67,15 @@ export function calculateInvestmentAnalysis(input: InvestmentAnalysisInput): Inv
   const adjustedAcquisitionPrice = price === undefined ? undefined : price + renovationReserve + (transferTax ?? 0) + transactionCosts;
   const actualEquityRequired = valid(input.salePrice) && valid(input.bankLoanAmount) ? Math.max(0, input.salePrice + renovationReserve + (transferTax ?? 0) + transactionCosts - input.bankLoanAmount) : undefined;
   const collateralShortfall = valid(input.bankLoanAmount) && valid(input.collateralValue) ? Math.max(0, input.bankLoanAmount - input.collateralValue) : undefined;
+  const collateralBuffer = valid(input.bankLoanAmount) && valid(input.collateralValue) ? Math.max(0, input.collateralValue - input.bankLoanAmount) : undefined;
   const totalDebt = valid(input.bankLoanAmount) ? input.bankLoanAmount + (valid(input.companyLoanShare) ? input.companyLoanShare : 0) : undefined;
   const leverage = adjustedAcquisitionPrice && totalDebt !== undefined ? totalDebt / adjustedAcquisitionPrice : undefined;
   const annualCashFlow = afterLoan === undefined ? undefined : afterLoan * 12;
   const annualBankPrincipal = loan ? loan.principal * 12 : undefined;
-  const equityBase = valid(input.equity) && input.equity > 0 ? input.equity : actualEquityRequired && actualEquityRequired > 0 ? actualEquityRequired : undefined;
-  const cashOnCashReturn = annualCashFlow !== undefined && equityBase ? annualCashFlow / equityBase * 100 : undefined;
-  const returnOnEquity = annualCashFlow !== undefined && annualBankPrincipal !== undefined && equityBase ? (annualCashFlow + annualBankPrincipal + (input.annualCompanyLoanPrincipal ?? 0)) / equityBase * 100 : undefined;
+  const explicitNonPositiveEquity = valid(input.equity) && input.equity <= 0;
+  const equityBase = valid(input.equity) ? (input.equity > 0 ? input.equity : undefined) : actualEquityRequired && actualEquityRequired > 0 ? actualEquityRequired : undefined;
+  const cashOnCashReturn = explicitNonPositiveEquity ? null : annualCashFlow !== undefined && equityBase ? annualCashFlow / equityBase * 100 : undefined;
+  const returnOnEquity = explicitNonPositiveEquity ? null : annualCashFlow !== undefined && annualBankPrincipal !== undefined && equityBase ? (annualCashFlow + annualBankPrincipal + (input.annualCompanyLoanPrincipal ?? 0)) / equityBase * 100 : undefined;
   const holdingYears = valid(input.holdingPeriodYears) ? Math.max(0, input.holdingPeriodYears) : undefined;
   const exitPrice = price !== undefined && holdingYears !== undefined && valid(input.annualAppreciationRate) ? price * (1 + input.annualAppreciationRate / 100) ** holdingYears : undefined;
   const exitProfit = exitPrice !== undefined ? exitPrice * (1 - Math.max(0, input.sellingCostsRate ?? 0) / 100) - price! : undefined;
@@ -94,10 +104,10 @@ export function calculateInvestmentAnalysis(input: InvestmentAnalysisInput): Inv
   const financingComponent = !loanKnown ? 30 : leverage === undefined ? 40 : clampInvestmentScore(95 - leverage * 70 - Math.max(0, input.annualInterestRate! - 4) * 5);
   const repairComponent = input.repairRiskScore ?? 50;
   const demandComponent = clampInvestmentScore(20 + (input.rentalDemand ?? 3) * 15 - vacancy.vacancyMonths * 4 - Math.max(0, (input.locationRisk ?? 3) - 3) * 8 + ((input.resaleLiquidity ?? 3) - 3) * 5);
-  const collateralBuffer = price && valid(input.collateralValue) && valid(input.bankLoanAmount) ? (input.collateralValue - input.bankLoanAmount) / price : undefined;
-  const collateralComponent = collateralBuffer === undefined ? 40 : clampInvestmentScore(50 + collateralBuffer * 100);
+  const collateralPositionRatio = price && valid(input.collateralValue) && valid(input.bankLoanAmount) ? (input.collateralValue - input.bankLoanAmount) / price : undefined;
+  const collateralComponent = collateralPositionRatio === undefined ? 40 : clampInvestmentScore(50 + collateralPositionRatio * 100);
   let score = Math.round(cashFlowComponent * .25 + yieldComponent * .2 + financingComponent * .2 + repairComponent * .2 + demandComponent * .1 + collateralComponent * .05);
   score = Math.round(clampInvestmentScore(score + observations.reduce((sum, item) => sum + item.scoreImpact, 0) * .25));
   if (!loanKnown) score = Math.min(score, 59); if ((grossYield ?? 0) < 5 && (netYield ?? 0) < 4.5) score = Math.min(score, 59); if (afterLoan !== undefined && afterLoan < 0) score = Math.min(score, 54);
-  return { score, preliminary: !loanKnown || missingFactors.length > 0, grossRentalYield: grossYield, netRentalYield: netYield, effectiveAnnualRent: annualRent, cashFlowBeforeBankLoan: beforeLoan, cashFlowAfterBankLoan: afterLoan, annualCashFlowAfterBankLoan: annualCashFlow, monthlyBankLoanPayment: loan?.payment, monthlyBankLoanInterest: loan?.interest, monthlyBankLoanPrincipal: loan?.principal, annualBankLoanPrincipal: annualBankPrincipal, bankLoanAmount: input.bankLoanAmount, equity: input.equity, adjustedAcquisitionPrice, transferTax, totalAcquisitionCosts: adjustedAcquisitionPrice, actualEquityRequired, collateralShortfall, leverageRatio: leverage, cashOnCashReturn, returnOnEquity, estimatedExitPrice: exitPrice, estimatedExitProfit: exitProfit, observations, positiveFactors, warningFactors, missingFactors, subScores: { yield: sub(yieldComponent, "Nettovuokratuotto painottaa toteutuvaa vuokraa ja jatkuvia kuluja."), cashFlow: sub(cashFlowComponent, "Kassavirta huomioi pankkilainan kuukausierän."), housingCompanyRisk: sub(repairComponent, "Arvio perustuu tunnistettuun korjaushistoriaan."), financing: sub(financingComponent, "Arvio huomioi velkavivun, koron ja laina-ajan.") } };
+  return { score, preliminary: !loanKnown || missingFactors.length > 0, grossRentalYield: grossYield, netRentalYield: netYield, effectiveAnnualRent: annualRent, cashFlowBeforeBankLoan: beforeLoan, cashFlowAfterBankLoan: afterLoan, annualCashFlowAfterBankLoan: annualCashFlow, monthlyBankLoanPayment: loan?.payment, monthlyBankLoanInterest: loan?.interest, monthlyBankLoanPrincipal: loan?.principal, annualBankLoanPrincipal: annualBankPrincipal, bankLoanAmount: input.bankLoanAmount, repaymentType: input.repaymentType, equity: input.equity, equitySource: input.equitySource, equityUserOverridden: input.equityUserOverridden, adjustedAcquisitionPrice, transferTax, totalAcquisitionCosts: adjustedAcquisitionPrice, actualEquityRequired, collateralShortfall, collateralBuffer, leverageRatio: leverage, cashOnCashReturn, returnOnEquity, estimatedExitPrice: exitPrice, estimatedExitProfit: exitProfit, observations, positiveFactors, warningFactors, missingFactors, subScores: { yield: sub(yieldComponent, "Nettovuokratuotto painottaa toteutuvaa vuokraa ja jatkuvia kuluja."), cashFlow: sub(cashFlowComponent, "Kassavirta huomioi pankkilainan kuukausierän."), housingCompanyRisk: sub(repairComponent, "Arvio perustuu tunnistettuun korjaushistoriaan."), financing: sub(financingComponent, "Arvio huomioi velkavivun, koron ja laina-ajan.") } };
 }

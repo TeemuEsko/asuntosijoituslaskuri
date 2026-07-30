@@ -9,6 +9,7 @@ export const fieldStatusLabels: Record<FieldStatus, string> = {
   parser: "Tietojen haku",
   user: "Oma tieto",
   derived: "Laskettu",
+  default: "Oletus",
   missing: "Puuttuu",
 };
 

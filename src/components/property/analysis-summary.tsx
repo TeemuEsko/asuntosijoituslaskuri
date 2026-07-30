@@ -1,24 +1,65 @@
-import { AlertTriangle, CheckCircle2, FileQuestion } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, CircleHelp, FileQuestion, Info } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { METRIC_CARD_ORDER, METRIC_CARD_STATUS_CLASSES, METRIC_CARD_STATUS_TEXT_CLASSES, SECONDARY_METRIC_CARD_STATUS_CLASSES, metricCardState, type MetricCardKey, type MetricStatusIcon } from "@/core/analysis/metric-card-status";
 import { formatFinnishNumber } from "@/core/parser/normalization";
 import type { InvestmentAnalysisResult } from "@/core/calculations/investment-analysis";
+import { cn } from "@/lib/utils";
 
-function money(value: number | undefined, suffix = "€/kk") { return value === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(value)} ${suffix}`; }
+function isFiniteNumber(value: number | null | undefined): value is number { return typeof value === "number" && Number.isFinite(value); }
+function money(value: number | null | undefined, suffix = "€/kk") { return isFiniteNumber(value) ? `${formatFinnishNumber(value)} ${suffix}` : "Ei laskettavissa"; }
+function percent(value: number | null | undefined) { return isFiniteNumber(value) ? `${formatFinnishNumber(value, 1)} %` : "Ei laskettavissa"; }
+
+type MetricCardData = {
+  key: MetricCardKey;
+  label: string;
+  value: number | null | undefined;
+  formattedValue: string;
+  description: string;
+  secondary?: boolean;
+};
+
+const statusIcons: Record<MetricStatusIcon, LucideIcon> = {
+  check: CheckCircle2,
+  warning: AlertTriangle,
+  error: AlertCircle,
+  info: Info,
+  unknown: CircleHelp,
+};
 
 export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult }) {
-  const metrics = [
-    ["Kassavirta pankkilainan jälkeen", money(analysis.cashFlowAfterBankLoan), analysis.cashFlowAfterBankLoan === undefined ? "Lisää pankkilainan ja kulujen tiedot." : "Vuokra vähennettynä kuluilla ja pankkilainan kuukausierällä."],
-    ["Nettovuokratuotto", analysis.netRentalYield === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.netRentalYield, 1)} %`, "Huomioi tyhjäkäynnin ja jatkuvat kuukausikulut."],
-    ["Bruttovuokratuotto", analysis.grossRentalYield === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.grossRentalYield, 1)} %`, "Efektiivinen vuosivuokra suhteessa velattomaan hintaan."],
-    ["Oma pääoma", money(analysis.equity, "€"), "Analyysissa käytetty sijoittajan oma pääoma."],
-    ["Lainan lyheneminen", money(analysis.monthlyBankLoanPrincipal), "Pankkilainan ensimmäisen kuukauden lyhennys."],
-    ["Kassavirta vuodessa", money(analysis.annualCashFlowAfterBankLoan, "€/v"), "Kuukausittainen kassavirta kerrottuna kahdellatoista."],
-    ["Oman pääoman kassatuotto", analysis.cashOnCashReturn === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.cashOnCashReturn, 1)} %`, "Vuosikassavirta suhteessa sijoitettuun omaan pääomaan."],
-    ["Oman pääoman tuotto", analysis.returnOnEquity === undefined ? "Ei laskettavissa" : `${formatFinnishNumber(analysis.returnOnEquity, 1)} %`, "Kassavirta ja lainan lyheneminen suhteessa omaan pääomaan."],
-    ["Vakuusvaje", money(analysis.collateralShortfall, "€"), "Pankkilainan ja kohteen vakuusarvon positiivinen erotus."],
-    ["Oikaistu hankintahinta", money(analysis.adjustedAcquisitionPrice, "€"), "Velaton hinta, remonttivara, varainsiirtovero ja kaupantekokulut."],
-  ];
-  return <Card><CardContent><dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{metrics.map(([label, value, description]) => <div key={label} className="rounded-lg bg-muted/35 p-4"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold">{value}</dd><p className="mt-2 text-xs leading-relaxed text-muted-foreground">{description}</p></div>)}</dl></CardContent></Card>;
+  const collateralKnown = analysis.collateralShortfall !== undefined && analysis.collateralBuffer !== undefined;
+  const collateralPosition = !collateralKnown ? undefined : analysis.collateralShortfall! > 0 ? -analysis.collateralShortfall! : analysis.collateralBuffer!;
+  const collateralLabel = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Vakuusvaje" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
+  const collateralDescription = analysis.collateralShortfall! > 0
+    ? "Lisävakuuden tai oman rahan tarve kohteen vakuusarvon lisäksi."
+    : analysis.collateralBuffer! > 0
+      ? "Kohteen vakuusarvo ylittää pankkilainan määrän."
+      : "Kohteen vakuusarvo ja pankkilainan määrä ovat samalla tasolla.";
+  const equityReturnDescription = analysis.equity === 0 ? "Lisää sijoitettava oma pääoma." : "Vuosituotto suhteessa sijoitettuun omaan pääomaan.";
+  const principalDescription = analysis.monthlyBankLoanPrincipal === 0 && analysis.repaymentType === "interest_only"
+    ? "Vain korkoa maksava laina ei lyhene kuukausittain."
+    : analysis.monthlyBankLoanPrincipal === 0 && analysis.repaymentType === "bullet"
+      ? "Kertalyhenteinen laina maksetaan laina-ajan lopussa."
+      : "Pankkilainan ensimmäisen kuukauden lyhennys.";
+  const byKey: Record<MetricCardKey, MetricCardData> = {
+    cashFlowAfterBankLoan: { key: "cashFlowAfterBankLoan", label: "Kassavirta pankkilainan jälkeen", value: analysis.cashFlowAfterBankLoan, formattedValue: money(analysis.cashFlowAfterBankLoan), description: analysis.cashFlowAfterBankLoan === undefined ? "Lisää pankkilainan ja kulujen tiedot." : "Vuokra vähennettynä kuluilla ja pankkilainan kuukausierällä." },
+    netRentalYield: { key: "netRentalYield", label: "Nettovuokratuotto", value: analysis.netRentalYield, formattedValue: percent(analysis.netRentalYield), description: "Huomioi tyhjäkäynnin ja jatkuvat kuukausikulut." },
+    grossRentalYield: { key: "grossRentalYield", label: "Bruttovuokratuotto", value: analysis.grossRentalYield, formattedValue: percent(analysis.grossRentalYield), description: "Efektiivinen vuosivuokra suhteessa velattomaan hintaan." },
+    equity: { key: "equity", label: "Oma pääoma", value: analysis.equity, formattedValue: money(analysis.equity, "€"), description: analysis.equitySource === "user" ? "Käyttäjän määrittämä sijoitettava oma pääoma." : "Oletus on 0 €. Lisää sijoitettava oma pääoma tarvittaessa. Oletus ei ole pankin hyväksymä rahoitusratkaisu." },
+    returnOnEquity: { key: "returnOnEquity", label: "Oman pääoman tuotto", value: analysis.returnOnEquity, formattedValue: percent(analysis.returnOnEquity), description: analysis.equity === 0 ? equityReturnDescription : "Kassavirta ja lainan lyheneminen suhteessa omaan pääomaan." },
+    cashOnCashReturn: { key: "cashOnCashReturn", label: "Oman pääoman kassatuotto", value: analysis.cashOnCashReturn, formattedValue: percent(analysis.cashOnCashReturn), description: equityReturnDescription },
+    monthlyBankLoanPrincipal: { key: "monthlyBankLoanPrincipal", label: "Lainan lyheneminen", value: analysis.monthlyBankLoanPrincipal, formattedValue: money(analysis.monthlyBankLoanPrincipal), description: principalDescription },
+    collateralPosition: { key: "collateralPosition", label: collateralLabel, value: collateralPosition, formattedValue: collateralKnown ? money(Math.abs(collateralPosition!), "€") : "Ei laskettavissa", description: collateralKnown ? collateralDescription : "Lisää pankkilainan ja vakuusarvon tiedot." },
+    annualCashFlowAfterBankLoan: { key: "annualCashFlowAfterBankLoan", label: "Kassavirta vuodessa", value: analysis.annualCashFlowAfterBankLoan, formattedValue: money(analysis.annualCashFlowAfterBankLoan, "€/v"), description: "Kuukausittainen kassavirta kerrottuna kahdellatoista.", secondary: true },
+    adjustedAcquisitionPrice: { key: "adjustedAcquisitionPrice", label: "Oikaistu hankintahinta", value: analysis.adjustedAcquisitionPrice, formattedValue: money(analysis.adjustedAcquisitionPrice, "€"), description: "Velaton hinta, remonttivara, varainsiirtovero ja kaupantekokulut." },
+  };
+  const metrics = METRIC_CARD_ORDER.map((key) => byKey[key]);
+  return <Card><CardContent><dl className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{metrics.map((metric) => {
+    const status = metricCardState(metric.key, metric.value, { monthlyCashFlow: analysis.cashFlowAfterBankLoan, bankLoanAmount: analysis.bankLoanAmount, equitySource: analysis.equitySource });
+    const StatusIcon = statusIcons[status.icon];
+    return <div key={metric.key} data-metric={metric.key} data-status={status.status} className={cn("flex h-full min-w-0 flex-col rounded-xl border p-4", metric.secondary ? SECONDARY_METRIC_CARD_STATUS_CLASSES[status.status] : METRIC_CARD_STATUS_CLASSES[status.status])}><div className="flex min-w-0 items-start justify-between gap-3"><dt className="min-w-0 text-sm font-medium text-muted-foreground">{metric.label}</dt><span aria-label={`Tila: ${status.statusLabel}`} className={cn("inline-flex shrink-0 items-center gap-1 rounded-full border bg-background/70 px-2 py-1 text-[0.6875rem] font-medium", METRIC_CARD_STATUS_TEXT_CLASSES[status.status])}><StatusIcon aria-hidden="true" className="size-3.5" />{status.statusLabel}</span></div><dd className="mt-3 break-words text-2xl font-semibold tracking-tight">{metric.formattedValue}</dd><p className="mt-3 text-xs leading-relaxed text-muted-foreground">{metric.description}</p></div>;
+  })}</dl></CardContent></Card>;
 }
 
 export function AnalysisHighlights({ rating }: { rating: InvestmentAnalysisResult }) {

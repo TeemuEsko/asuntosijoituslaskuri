@@ -12,6 +12,7 @@ export function SourceBadge({ status }: { status: FieldStatus }) {
         "shrink-0 whitespace-nowrap font-normal",
         status === "user" && "border-success/25 bg-success-soft text-success",
         status === "derived" && "border-blue-200 bg-blue-50 text-blue-700",
+        status === "default" && "border-border bg-muted/50 text-muted-foreground",
         status === "missing" && "border-warning/25 bg-warning-soft text-warning",
       )}
     >

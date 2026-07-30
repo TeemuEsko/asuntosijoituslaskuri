@@ -18,8 +18,8 @@ export function simulateMaximumOfferPrice(input: InvestmentAnalysisInput, target
     evaluatedScenarios += 1;
     if (targets.monthlyCashFlow !== undefined && (result.cashFlowAfterBankLoan === undefined || result.cashFlowAfterBankLoan < targets.monthlyCashFlow)) continue;
     if (targets.netRentalYield !== undefined && (result.netRentalYield === undefined || result.netRentalYield < targets.netRentalYield)) continue;
-    if (targets.cashOnCashReturn !== undefined && (result.cashOnCashReturn === undefined || result.cashOnCashReturn < targets.cashOnCashReturn)) continue;
+    if (targets.cashOnCashReturn !== undefined && (result.cashOnCashReturn == null || result.cashOnCashReturn < targets.cashOnCashReturn)) continue;
     best = result; bestPrice = price;
   }
-  return { maximumDebtFreePrice: bestPrice, cashFlowAfterLoan: best?.cashFlowAfterBankLoan, netRentalYield: best?.netRentalYield, cashOnCashReturn: best?.cashOnCashReturn, evaluatedScenarios };
+  return { maximumDebtFreePrice: bestPrice, cashFlowAfterLoan: best?.cashFlowAfterBankLoan, netRentalYield: best?.netRentalYield, cashOnCashReturn: best?.cashOnCashReturn ?? undefined, evaluatedScenarios };
 }

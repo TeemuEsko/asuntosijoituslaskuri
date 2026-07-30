@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateBankLoanPayment, calculateInvestmentAnalysis, classifyGrossRentalYield } from "../src/core/calculations/investment-analysis.ts";
+import { calculateBankLoanAmount, calculateBankLoanPayment, calculateInvestmentAnalysis, classifyGrossRentalYield } from "../src/core/calculations/investment-analysis.ts";
 
 const complete = { debtFreePrice: 120_000, salePrice: 120_000, monthlyRent: 900, maintenanceFeeMonthly: 300, financingFeeMonthly: 100, otherCostsMonthly: 50, maintenanceReserveMonthly: 50, vacancyMonths: 0, bankLoanAmount: 80_000, annualInterestRate: 4.5, loanTermYears: 20, repaymentType: "annuity" as const, equity: 40_000, collateralValue: 84_000, rentalDemand: 3, repairRiskScore: 60, repairHistoryKnown: true };
 
@@ -49,4 +49,30 @@ test("lainan lyhennystavat laskevat kuukausierän oikein", () => {
   assert.equal(equal.principal, 500);
   assert.equal(interestOnly.payment, 400);
   assert.equal(interestOnly.principal, 0);
+});
+
+test("pankkilaina reagoi käyttäjän omaan pääomaan muuttamatta hinnan käsitteitä", () => {
+  assert.equal(calculateBankLoanAmount(120_000, 0), 120_000);
+  assert.equal(calculateBankLoanAmount(120_000, 20_000), 100_000);
+  assert.equal(calculateBankLoanAmount(120_000, 150_000), 0);
+});
+
+test("nolla omaa pääomaa ei tuota ääretöntä tai harhaanjohtavaa oman pääoman tuottoa", () => {
+  const result = calculateInvestmentAnalysis({ ...complete, equity: 0, equitySource: "default", equityUserOverridden: false });
+  assert.equal(result.equity, 0);
+  assert.equal(result.equitySource, "default");
+  assert.equal(result.equityUserOverridden, false);
+  assert.equal(result.cashOnCashReturn, null);
+  assert.equal(result.returnOnEquity, null);
+  assert.doesNotMatch(JSON.stringify(result), /NaN|Infinity/);
+});
+
+test("positiivinen oma pääoma laskee suhteelliset tuotot eikä vaikuta pisteisiin itsenäisesti", () => {
+  const withEquity = calculateInvestmentAnalysis({ ...complete, equity: 40_000, equitySource: "user", equityUserOverridden: true });
+  const withoutEquityReturn = calculateInvestmentAnalysis({ ...complete, equity: 0, equitySource: "default", equityUserOverridden: false });
+  assert.ok(Number.isFinite(withEquity.cashOnCashReturn));
+  assert.ok(Number.isFinite(withEquity.returnOnEquity));
+  assert.equal(withEquity.score, withoutEquityReturn.score);
+  assert.equal(withEquity.collateralShortfall, 0);
+  assert.equal(withEquity.collateralBuffer, 4_000);
 });

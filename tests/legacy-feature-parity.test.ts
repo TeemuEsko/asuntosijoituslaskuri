@@ -43,6 +43,21 @@ test("raportti käyttää nykyistä canonical analyysitilaa", () => {
   assert.deepEqual(report.provenance.userValues, ["monthlyRent"]);
 });
 
+test("raportti ja tulostettava analyysitila käsittelevät nollan oman pääoman turvallisesti", () => {
+  const input = { ...parityFixtures.apartmentWithCompanyLoan, equity: 0, equitySource: "default" as const, equityUserOverridden: false };
+  const analysis = calculateInvestmentAnalysis(input);
+  const report = buildAnalysisReportData(input, analysis);
+  const serialized = JSON.stringify(report);
+  assert.equal(report.input.equity, 0);
+  assert.equal(report.input.equitySource, "default");
+  assert.equal(report.analysis.cashOnCashReturn, null);
+  assert.equal(report.analysis.returnOnEquity, null);
+  assert.equal(report.summary.equity, "0 € (oletus)");
+  assert.match(report.summary.cashOnCashReturn, /Ei laskettavissa/);
+  assert.match(report.summary.returnOnEquity, /Ei laskettavissa/);
+  assert.doesNotMatch(serialized, /NaN|Infinity/);
+});
+
 test("parity- ja parserirekisterit sisältävät statukset ja jatkotehtävien perustelut", async () => {
   const parity = await readFile(new URL("../docs/legacy-feature-parity.md", import.meta.url), "utf8");
   const parser = await readFile(new URL("../docs/parser-coverage.md", import.meta.url), "utf8");
