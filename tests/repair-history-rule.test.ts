@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { parseListingText } from "../src/core/parser/listing-parser.ts";
+import { mergeRenovationFindings } from "../src/core/data-fusion/merge-renovations.ts";
 import { assessRepairHistory, classifyRepair, type RepairDocumentKind } from "../src/core/rules/repair-history.ts";
 
 function assess(text: string, constructionYear = 1970, documentKinds: RepairDocumentKind[] = ["listing"]) {
@@ -66,11 +67,13 @@ test("12: hankesuunnittelu on valmistelussa", () => {
 });
 
 test("13: pelkän myynti-ilmoituksen rajallisuus kerrotaan", () => {
-  assert.match(assess("Lukitus uusittu 2018").sourceLimitation ?? "", /myynti-ilmoituksen tietoihin/i);
+  assert.match(assess("Lukitus uusittu 2018").sourceLimitation ?? "", /myynti-ilmoituksesta/i);
 });
 
 test("14: kattavat taloyhtiöasiakirjat nostavat varmuutta", () => {
-  const result = assess("Lukitus uusittu 2018", 1970, ["manager_certificate", "maintenance_plan", "annual_report"]);
+  const listingRepair = parseListingText("Tehdyt remontit\nLukitus uusittu 2018").renovations[0]!;
+  const documentRepair = { ...listingRepair, id: "document-locks-2018", source: "document" as const, sourceName: "Isännöitsijäntodistus", verifiedByDocuments: true, rawText: "Lukitus uusittu 2018", sourceHistory: [{ source: "document" as const, sourceName: "Isännöitsijäntodistus", rawText: "Lukitus uusittu 2018", confidence: "high" as const }] };
+  const result = assessRepairHistory({ renovations: mergeRenovationFindings([listingRepair], [documentRepair]), constructionYear: 1970, documentKinds: ["manager_certificate", "maintenance_plan", "annual_report"] });
   assert.equal(result.confidence, "high");
   assert.equal(result.sourceLimitation, undefined);
 });

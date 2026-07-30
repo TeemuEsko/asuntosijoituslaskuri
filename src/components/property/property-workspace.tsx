@@ -9,7 +9,7 @@ import { synchronizePrices, type PrimaryPriceField } from "@/core/calculations/p
 import type { AnalysisReliability } from "@/core/analysis/requirements";
 import type { FieldStatus } from "@/core/domain/field";
 import type { RentEstimate } from "@/core/rent-data/types";
-import type { ListingParseResult, RenovationFinding } from "@/core/parser/listing-parser";
+import type { HousingCompanyRenovationTexts, ListingParseResult, RenovationFinding } from "@/core/parser/listing-parser";
 import type { NormalizedFieldKey } from "@/core/parser/synonyms";
 import { assessRepairHistory, type RepairDocumentKind } from "@/core/rules/repair-history";
 import type { PurchaseFieldKey } from "@/data/property-demo";
@@ -18,6 +18,7 @@ import { AnalysisHighlights, KeyMetrics } from "./analysis-summary";
 import { AssumptionsCard, type AssumptionValues } from "./assumptions-card";
 import { DecisionSummaryCard } from "./decision-summary-card";
 import { HousingCompanyCard } from "./details-cards";
+import { HousingCompanyRenovationsCard } from "./housing-company-renovations-card";
 import { ImportSourceReview } from "./import-source-review";
 import { FinancialOverviewCard } from "./financial-overview-card";
 import { InvestmentOverallScore } from "./investment-overall-score";
@@ -29,7 +30,7 @@ import { ReportsCard } from "./reports-card";
 import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 
-export type ImportedPropertyData = Partial<Record<NormalizedFieldKey, number | string>> & { renovations?: RenovationFinding[]; documentKinds?: RepairDocumentKind[]; importReview?: ListingParseResult; analysisReliability?: AnalysisReliability; redemptionClause?: "no" | "yes" | "unchecked"; rentEstimate?: RentEstimate };
+export type ImportedPropertyData = Partial<Record<NormalizedFieldKey, number | string>> & { renovations?: RenovationFinding[]; housingCompanyRenovations?: HousingCompanyRenovationTexts; documentKinds?: RepairDocumentKind[]; importReview?: ListingParseResult; analysisReliability?: AnalysisReliability; redemptionClause?: "no" | "yes" | "unchecked"; rentEstimate?: RentEstimate };
 const ANALYSIS_DRAFT_KEY = "asuntosijoituslaskuri:analysis-draft:v1";
 
 function purchaseFromImport(data: ImportedPropertyData): Record<PurchaseFieldKey, number> { return { debtFreePrice: typeof data.debtFreePrice === "number" ? data.debtFreePrice : 0, salePrice: typeof data.salePrice === "number" ? data.salePrice : 0, companyLoanShare: typeof data.companyLoanShare === "number" ? data.companyLoanShare : 0, financingFeeMonthly: typeof data.financingFeeMonthly === "number" ? data.financingFeeMonthly : 0, renovationReserve: 0 }; }
@@ -71,7 +72,7 @@ export function PropertyWorkspace({ importedData = {}, title, onRequestEvaluatio
     {analysisReady && analysisUpdating ? <p role="status" className="text-sm font-medium text-primary">Päivitetään analyysiä…</p> : null}
     <section aria-labelledby="assumptions-heading" className="space-y-3"><h2 id="assumptions-heading" className="text-xl font-semibold">Oletukset ja muokattavat tiedot</h2><AssumptionsCard values={assumptions} rentEstimate={rentEstimate} onRentOverride={overrideRent} onRentRestore={restoreRent} onChange={updateAssumption} onUpdating={setAnalysisUpdating} /></section>
     <section id="talous" aria-labelledby="financial-heading" className="scroll-mt-24 space-y-3"><h2 id="financial-heading" className="text-xl font-semibold">Talous ja rahoitus</h2><PurchaseCard values={purchase} statuses={statuses} onChange={updatePurchase} />{analysisReady ? <FinancialOverviewCard purchase={purchase} assumptions={assumptions} analysis={overallScore} /> : null}</section>
-    {analysisReady ? <><section aria-labelledby="calculation-heading" className="space-y-3"><h2 id="calculation-heading" className="text-xl font-semibold">Laskennan yhteenveto</h2><KeyMetrics analysis={overallScore} /></section><InvestmentOverallScore {...overallScore} /><section id="riskit" className="scroll-mt-24"><AnalysisHighlights rating={overallScore} /></section><OfferPriceCard input={scoreSource} /><DecisionSummaryCard repairHistory={repairHistory} /><section id="kohde" className="min-w-0 scroll-mt-24"><HousingCompanyCard importedData={data} /></section><AnalysisCoverageCard documentKinds={data.documentKinds} onDocumentAdded={addDocument} /><ReportsCard input={scoreSource} analysis={overallScore} rentEstimate={rentEstimate} /><ProfessionalEvaluationCard onRequestEvaluation={onRequestEvaluation} /></> : null}
+    {analysisReady ? <><section aria-labelledby="calculation-heading" className="space-y-3"><h2 id="calculation-heading" className="text-xl font-semibold">Laskennan yhteenveto</h2><KeyMetrics analysis={overallScore} /></section><InvestmentOverallScore {...overallScore} /><section id="riskit" className="scroll-mt-24"><AnalysisHighlights rating={overallScore} /></section><OfferPriceCard input={scoreSource} /><HousingCompanyRenovationsCard renovations={data.renovations} rawTexts={data.housingCompanyRenovations} /><DecisionSummaryCard repairHistory={repairHistory} /><section id="kohde" className="min-w-0 scroll-mt-24"><HousingCompanyCard importedData={data} /></section><AnalysisCoverageCard documentKinds={data.documentKinds} listingRenovationsFound={Boolean(data.renovations?.length)} onDocumentAdded={addDocument} /><ReportsCard input={scoreSource} analysis={overallScore} rentEstimate={rentEstimate} /><ProfessionalEvaluationCard onRequestEvaluation={onRequestEvaluation} /></> : null}
     {data.importReview ? <section id="dokumentit" className="scroll-mt-24"><h2 className="mb-3 text-lg font-semibold">Analyysin lähtötiedot ja lähteet</h2><ImportSourceReview result={data.importReview} onChange={updateImportedField} /></section> : null}
   </div></main></div></div></TooltipProvider>;
 }

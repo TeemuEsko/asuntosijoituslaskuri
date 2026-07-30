@@ -5,7 +5,7 @@ import type { RentEstimate } from "../rent-data/types.ts";
 import type { AnalysisPreparation } from "../analysis/preparation-types.ts";
 import { criticalFields, excludedCompanyLoanLabels, fieldDisplayNames, fieldSynonyms, type NormalizedFieldKey } from "./synonyms.ts";
 
-export const LISTING_PARSER_VERSION = "0.3.2";
+export const LISTING_PARSER_VERSION = "0.3.3-rc";
 
 export type ConfidenceLevel = keyof typeof confidenceLabels;
 export type ListingSourceType = "etuovi" | "oikotie" | "pasted_text";
@@ -42,19 +42,49 @@ export type ListingFinding = {
   autoAccepted: boolean;
 };
 
-export type RenovationComponent = "pipe_unspecified" | "line_unspecified" | "full_line" | "water_pipes" | "drains" | "drain_lining" | "electrical" | "bathrooms" | "facade" | "balconies" | "element_seams" | "roof_replacement" | "roof_coating" | "roof_unspecified" | "windows" | "doors" | "drainage" | "elevator" | "ventilation" | "heating" | "locks" | "yard" | "entry_phone" | "mailboxes" | "yard_lighting" | "painting" | "fire_safety" | "telecom" | "heating_exchanger" | "foundations" | "yard_deck" | "energy_project";
-export type RenovationFinding = { component: RenovationComponent; status: TimeStatus; years: number[]; sourceExcerpt: string; supportingExcerpts: string[]; section: ListingSection; confidence: ConfidenceLevel; confidenceScore: number; confidenceReasons: string[] };
+export type RenovationComponent = "pipe_unspecified" | "line_unspecified" | "full_line" | "water_pipes" | "plot_water_line" | "drains" | "drain_lining" | "electrical" | "bathrooms" | "facade" | "facade_painting" | "balconies" | "element_seams" | "roof_replacement" | "roof_coating" | "roof_unspecified" | "windows" | "doors" | "exterior_doors" | "drainage" | "elevator" | "ventilation" | "heating" | "locks" | "yard" | "entry_phone" | "mailboxes" | "yard_lighting" | "painting" | "fire_safety" | "telecom" | "fiber_connection" | "heating_exchanger" | "foundations" | "yard_deck" | "energy_project" | "other";
+export type RenovationSource = "listing" | "document" | "user" | "calculation" | "unknown";
+export type RenovationMethod = "lining" | "replacement" | "repair" | "painting" | "installation" | "inspection" | "maintenance" | "unknown";
+export type RenovationTimeHorizon = "next_five_years" | "one_to_five_years" | "near_future";
+export type RenovationSourceRecord = { source: RenovationSource; sourceName: string; rawText: string; confidence: ConfidenceLevel };
+export type RenovationConflict = { code: "renovation_source_conflict"; message: string; incomingSource: RenovationSource; incomingRawText: string };
+export type HousingCompanyRenovationTexts = { completedRawText: string | null; plannedRawText: string | null };
+export type RenovationFinding = {
+  id: string;
+  title: string;
+  description: string;
+  component: RenovationComponent;
+  method?: RenovationMethod;
+  status: TimeStatus;
+  year: number | null;
+  yearFrom: number | null;
+  yearTo: number | null;
+  years: number[];
+  timeHorizon?: RenovationTimeHorizon;
+  source: RenovationSource;
+  sourceName: string;
+  rawText: string;
+  verifiedByDocuments: boolean;
+  sourceHistory: RenovationSourceRecord[];
+  conflicts: RenovationConflict[];
+  sourceExcerpt: string;
+  supportingExcerpts: string[];
+  section: ListingSection;
+  confidence: ConfidenceLevel;
+  confidenceScore: number;
+  confidenceReasons: string[];
+};
 
 export type RejectedCandidate = { excerpt: string; field?: NormalizedFieldKey; fieldName?: string; rawValue?: string; normalizedValue?: number | string; source?: ListingSourceType; sourcePath?: string; sourceConfidence?: number; fieldMatchConfidence?: number; validationConfidence?: number; validationResult?: "accepted" | "rejected"; reason: string; rejectionReason?: string };
 export type FieldDiagnostic = { fieldName: string; rawValue: string; normalizedValue?: number | string; source: ListingSourceType; sourcePath: string; sourceConfidence: number; fieldMatchConfidence: number; validationConfidence: number; finalConfidence: number; validationResult: "accepted" | "rejected"; rejectionReason?: string };
 export type ParserDiagnostics = { parserVersion: string; site: ListingSourceType; sections: ListingSection[]; rawCandidateCount: number; rejectedCandidates: RejectedCandidate[]; fieldDiagnostics: FieldDiagnostic[]; mergedFindingCount: number; acceptedFields: number; rejectedFields: number; conflicts: string[]; missingEssentialFields: string[]; warnings: string[]; errors: string[]; acquisition?: Record<string, unknown> };
-export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics; rentEstimate?: RentEstimate; preparation?: AnalysisPreparation };
+export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; housingCompanyRenovations: HousingCompanyRenovationTexts; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics; rentEstimate?: RentEstimate; preparation?: AnalysisPreparation };
 export type StructuredListingValue = { field: NormalizedFieldKey; value: number | string; unit?: ListingFinding["unit"]; label: string; excerpt: string; sourcePath?: string; matchQuality?: "exact" | "general" };
 
 type RawCandidate = { field: NormalizedFieldKey; label: string; originalValue: string; value: number | string; unit?: ListingFinding["unit"]; source: ListingSourceType; excerpt: string; semanticSource: SemanticSource; section: ListingSection; exactSynonym: boolean; hasUnit: boolean; ambiguous?: boolean; calculationBasis?: string; sourcePath?: string };
 
 const sectionHeadings: ReadonlyArray<[ListingSection, RegExp]> = [
-  ["basic", /^(perustiedot|kohteen perustiedot)$/i], ["prices", /^(hintatiedot|hinta)$/i], ["fees", /^(vastikkeet ja maksut|vastikkeet|maksut)$/i], ["apartment", /^(asunnon tiedot|huoneiston tiedot)$/i], ["housing_company", /^(taloyhtiön tiedot|taloyhtiö)$/i], ["building", /^(rakennuksen tiedot|rakennus)$/i], ["completed_renovations", /^(tehdyt remontit|toteutetut remontit|korjaushistoria)$/i], ["future_renovations", /^(tulevat remontit|suunnitellut remontit)$/i], ["maintenance_plan", /^(kunnossapitotarveselvitys|pts)$/i], ["plot", /^tontti$/i], ["energy", /^energialuokka$/i], ["description", /^(kuvaus|kohteen kuvaus)$/i], ["location", /^sijainti$/i], ["services", /^palvelut$/i], ["additional", /^lisätiedot$/i],
+  ["basic", /^(perustiedot|kohteen perustiedot)$/i], ["prices", /^(hintatiedot|hinta)$/i], ["fees", /^(vastikkeet ja maksut|vastikkeet|maksut)$/i], ["apartment", /^(asunnon tiedot|huoneiston tiedot)$/i], ["housing_company", /^(taloyhtiön tiedot|taloyhtiö)$/i], ["building", /^(rakennuksen tiedot|rakennus)$/i], ["completed_renovations", /^(tehdyt remontit|tehdyt korjaukset|toteutetut remontit|korjaushistoria|taloyhtiössä tehdyt remontit|taloyhtiön tehdyt remontit|korjaukset ja remontit|taloyhtiön remontit|peruskorjaukset|suoritetut korjaukset|kunnossapito ja korjaukset)$/i], ["future_renovations", /^(tulevat remontit|suunnitellut remontit|tulevat korjaukset|suunnitellut korjaukset|kunnossapitotarpeet|seuraavan viiden vuoden korjaukset|tulevat peruskorjaukset|arvio tulevista korjauksista|seuraavien vuosien korjaukset)$/i], ["maintenance_plan", /^(kunnossapitotarveselvitys|pts|kunnossapitotarveselvitys 5 vuotta|kunnossapitotarveselvitys viidelle vuodelle)$/i], ["plot", /^tontti$/i], ["energy", /^energialuokka$/i], ["description", /^(kuvaus|kohteen kuvaus)$/i], ["location", /^sijainti$/i], ["services", /^palvelut$/i], ["additional", /^lisätiedot$/i],
 ];
 const moneyFields = new Set<NormalizedFieldKey>(["salePrice", "debtFreePrice", "companyLoanShare", "maintenanceFeeMonthly", "financingFeeMonthly", "plotFeeMonthly", "otherMonthlyFees", "currentRentMonthly", "totalHousingCharge", "waterFeeMonthly", "parkingFeeMonthly", "saunaFeeMonthly", "wasteFeeMonthly", "landRentAnnual", "plotShareRedemptionPrice"]);
 const monthlyFields = new Set<NormalizedFieldKey>(["maintenanceFeeMonthly", "financingFeeMonthly", "plotFeeMonthly", "otherMonthlyFees", "currentRentMonthly", "totalHousingCharge", "waterFeeMonthly", "parkingFeeMonthly", "saunaFeeMonthly", "wasteFeeMonthly"]);
@@ -185,25 +215,143 @@ function addCalculationConflicts(findings: ListingFinding[]): void {
   if (loan?.normalizedValue === 0 && fee && (fee.normalizedValue as number) > 0) { const message = `Yhtiölainaosuus on 0 €, mutta rahoitusvastike on ${formatMonthlyEuro(fee.normalizedValue as number)}. Arvoja ei muutettu automaattisesti.`; for (const item of [loan, fee]) { item.conflicts.push(message); item.autoAccepted = false; } }
 }
 
-const renovationTerms: ReadonlyArray<[RenovationComponent, RegExp]> = [["full_line", /täydellinen linjasaneeraus/i], ["water_pipes", /käyttövesi(?:putkien|johtojen)|käyttövesiputket/i], ["drain_lining", /viemärien sukitus|viemärit sukitettu/i], ["drains", /viemärisaneeraus|viemärit|viemärikuvaus/i], ["electrical", /sähköjärjestelm|sähköpääkesk|nousujoht/i], ["bathrooms", /kylpyhuone/i], ["line_unspecified", /linjasaneeraus|lvis-saneeraus/i], ["pipe_unspecified", /putkiremont|putkiston (?:kuvaus|kuntotutkimus)/i], ["balconies", /parveke(?:remontti|saneeraus|laatta|rakente)|parvekkeet/i], ["element_seams", /elementtisauma/i], ["facade", /julkisivu|rappaus|tiiliverhous/i], ["roof_coating", /katon pinnoitus|vesikaton pinnoitus|katto pinnoitettu/i], ["roof_replacement", /vesikaton uusiminen|vesikatto uusittu|aluskatteen uusiminen/i], ["roof_unspecified", /kattoremontti|kattosaneeraus|vesikaton kunnostus|yläpohjan laaja korjaus/i], ["windows", /ikkunat|ikkunoiden/i], ["doors", /ovet|ovien|parvekeov/i], ["drainage", /salaojat|salaojien|sadevesijärjestelm/i], ["elevator", /hissi(?:remontti|en|n uusiminen|n peruskorjaus|n modernisointi)/i], ["ventilation", /ilmanvaihto|lämmöntalteenotto/i], ["heating_exchanger", /lämmönvaihdin/i], ["heating", /lämmitysjärjestelmä|lämmitysmuodon|patteriverkosto/i], ["locks", /lukitus|lukkojen/i], ["entry_phone", /ovipuhelin/i], ["mailboxes", /postilaatiko/i], ["yard_lighting", /pihavalaist/i], ["painting", /maalaustyö|huoltomaalaus|porraskäytävän pintaremontti/i], ["fire_safety", /palovaroitt|turvavalaist/i], ["telecom", /antenni|tietoliikennejärjestelm/i], ["foundations", /perustusten vedeneristys|perusmuurin vedeneristys|sokkelien laaja korjaus/i], ["yard_deck", /pihakansi|autohallin rakente|maanvastai/i], ["energy_project", /aurinkosähkö|energiasaneeraus|lisälämmöneristys/i], ["yard", /piha-alueet|pihan|jätepiste|leikkiväline|aidan|asfaltointi/i]];
-const actionExpression = /uusittu|saneerattu|remontoitu|korjattu|kunnostettu|pinnoitettu|sukitettu|vaihdettu|peruskorjattu|toteutettu|tehty|valmistunut|aloitettu|päätetty|suunniteltu|suunnitteilla|arvioitu|ehdotettu|tutkitaan|harkitaan|puhdistettu|huollettu|tarkastettu|kuntotutkimus|kuntoarvio|kartoitus|hankesuunnittelu|korjaussuunnitelma|kilpailutus|ei\s+(?:ole\s+)?tehty|ei tiedossa/i;
+const renovationTerms: ReadonlyArray<[RenovationComponent, RegExp]> = [
+  ["full_line", /täydellinen linjasaneeraus/i],
+  ["plot_water_line", /tonttivesijoht|tontin vesijoht/i],
+  ["water_pipes", /käyttövesi(?:putkien|johtojen)|käyttövesiputket/i],
+  ["drain_lining", /viemärien sukitus|viemärit sukitettu/i],
+  ["drains", /viemärisaneeraus|viemärit|viemärikuvaus/i],
+  ["electrical", /sähköjärjestelm|sähköpääkesk|nousujoht/i],
+  ["bathrooms", /kylpyhuone|märkätila/i],
+  ["line_unspecified", /linjasaneeraus|lvis-saneeraus/i],
+  ["pipe_unspecified", /putkiremont|putkiston (?:kuvaus|kuntotutkimus)/i],
+  ["balconies", /parveke(?:remontti|saneeraus|laatta|rakente)|parvekkeet/i],
+  ["element_seams", /elementtisauma/i],
+  ["facade_painting", /(?:talon|julkisivun|ulkoseinien) ulkomaalaus|julkisivu(?:jen)? maalaus/i],
+  ["facade", /julkisivu|rappaus|tiiliverhous/i],
+  ["roof_coating", /katon pinnoitus|vesikaton pinnoitus|katto pinnoitettu/i],
+  ["roof_replacement", /vesikaton uusiminen|vesikatto uusittu|aluskatteen uusiminen/i],
+  ["roof_unspecified", /kattoremontti|kattosaneeraus|katon (?:maalaus|korjaus|uusiminen)|vesikaton kunnostus|yläpohjan laaja korjaus/i],
+  ["windows", /ikkuna(?:t|n|remont|-|\b)/i],
+  ["exterior_doors", /ulko-ov|ulko ov/i],
+  ["doors", /ovet|ovien|parvekeov/i],
+  ["drainage", /salaoja(?:t|n|remont|-)|sadevesijärjestelm/i],
+  ["elevator", /hissi(?:remontti|en|n uusiminen|n peruskorjaus|n modernisointi)/i],
+  ["ventilation", /ilmanvaihto|lämmöntalteenotto/i],
+  ["heating_exchanger", /lämmönvaihdin/i],
+  ["heating", /lämmitysjärjestelmä|lämmitysmuodon|patteriverkosto/i],
+  ["locks", /lukitus|lukkojen/i],
+  ["entry_phone", /ovipuhelin/i],
+  ["mailboxes", /postilaatiko/i],
+  ["yard_lighting", /pihavalaist/i],
+  ["painting", /maalaustyö|huoltomaalaus|porraskäytävän pintaremontti/i],
+  ["fire_safety", /palovaroitt|turvavalaist/i],
+  ["fiber_connection", /valokuitu(?:liittymä)?|kuituliittymä/i],
+  ["telecom", /antenni|tietoliikennejärjestelm/i],
+  ["foundations", /perustusten vedeneristys|perusmuurin vedeneristys|sokkelien laaja korjaus/i],
+  ["yard_deck", /pihakansi|autohallin rakente|maanvastai/i],
+  ["energy_project", /aurinkosähkö|energiasaneeraus|lisälämmöneristys/i],
+  ["yard", /piha-alueet|pihan|jätepiste|leikkiväline|aidan|asfaltointi/i],
+];
+const actionExpression = /uusittu|uusiminen|saneerattu|remontoitu|korjattu|korjaus|kunnostettu|pinnoitettu|sukitettu|vaihdettu|peruskorjattu|toteutettu|toteutetaan|tehty|valmistunut|aloitettu|käynnissä|käynnistyy|päätetty|päättänyt|suunniteltu|suunnitteilla|suunnitelmissa|arvioitu|ehdotettu|tutkitaan|selvitetään|tarkastellaan|harkitaan|puhdistettu|huollettu|tarkastettu|kuntotutkimus|kuntoarvio|kartoitus|hankesuunnittelu|korjaussuunnitelma|kilpailutus|kilpailutettu|kunnossapitotarve|ei\s+(?:ole\s+)?tehty|ei tiedossa/i;
+
+const renovationTitles: Record<RenovationComponent, string> = {
+  pipe_unspecified: "Putkiremontti", line_unspecified: "Linjasaneeraus", full_line: "Täydellinen linjasaneeraus", water_pipes: "Käyttövesiputket", plot_water_line: "Tonttivesijohto", drains: "Viemärit", drain_lining: "Viemärien sukitus", electrical: "Sähköjärjestelmät", bathrooms: "Märkätilat", facade: "Julkisivu", facade_painting: "Julkisivun maalaus", balconies: "Parvekkeet", element_seams: "Elementtisaumat", roof_replacement: "Vesikaton uusiminen", roof_coating: "Katon pinnoitus", roof_unspecified: "Kattoremontti", windows: "Ikkunat", doors: "Ovet", exterior_doors: "Ulko-ovet", drainage: "Salaojat", elevator: "Hissi", ventilation: "Ilmanvaihto", heating: "Lämmitysjärjestelmä", locks: "Lukitus", yard: "Piha-alueet", entry_phone: "Ovipuhelinjärjestelmä", mailboxes: "Postilaatikot", yard_lighting: "Pihavalaistus", painting: "Maalaustyöt", fire_safety: "Palo- ja turvajärjestelmät", telecom: "Tietoliikennejärjestelmät", fiber_connection: "Valokuituliittymä", heating_exchanger: "Lämmönvaihdin", foundations: "Perustukset", yard_deck: "Pihakansi", energy_project: "Energiatehokkuushanke", other: "Muu remontti",
+};
+
+type RawRenovationSection = { section: "completed_renovations" | "future_renovations" | "maintenance_plan"; rawText: string };
+
+function renovationLabel(line: string): { section: RawRenovationSection["section"]; inlineValue: string } | null {
+  const clean = line.trim();
+  for (const [section, pattern] of sectionHeadings) {
+    if (!["completed_renovations", "future_renovations", "maintenance_plan"].includes(section)) continue;
+    if (pattern.test(clean.replace(/[:\s]+$/, ""))) return { section: section as RawRenovationSection["section"], inlineValue: "" };
+    const separator = clean.search(/[:\t]/);
+    if (separator > 0 && pattern.test(clean.slice(0, separator).trim())) return { section: section as RawRenovationSection["section"], inlineValue: clean.slice(separator + 1).trim() };
+  }
+  return null;
+}
+
+export function extractHousingCompanyRenovations(text: string): { sections: RawRenovationSection[]; rawTexts: HousingCompanyRenovationTexts } {
+  const sections: RawRenovationSection[] = [];
+  let active: RawRenovationSection | null = null;
+  const save = () => { if (active?.rawText.trim()) sections.push({ ...active, rawText: active.rawText.trim() }); };
+  for (const line of text.split(/\r?\n/).map((part) => part.trim()).filter(Boolean)) {
+    const label = renovationLabel(line);
+    if (label) { save(); active = { section: label.section, rawText: label.inlineValue }; continue; }
+    const heading = detectHeading(line);
+    if (heading || (active && findField(line))) { save(); active = null; }
+    if (active) active.rawText = [active.rawText, line].filter(Boolean).join("\n");
+  }
+  save();
+  const completed = sections.filter((item) => item.section === "completed_renovations").map((item) => item.rawText);
+  const planned = sections.filter((item) => item.section !== "completed_renovations").map((item) => item.rawText);
+  return { sections, rawTexts: { completedRawText: completed.length ? [...new Set(completed)].join("\n") : null, plannedRawText: planned.length ? [...new Set(planned)].join("\n") : null } };
+}
+
+function renovationMethod(component: RenovationComponent, text: string): RenovationMethod | undefined {
+  if (component === "drain_lining") return "lining";
+  if (/maalaus\s*\/\s*korjaus\s*\/\s*uusiminen/.test(text)) return undefined;
+  if (component === "facade_painting" || ((component === "roof_coating" || component === "roof_unspecified") && /maalau|maalattu/.test(text))) return "painting";
+  if (component === "fiber_connection") return "installation";
+  if (/uusittu|uusiminen|vaihdettu/.test(text)) return "replacement";
+  if (/asennettu|liittymä/.test(text)) return "installation";
+  if (/tutkimus|arvio|kuvaus|kartoitus/.test(text)) return "inspection";
+  if (/huollettu|puhdistettu|tarkastettu/.test(text)) return "maintenance";
+  if (/korjattu|korjaus|kunnostettu|saneerattu|remontoitu/.test(text)) return "repair";
+  return undefined;
+}
+
+function renovationContext(component: RenovationComponent, text: string): string {
+  const pattern = renovationTerms.find(([candidate]) => candidate === component)?.[1];
+  const match = pattern?.exec(text);
+  if (!match || match.index === undefined) return text;
+  const before = Math.max(text.lastIndexOf(",", match.index), text.lastIndexOf(".", match.index), text.lastIndexOf(";", match.index));
+  const afterCandidates = [text.indexOf(",", match.index), text.indexOf(".", match.index), text.indexOf(";", match.index)].filter((position) => position >= 0);
+  const after = afterCandidates.length ? Math.min(...afterCandidates) : text.length;
+  return text.slice(before + 1, after).trim();
+}
+
+function renovationTiming(text: string, section: ListingSection) {
+  const parsed = parseTimeExpression(text);
+  const range = text.match(/\b((?:19|20)\d{2})\s*(?:-|–|—)\s*((?:19|20)\d{2})\b/);
+  const explicitUnknown = /ei tiedossa|ei mainintaa|ei(?:\s+ole)?\s+suunnitteilla|ei(?:\s+ole)?\s+päätetty/i.test(text);
+  const status: TimeStatus = parsed.status === "unknown" && !explicitUnknown ? section === "completed_renovations" ? "completed" : ["future_renovations", "maintenance_plan"].includes(section) ? "planned" : "unknown" : parsed.status;
+  const timeHorizon: RenovationTimeHorizon | undefined = /seuraavan viiden vuoden/i.test(text) ? "next_five_years" : /1\s*(?:-|–|—)\s*5 vuoden/i.test(text) ? "one_to_five_years" : /lähivuosina/i.test(text) ? "near_future" : undefined;
+  return { ...parsed, status, year: parsed.years.length === 1 ? parsed.years[0]! : null, yearFrom: range ? Number(range[1]) : null, yearTo: range ? Number(range[2]) : null, timeHorizon };
+}
+
+function createRenovation(component: RenovationComponent, line: string, section: ListingSection, index: number): RenovationFinding {
+  const timing = renovationTiming(line, section);
+  const context = renovationContext(component, line);
+  const vagueFuture = timing.status === "proposed" || timing.timeHorizon !== undefined || (["future_renovations", "maintenance_plan"].includes(section) && !timing.years.length);
+  const score = vagueFuture ? 48 : Math.min(79, (["completed_renovations", "future_renovations", "maintenance_plan"].includes(section) ? 62 : 45) + (actionExpression.test(line) ? 9 : 0) + (timing.years.length ? 7 : 0));
+  const confidence: ConfidenceLevel = score >= 55 ? "medium" : "low";
+  const sourceHistory: RenovationSourceRecord[] = [{ source: "listing", sourceName: "Myynti-ilmoitus", rawText: line, confidence }];
+  return { id: `listing-renovation-${component}-${timing.status}-${index}`, title: renovationTitles[component], description: context, component, method: renovationMethod(component, context.toLocaleLowerCase("fi")), ...timing, source: "listing", sourceName: "Myynti-ilmoitus", rawText: line, verifiedByDocuments: false, sourceHistory, conflicts: [], sourceExcerpt: line, supportingExcerpts: [line], section, confidence, confidenceScore: score, confidenceReasons: [["completed_renovations", "future_renovations", "maintenance_plan"].includes(section) ? "Tunnistettu taloyhtiön remonttiosio" : "Toimenpideilmaus vapaassa tekstissä", "Lähteenä myynti-ilmoitus", ...(actionExpression.test(line) ? ["Remonttiverbi tunnistettu"] : []), ...(timing.years.length ? ["Ajankohta tunnistettu"] : []), ...(vagueFuture ? ["Tulevan hankkeen ajankohta tai toteutus on epävarma"] : [])] };
+}
 
 export function parseRenovations(text: string): RenovationFinding[] {
-  let section: ListingSection = "unknown"; const raw: RenovationFinding[] = [];
+  const extracted = extractHousingCompanyRenovations(text);
+  const candidates: Array<{ line: string; section: ListingSection }> = extracted.sections.map((item) => ({ line: item.rawText, section: item.section }));
+  let section: ListingSection = "unknown";
   for (const line of text.split(/\r?\n/).map((part) => part.trim()).filter(Boolean)) {
     const heading = detectHeading(line); if (heading) { section = heading; continue; }
-    const renovationSection = ["completed_renovations", "future_renovations", "maintenance_plan"].includes(section);
-    if (!renovationSection && !actionExpression.test(line)) continue;
-    const matched = renovationTerms.filter(([, pattern]) => pattern.test(line));
-    if (!matched.length) continue;
-    for (const [component] of matched) {
-      const parsedTime = parseTimeExpression(line); const base = renovationSection ? 68 : 48; const actionBonus = actionExpression.test(line) ? 15 : 0; const yearBonus = parsedTime.years.length ? 7 : 0; const score = Math.min(100, base + actionBonus + yearBonus);
-      raw.push({ component, ...parsedTime, sourceExcerpt: line, supportingExcerpts: [line], section, confidence: score >= 80 ? "high" : score >= 55 ? "medium" : "low", confidenceScore: score, confidenceReasons: [renovationSection ? "Tunnistettu remonttiosio" : "Toimenpideilmaus vapaassa tekstissä", ...(actionBonus ? ["Remonttiverbi tunnistettu"] : []), ...(yearBonus ? ["Ajankohta tunnistettu"] : [])] });
-    }
+    if (candidates.some((item) => item.line === line)) continue;
+    if (actionExpression.test(line)) candidates.push({ line, section });
   }
+  const raw = candidates.flatMap(({ line, section: candidateSection }, candidateIndex) => {
+    const matched = renovationTerms.filter(([, pattern]) => pattern.test(line));
+    const filtered = matched.length ? matched.filter(([component]) => !(component === "drains" && matched.some(([candidate]) => candidate === "drain_lining"))) : ["completed_renovations", "future_renovations", "maintenance_plan"].includes(candidateSection) ? [["other", /./] as [RenovationComponent, RegExp]] : [];
+    return filtered.map(([component], componentIndex) => createRenovation(component, line, candidateSection, candidateIndex * 100 + componentIndex));
+  });
   const groups = new Map<string, RenovationFinding[]>();
-  for (const item of raw) { const key = `${item.component}:${item.status}:${item.years.join("-")}`; groups.set(key, [...(groups.get(key) ?? []), item]); }
-  return [...groups.values()].map((group) => ({ ...group[0]!, supportingExcerpts: [...new Set(group.flatMap((item) => item.supportingExcerpts))], confidenceScore: Math.min(100, group[0]!.confidenceScore + (group.length > 1 ? 8 : 0)), confidence: group[0]!.confidenceScore + (group.length > 1 ? 8 : 0) >= 80 ? "high" : group[0]!.confidenceScore >= 55 ? "medium" : "low", confidenceReasons: [...group[0]!.confidenceReasons, ...(group.length > 1 ? [`${group.length} lähdettä tukee havaintoa`] : [])] }));
+  for (const item of raw) { const key = `${item.component}:${item.method ?? ""}:${item.status}:${item.yearFrom ?? item.year ?? ""}:${item.yearTo ?? ""}`; groups.set(key, [...(groups.get(key) ?? []), item]); }
+  return [...groups.values()].map((group, index) => {
+    const first = group[0]!;
+    const score = Math.min(79, first.confidenceScore + (group.length > 1 ? 5 : 0));
+    return { ...first, id: `listing-renovation-${first.component}-${first.status}-${index}`, supportingExcerpts: [...new Set(group.flatMap((item) => item.supportingExcerpts))], sourceHistory: group.flatMap((item) => item.sourceHistory), confidenceScore: score, confidence: score >= 55 ? "medium" : "low", confidenceReasons: [...new Set([...first.confidenceReasons, ...(group.length > 1 ? [`${group.length} ilmoitustekstin kohtaa tukee havaintoa`] : [])])] };
+  });
 }
 
 export function parseListingText(text: string, source: ListingSourceType = "pasted_text", structuredValues: StructuredListingValue[] = []): ListingParseResult {
@@ -252,6 +400,7 @@ export function parseListingText(text: string, source: ListingSourceType = "past
   for (const finding of findings.filter((item) => item.field === "housingCompanyName" && addressValues.has(normalizedText(String(item.normalizedValue))))) { finding.conflicts.push("Sama arvo tunnistettiin osoitteeksi tai ilmoituksen otsikoksi."); finding.autoAccepted = false; finding.validationResult = "rejected"; finding.validationConfidence = 0; finding.fieldMatchConfidence = 0; finding.confidence = "low"; finding.confidenceScore = 0; }
   for (const finding of findings) { if (finding.conflicts.length) { const recalculated = confidence({ field: finding.field, label: finding.originalLabel, originalValue: finding.originalValue, value: finding.normalizedValue, unit: finding.unit, source, excerpt: finding.sourceExcerpt, semanticSource: finding.supportingSources[0]?.semanticSource ?? "named_field", section: finding.section, exactSynonym: true, hasUnit: Boolean(finding.unit) || !moneyFields.has(finding.field) }, finding.supportingSources.length, finding.conflicts.length); finding.confidence = recalculated.level; finding.confidenceScore = recalculated.score; finding.confidenceReasons = recalculated.reasons; finding.sourceConfidence = recalculated.sourceConfidence; finding.fieldMatchConfidence = recalculated.fieldMatchConfidence; finding.validationConfidence = recalculated.validationConfidence; finding.autoAccepted = false; } }
   const renovations = parseRenovations(text);
+  const housingCompanyRenovations = extractHousingCompanyRenovations(text).rawTexts;
   const foundKeys = new Set(findings.map((finding) => finding.field)); if (renovations.some((item) => item.status === "completed" || item.status === "ongoing")) foundKeys.add("completedRenovations" as NormalizedFieldKey); if (renovations.some((item) => ["decided", "planned", "estimated", "proposed", "under_investigation"].includes(item.status))) foundKeys.add("futureRenovations" as NormalizedFieldKey);
   const missingCriticalFields = criticalFields.filter((item) => !foundKeys.has(item.key as NormalizedFieldKey)).map((item) => item.label);
   const conflicts = [...new Set(findings.flatMap((finding) => finding.conflicts))];
@@ -260,7 +409,7 @@ export function parseListingText(text: string, source: ListingSourceType = "past
     ...findings.map((finding) => ({ fieldName: finding.field, rawValue: finding.originalValue, normalizedValue: finding.normalizedValue, source: finding.source, sourcePath: finding.supportingSources[0]?.semanticSource ?? "parser", sourceConfidence: finding.sourceConfidence, fieldMatchConfidence: finding.fieldMatchConfidence, validationConfidence: finding.validationConfidence, finalConfidence: finding.confidenceScore, validationResult: finding.validationResult })),
     ...rejectedCandidates.map((item) => ({ fieldName: item.field ?? "unknown", rawValue: item.rawValue ?? item.excerpt, normalizedValue: item.normalizedValue, source: item.source ?? source, sourcePath: item.sourcePath ?? "parser", sourceConfidence: item.sourceConfidence ?? 0, fieldMatchConfidence: item.fieldMatchConfidence ?? 0, validationConfidence: item.validationConfidence ?? 0, finalConfidence: 0, validationResult: "rejected" as const, rejectionReason: item.rejectionReason ?? item.reason })),
   ];
-  return { source, findings, renovations, missingCriticalFields, warnings, diagnostics: { parserVersion: LISTING_PARSER_VERSION, site: source, sections: detectSections(text), rawCandidateCount: candidates.length + rejectedCandidates.length, rejectedCandidates, fieldDiagnostics, mergedFindingCount: findings.length, acceptedFields: findings.filter((item) => item.validationResult === "accepted").length, rejectedFields: rejectedCandidates.length + findings.filter((item) => item.validationResult === "rejected").length, conflicts, missingEssentialFields: missingCriticalFields, warnings, errors: [] } };
+  return { source, findings, renovations, housingCompanyRenovations, missingCriticalFields, warnings, diagnostics: { parserVersion: LISTING_PARSER_VERSION, site: source, sections: detectSections(text), rawCandidateCount: candidates.length + rejectedCandidates.length, rejectedCandidates, fieldDiagnostics, mergedFindingCount: findings.length, acceptedFields: findings.filter((item) => item.validationResult === "accepted").length, rejectedFields: rejectedCandidates.length + findings.filter((item) => item.validationResult === "rejected").length, conflicts, missingEssentialFields: missingCriticalFields, warnings, errors: [] } };
 }
 
 export function getListingSourceFromUrl(input: string): Exclude<ListingSourceType, "pasted_text"> | null {

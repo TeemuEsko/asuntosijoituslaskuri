@@ -272,7 +272,7 @@ export function ListingImport({
       const parsedValues = automaticValuesWithRent(payload);
       if (payload.preparation?.nextStep === "analysis") {
         setPreparationStatus("ready");
-        onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues) });
+        onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, housingCompanyRenovations: payload.housingCompanyRenovations, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues) });
       } else {
         setResult(payload);
         setPreparationStatus("needs_user_input");
@@ -339,8 +339,10 @@ export function ListingImport({
   function createProperty() {
     const importedValues: ImportedPropertyData = {
       renovations: result?.renovations ?? [],
+      housingCompanyRenovations: result?.housingCompanyRenovations,
       documentKinds: ["listing"],
       rentEstimate: result?.rentEstimate,
+      importReview: result ?? undefined,
     };
     for (const finding of result?.findings ?? []) {
       const state = decisions[finding.id];
@@ -382,7 +384,7 @@ export function ListingImport({
       if (detectedDebt === "unknown" && debtChoice === null) validationErrors.push("hasDebtShare: valitse kyllä tai ei");
       if (detectedDebt === "unknown" && debtChoice === "no") { combined.companyLoanShare = 0; combined.financingFeeMonthly = 0; }
       if (debtChoice === "yes" && (typeof combined.companyLoanShare !== "number" || combined.companyLoanShare < 0 || typeof combined.financingFeeMonthly !== "number" || combined.financingFeeMonthly < 0)) validationErrors.push("Yhtiölainaosuus ja rahoitusvastike tarvitaan");
-      const canonicalPayload: ImportedPropertyData = { ...combined, rentEstimate: rentForValidation, renovations: result.renovations, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]) };
+      const canonicalPayload: ImportedPropertyData = { ...combined, rentEstimate: rentForValidation, renovations: result.renovations, housingCompanyRenovations: result.housingCompanyRenovations, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]) };
       if (process.env.NODE_ENV === "development") console.info("[analysis-update]", { submittedMissingFields: userValues, parsedNumericValues: Object.fromEntries(Object.entries(userValues).filter(([, value]) => typeof value === "number")), hasDebtShare: detectedDebt === "unknown" ? debtChoice : detectedDebt, debtShare: combined.companyLoanShare, financingFee: combined.financingFeeMonthly, canonicalPayload, validationErrors, analysisResult: validationErrors.length ? "invalid" : "ready", navigationTarget: "workspace" });
       if (validationErrors.length) throw new Error(validationErrors.join(", "));
       onComplete(canonicalPayload);
