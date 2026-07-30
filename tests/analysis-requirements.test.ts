@@ -6,7 +6,7 @@ import { parseListingText, type ListingFinding } from "../src/core/parser/listin
 test("vain keskitetyt seitsem채n analyysikentt채채 est채v채t analyysin", () => {
   assert.deepEqual(analysisBlockingFields, ["debtFreePrice", "maintenanceFeeMonthly", "areaSqm", "constructionYear", "buildingType", "heatingType", "currentRentMonthly"]);
   assert.ok(metadataFields.includes("housingCompanyName"));
-  const values = Object.fromEntries(analysisBlockingFields.map((field) => [field, field === "currentRentMonthly" ? undefined : 1]));
+  const values = Object.fromEntries(analysisBlockingFields.map((field) => [field, field === "currentRentMonthly" ? undefined : field === "heatingType" ? "district" : 1]));
   assert.deepEqual(missingAnalysisFields(values), ["currentRentMonthly"]);
 });
 
@@ -19,7 +19,7 @@ test("confidence 70, validointi ja ristiriidattomuus mahdollistavat automaattik�
 });
 
 test("ei-kriittinen matalan varmuuden kentt채 ei est채 analyysi채", () => {
-  const values = Object.fromEntries(analysisBlockingFields.map((field) => [field, 1]));
+  const values = Object.fromEntries(analysisBlockingFields.map((field) => [field, field === "heatingType" ? "district" : 1]));
   assert.deepEqual(missingAnalysisFields({ ...values, housingCompanyName: undefined }), []);
 });
 

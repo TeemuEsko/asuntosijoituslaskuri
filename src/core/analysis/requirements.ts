@@ -1,6 +1,7 @@
 import type { ListingFinding, ListingParseResult } from "../parser/listing-parser.ts";
 import type { NormalizedFieldKey } from "../parser/synonyms.ts";
 import type { RentEstimate } from "../rent-data/types.ts";
+import { isHeatingType } from "../domain/heating.ts";
 
 export const analysisBlockingFields = ["debtFreePrice", "maintenanceFeeMonthly", "areaSqm", "constructionYear", "buildingType", "heatingType", "currentRentMonthly"] as const satisfies readonly NormalizedFieldKey[];
 export const optionalRiskFields = ["companyLoanShare", "financingFeeMonthly", "landOwnership"] as const satisfies readonly NormalizedFieldKey[];
@@ -29,6 +30,7 @@ export function hasEffectiveMonthlyRent(rent?: RentEstimate | null): boolean {
 export function missingAnalysisFields(values: Partial<Record<NormalizedFieldKey, number | string>>, rent?: RentEstimate | null): NormalizedFieldKey[] {
   return analysisBlockingFields.filter((field) => {
     if (field === "currentRentMonthly") return !hasEffectiveMonthlyRent(rent) && !(typeof values[field] === "number" && Number.isFinite(values[field]) && values[field] > 0);
+    if (field === "heatingType") return !isHeatingType(values[field]);
     return values[field] === undefined || values[field] === "";
   });
 }

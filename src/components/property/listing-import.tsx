@@ -29,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   confidenceLabels,
-  landOwnershipLabels,
+  displayListingStringValue,
   renovationComponentLabels,
   timeStatusLabels,
 } from "@/core/i18n/display-values";
@@ -49,6 +49,7 @@ import type { ImportedPropertyData } from "./property-workspace";
 import { analysisReliability, automaticValues, debtShareStatus, missingAnalysisFields } from "@/core/analysis/requirements";
 import type { NormalizedFieldKey } from "@/core/parser/synonyms";
 import { ImportSourceReview } from "./import-source-review";
+import { normalizeHeatingType } from "@/core/domain/heating";
 
 type ImportMode = "url" | "text";
 type DecisionState = Record<
@@ -73,11 +74,7 @@ function displayFindingValue(
 ): string {
   if (correctedValue !== undefined) return correctedValue;
   if (typeof finding.normalizedValue === "string") {
-    if (finding.field === "landOwnership")
-      return landOwnershipLabels[
-        finding.normalizedValue as keyof typeof landOwnershipLabels
-      ];
-    return finding.normalizedValue;
+    return displayListingStringValue(finding.field, finding.normalizedValue);
   }
   if (finding.unit === "€") return formatEuro(finding.normalizedValue);
   if (finding.unit === "€/kk")
@@ -353,12 +350,13 @@ export function ListingImport({
         (finding.unit === "€/m²/kk" && !finding.calculationBasis)
       )
         continue;
-      const valueToUse =
+      const correctedValue =
         state.correctedValue !== undefined
           ? typeof finding.normalizedValue === "number"
             ? Number(state.correctedValue.replace(/\s/g, "").replace(",", "."))
             : state.correctedValue
           : finding.normalizedValue;
+      const valueToUse = finding.field === "heatingType" && typeof correctedValue === "string" ? normalizeHeatingType(correctedValue) : correctedValue;
       if (
         (typeof valueToUse === "number" && Number.isFinite(valueToUse)) ||
         typeof valueToUse === "string"
@@ -375,6 +373,7 @@ export function ListingImport({
       const parsedValues = automaticValuesWithRent(result);
       const suggestedValues = Object.fromEntries(result.findings.filter((finding) => finding.validationResult === "accepted" && !finding.conflicts.length && missingAnalysisFields(parsedValues, result.rentEstimate).includes(finding.field)).map((finding) => [finding.field, finding.normalizedValue])) as Partial<Record<NormalizedFieldKey, number | string>>;
       const combined = { ...parsedValues, ...suggestedValues, ...userValues };
+      if (typeof combined.heatingType === "string") combined.heatingType = normalizeHeatingType(combined.heatingType) ?? combined.heatingType;
       const validationErrors: string[] = [];
       const rentForValidation = typeof userValues.currentRentMonthly === "number" && userValues.currentRentMonthly > 0 ? { ...result.rentEstimate!, effectiveMonthlyRent: userValues.currentRentMonthly, source: "user" as const, sourceName: "Käyttäjän määrittämä vuokra", confidence: "high" as const, userOverridden: true, previousAutomaticEstimate: result.rentEstimate?.effectiveMonthlyRent ?? null, benchmark: result.rentEstimate?.effectiveMonthlyRent ? result.rentEstimate : null, resolutionStatus: "resolved" as const, attemptedSources: ["user" as const] } : result.rentEstimate;
       for (const field of missingAnalysisFields(combined, rentForValidation)) validationErrors.push(`${field}: arvo puuttuu`);
@@ -424,7 +423,7 @@ export function ListingImport({
     const fieldLabels: Partial<Record<NormalizedFieldKey, string>> = { debtFreePrice: "Velaton hinta", maintenanceFeeMonthly: "Hoitovastike / kk", areaSqm: "Pinta-ala", constructionYear: "Rakennusvuosi", buildingType: "Talotyyppi", heatingType: "Lämmitysmuoto", currentRentMonthly: "Kuukausivuokra" };
     const tooManyMissing = missing.length > 3;
     const onlyRentMissing = missing.length === 1 && missing[0] === "currentRentMonthly" && !askDebt;
-    return <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 md:px-8 md:py-12"><Button variant="ghost" onClick={onBack}><ArrowLeft /> Takaisin</Button><section className="mt-8"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-success">asuntosijoituslaskuri.fi</p><h1 className="mt-2 text-3xl font-semibold">{tooManyMissing ? "Ilmoituksesta ei löytynyt riittävästi tietoa" : onlyRentMissing ? "Emme pystyneet arvioimaan kohteen vuokraa automaattisesti" : `Tarvitsen vielä ${missing.length + (askDebt ? 1 : 0)} ${missing.length + (askDebt ? 1 : 0) === 1 ? "tiedon" : "tietoa"} analyysiä varten`}</h1><p className="mt-2 text-muted-foreground">{tooManyMissing ? "Täydennä kohde käsin tai kokeile hakua uudelleen." : onlyRentMissing ? "Syötä arvioitu kuukausivuokra, jotta voimme viimeistellä analyysin." : "Automaattiset tietolähteet on käyty läpi. Täydennä vielä puuttuvat tiedot, niin viimeistelemme analyysin."}</p>{tooManyMissing ? <div className="mt-6 flex flex-wrap gap-3"><Button onClick={onBack}>Yritä uudelleen</Button><Button variant="outline" onClick={() => onComplete({})}>Syötä kaikki tiedot käsin</Button></div> : <Card className="mt-6"><CardContent className="space-y-5 pt-2">{missing.map((field) => { const suggestion = result.findings.find((finding) => finding.field === field)?.normalizedValue; const numeric = !["buildingType", "heatingType"].includes(field); return <div key={field} className="space-y-2"><Label htmlFor={`missing-${field}`}>{fieldLabels[field] ?? field}</Label><Input id={`missing-${field}`} type={numeric ? "number" : "text"} inputMode={numeric ? "decimal" : undefined} value={String(userValues[field] ?? suggestion ?? "")} onChange={(event) => { const raw = event.currentTarget.value; setAnalysisUpdateError(null); setUserValues((current) => ({ ...current, [field]: numeric ? raw === "" ? "" : Number(raw.replace(",", ".")) : raw })); }} />{field === "currentRentMonthly" ? <p className="text-xs text-muted-foreground">€ / kk</p> : null}{suggestion !== undefined ? <p className="text-xs text-muted-foreground">Ilmoituksesta arvioitu. Tarkista tarvittaessa.</p> : null}</div>; })}{askDebt ? <div className="space-y-2"><Label>Onko huoneistolla yhtiölainaosuutta?</Label><div className="flex gap-2"><Button type="button" variant={debtChoice === "no" ? "default" : "outline"} onClick={() => { setDebtChoice("no"); setAnalysisUpdateError(null); }}>Ei</Button><Button type="button" variant={debtChoice === "yes" ? "default" : "outline"} onClick={() => { setDebtChoice("yes"); setAnalysisUpdateError(null); }}>Kyllä</Button></div></div> : null}{needsDebtAmounts ? <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="missing-debt">Yhtiölainaosuus</Label><Input id="missing-debt" type="number" value={String(userValues.companyLoanShare ?? parsedValues.companyLoanShare ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, companyLoanShare: event.currentTarget.value === "" ? "" : Number(event.currentTarget.value) }))} /></div><div className="space-y-2"><Label htmlFor="missing-fee">Pääomavastike / rahoitusvastike / kk</Label><Input id="missing-fee" type="number" value={String(userValues.financingFeeMonthly ?? parsedValues.financingFeeMonthly ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, financingFeeMonthly: event.currentTarget.value === "" ? "" : Number(event.currentTarget.value) }))} /></div></div> : null}{analysisUpdateError ? <p role="alert" className="rounded-md border border-danger/25 bg-danger-soft p-3 text-sm text-danger">{analysisUpdateError}</p> : null}<Button size="lg" onClick={finishAutomaticAnalysis}>Viimeistele analyysi</Button></CardContent></Card>}<div className="mt-6"><ImportSourceReview result={result} onChange={(field, value) => setUserValues((current) => ({ ...current, [field]: value ?? "" }))} /></div></section></main>;
+    return <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 md:px-8 md:py-12"><Button variant="ghost" onClick={onBack}><ArrowLeft /> Takaisin</Button><section className="mt-8"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-success">asuntosijoituslaskuri.fi</p><h1 className="mt-2 text-3xl font-semibold">{tooManyMissing ? "Ilmoituksesta ei löytynyt riittävästi tietoa" : onlyRentMissing ? "Emme pystyneet arvioimaan kohteen vuokraa automaattisesti" : `Tarvitsen vielä ${missing.length + (askDebt ? 1 : 0)} ${missing.length + (askDebt ? 1 : 0) === 1 ? "tiedon" : "tietoa"} analyysiä varten`}</h1><p className="mt-2 text-muted-foreground">{tooManyMissing ? "Täydennä kohde käsin tai kokeile hakua uudelleen." : onlyRentMissing ? "Syötä arvioitu kuukausivuokra, jotta voimme viimeistellä analyysin." : "Automaattiset tietolähteet on käyty läpi. Täydennä vielä puuttuvat tiedot, niin viimeistelemme analyysin."}</p>{tooManyMissing ? <div className="mt-6 flex flex-wrap gap-3"><Button onClick={onBack}>Yritä uudelleen</Button><Button variant="outline" onClick={() => onComplete({})}>Syötä kaikki tiedot käsin</Button></div> : <Card className="mt-6"><CardContent className="space-y-5 pt-2">{missing.map((field) => { const suggestion = result.findings.find((finding) => finding.field === field)?.normalizedValue; const numeric = !["buildingType", "heatingType"].includes(field); const rawInputValue = userValues[field] ?? suggestion ?? ""; const inputValue = typeof rawInputValue === "string" ? displayListingStringValue(field, rawInputValue) : String(rawInputValue); return <div key={field} className="space-y-2"><Label htmlFor={`missing-${field}`}>{fieldLabels[field] ?? field}</Label><div className="relative"><Input className={field === "currentRentMonthly" ? "pr-16" : undefined} id={`missing-${field}`} type={numeric ? "number" : "text"} inputMode={numeric ? "decimal" : undefined} value={inputValue} onChange={(event) => { const raw = event.currentTarget.value; setAnalysisUpdateError(null); setUserValues((current) => ({ ...current, [field]: numeric ? raw === "" ? "" : Number(raw.replace(",", ".")) : raw })); }} />{field === "currentRentMonthly" ? <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">€/kk</span> : null}</div>{suggestion !== undefined ? <p className="text-xs text-muted-foreground">Ilmoituksesta arvioitu. Tarkista tarvittaessa.</p> : null}</div>; })}{askDebt ? <div className="space-y-2"><Label>Onko huoneistolla yhtiölainaosuutta?</Label><div className="flex gap-2"><Button type="button" variant={debtChoice === "no" ? "default" : "outline"} onClick={() => { setDebtChoice("no"); setAnalysisUpdateError(null); }}>Ei</Button><Button type="button" variant={debtChoice === "yes" ? "default" : "outline"} onClick={() => { setDebtChoice("yes"); setAnalysisUpdateError(null); }}>Kyllä</Button></div></div> : null}{needsDebtAmounts ? <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="missing-debt">Yhtiölainaosuus</Label><Input id="missing-debt" type="number" value={String(userValues.companyLoanShare ?? parsedValues.companyLoanShare ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, companyLoanShare: event.currentTarget.value === "" ? "" : Number(event.currentTarget.value) }))} /></div><div className="space-y-2"><Label htmlFor="missing-fee">Pääomavastike / rahoitusvastike / kk</Label><Input id="missing-fee" type="number" value={String(userValues.financingFeeMonthly ?? parsedValues.financingFeeMonthly ?? "")} onChange={(event) => setUserValues((current) => ({ ...current, financingFeeMonthly: event.currentTarget.value === "" ? "" : Number(event.currentTarget.value) }))} /></div></div> : null}{analysisUpdateError ? <p role="alert" className="rounded-md border border-danger/25 bg-danger-soft p-3 text-sm text-danger">{analysisUpdateError}</p> : null}<Button size="lg" onClick={finishAutomaticAnalysis}>Viimeistele analyysi</Button></CardContent></Card>}<div className="mt-6"><ImportSourceReview result={result} onChange={(field, value) => setUserValues((current) => ({ ...current, [field]: value ?? "" }))} /></div></section></main>;
   }
 
   return (

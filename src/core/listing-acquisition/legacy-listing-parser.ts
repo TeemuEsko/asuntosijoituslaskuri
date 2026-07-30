@@ -1,4 +1,5 @@
 import type { StructuredListingValue } from "../parser/listing-parser.ts";
+import { normalizeHeatingType, type HeatingType } from "../domain/heating.ts";
 
 export type LegacyParsedFields = {
   listingId?: string;
@@ -13,7 +14,7 @@ export type LegacyParsedFields = {
   size?: number;
   buildYear?: number;
   buildingType?: "terraced" | "semi_detached" | "loft" | "apartment";
-  heatingType?: "geothermal" | "district" | "electric" | "oil" | "exhaust_air";
+  heatingType?: HeatingType;
   landType?: "own" | "leased";
   totalHousingCharge?: number;
   waterFee?: number;
@@ -48,7 +49,7 @@ export function parseYear(text: string): number | null {
 
 export function parseListingId(text: string, url: string): string | null { return url.match(/\/kohde\/(\d+)/i)?.[1] ?? text.match(/(?:kohdenumero|kohde\s*nro|kohde-id)[^\d]{0,20}(\d{5,})/i)?.[1] ?? null; }
 export function detectBuildingType(text: string): LegacyParsedFields["buildingType"] { const value = text.toLocaleLowerCase("fi"); if (value.includes("rivitalo")) return "terraced"; if (value.includes("paritalo")) return "semi_detached"; if (value.includes("luhtitalo")) return "loft"; if (value.includes("kerrostalo")) return "apartment"; return undefined; }
-export function detectHeating(text: string): LegacyParsedFields["heatingType"] { const value = text.toLocaleLowerCase("fi"); if (value.includes("maalämpö")) return "geothermal"; if (value.includes("kaukolämpö")) return "district"; if (value.includes("sähkölämmitys") || value.includes("suora sähkö")) return "electric"; if (value.includes("öljy")) return "oil"; if (value.includes("poistoilmalämpöpumppu")) return "exhaust_air"; return undefined; }
+export function detectHeating(text: string): LegacyParsedFields["heatingType"] { return normalizeHeatingType(text) ?? undefined; }
 export function detectLand(text: string): LegacyParsedFields["landType"] { const value = text.toLocaleLowerCase("fi"); if (value.includes("oma tontti")) return "own"; if (value.includes("vuokratontti")) return "leased"; return undefined; }
 
 export function parseLegacyListingHtml(html: string, url = ""): { text: string; fields: LegacyParsedFields } {

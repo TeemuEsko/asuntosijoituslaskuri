@@ -1,7 +1,7 @@
 import { Scale } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { displayBuildingType, showFloor } from "@/core/analysis/analysis-presentation";
-import { landOwnershipLabels } from "@/core/i18n/display-values";
+import { displayListingStringValue, landOwnershipLabels } from "@/core/i18n/display-values";
 import { formatArea, formatFinnishNumber, formatMonthlyEuro } from "@/core/parser/normalization";
 import type { ImportedPropertyData } from "./property-workspace";
 
@@ -32,6 +32,8 @@ export function HousingCompanyCard({ importedData }: { importedData: ImportedPro
   if (typeof importedData.financingFeeMonthly === "number") rows.push(["Rahoitusvastike", formatMonthlyEuro(importedData.financingFeeMonthly)]);
   if (typeof importedData.apartmentCount === "number") rows.push(["Huoneistoja", formatFinnishNumber(importedData.apartmentCount, 0)]);
   if (present(importedData.landOwnership)) rows.push(["Tontin omistusmuoto", landLabels[String(importedData.landOwnership)] ?? String(importedData.landOwnership)]);
+  if (present(importedData.heatingType)) rows.push(["Lämmitysmuoto", displayListingStringValue("heatingType", String(importedData.heatingType))]);
+  const heatingFromListing = importedData.importReview?.findings.some((finding) => finding.field === "heatingType" && finding.validationResult === "accepted" && !finding.conflicts.length);
   const hasClause = importedData.redemptionClause === "yes";
-  return <Card><CardHeader className="border-b"><CardTitle>Taloyhtiö ja remontit</CardTitle><CardDescription>Vastikkeet, tontti ja olennaiset juridiset huomiot</CardDescription></CardHeader><CardContent className="space-y-5">{rows.length ? <DetailGrid rows={rows} /> : <p className="text-sm text-muted-foreground">Taloyhtiön tietoja ei ole vielä saatavilla.</p>}{hasClause ? <div className="flex gap-3 rounded-lg border bg-muted/30 p-3"><Scale className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><div><p className="font-medium">Yhtiöjärjestyksessä on lunastuslauseke.</p><p className="mt-1 text-sm text-muted-foreground">Lauseke voi vaikuttaa osakkeiden siirtymiseen kaupan jälkeen. Tarkista ehdot yhtiöjärjestyksestä.</p></div></div> : null}</CardContent></Card>;
+  return <Card><CardHeader className="border-b"><CardTitle>Taloyhtiö ja remontit</CardTitle><CardDescription>Vastikkeet, tontti ja olennaiset juridiset huomiot</CardDescription></CardHeader><CardContent className="space-y-5">{rows.length ? <DetailGrid rows={rows} /> : <p className="text-sm text-muted-foreground">Taloyhtiön tietoja ei ole vielä saatavilla.</p>}{heatingFromListing ? <p className="text-xs text-muted-foreground">Lämmitysmuoto on löydetty myynti-ilmoituksesta.</p> : null}{hasClause ? <div className="flex gap-3 rounded-lg border bg-muted/30 p-3"><Scale className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><div><p className="font-medium">Yhtiöjärjestyksessä on lunastuslauseke.</p><p className="mt-1 text-sm text-muted-foreground">Lauseke voi vaikuttaa osakkeiden siirtymiseen kaupan jälkeen. Tarkista ehdot yhtiöjärjestyksestä.</p></div></div> : null}</CardContent></Card>;
 }

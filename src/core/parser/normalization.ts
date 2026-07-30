@@ -56,7 +56,9 @@ export function parseRoomConfiguration(input: string): string | null {
   const short = compact.match(/\b([1-9]\d?\s*h(?:\s*(?:\+|,)\s*(?:kk|khh|alk|oh|mh|kt|k|s)){1,6})/i)?.[1];
   if (short) return short.replace(/\s*,\s*/g, " + ").replace(/\s*\+\s*/g, " + ").toLocaleLowerCase("fi");
   const words = compact.match(/\b([1-9]\d?)\s+huonetta\s+ja\s+keittiö/i);
-  return words ? `${words[1]}h + k` : null;
+  if (words) return `${words[1]}h + k`;
+  const roomCount = compact.match(/\b([1-9]\d?)\s+huonetta\b/i);
+  return roomCount ? `${roomCount[1]}h` : null;
 }
 
 export function parseBuildingType(input: string): string | null {

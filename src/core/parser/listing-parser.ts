@@ -1,10 +1,11 @@
 import { confidenceLabels } from "../i18n/display-values.ts";
+import { normalizeHeatingType } from "../domain/heating.ts";
 import { formatEuro, formatMonthlyEuro, parseArea, parseBuildingType, parseFinnishNumber, parseFloor, parseMonthlyAmount, parseRoomConfiguration, parseSquareMeterRate, parseTimeExpression, type TimeStatus } from "./normalization.ts";
 import type { RentEstimate } from "../rent-data/types.ts";
 import type { AnalysisPreparation } from "../analysis/preparation-types.ts";
 import { criticalFields, excludedCompanyLoanLabels, fieldDisplayNames, fieldSynonyms, type NormalizedFieldKey } from "./synonyms.ts";
 
-export const LISTING_PARSER_VERSION = "0.3.1";
+export const LISTING_PARSER_VERSION = "0.3.2";
 
 export type ConfidenceLevel = keyof typeof confidenceLabels;
 export type ListingSourceType = "etuovi" | "oikotie" | "pasted_text";
@@ -86,10 +87,12 @@ function findField(line: string): { field: NormalizedFieldKey; synonym: string; 
   for (const candidate of candidates) {
     const position = lower.indexOf(candidate.synonym);
     if (position < 0 || position > 12) continue;
+    const separatorPosition = line.search(/[:\t]/);
+    if (separatorPosition >= 0 && separatorPosition < position) continue;
     const preceding = lower[position - 1]; const following = lower[position + candidate.synonym.length];
     if ((preceding && /[a-zåäö]/i.test(preceding)) || (following && /[a-zåäö]/i.test(following))) continue;
     if (candidate.field === "companyLoanShare" && excludedCompanyLoanLabels.some((label) => lower.includes(label))) continue;
-    const separatorPosition = line.search(/[:\t]/); const fallbackStart = position + candidate.synonym.length;
+    const fallbackStart = position + candidate.synonym.length;
     return { field: candidate.field, synonym: candidate.synonym, label: line.slice(0, separatorPosition >= 0 ? separatorPosition : fallbackStart).trim(), valueText: line.slice(separatorPosition >= 0 ? separatorPosition + 1 : fallbackStart).trim().replace(/^(?:[–—]\s*|-\s+)/, ""), exactSynonym: candidate.index === 0 };
   }
   return null;
@@ -102,6 +105,7 @@ function normalizeFieldValue(field: NormalizedFieldKey, rawValue: string, fullLi
   if (field === "floor") { const value = parseFloor(rawValue || fullLine); return value ? { value } : null; }
   if (field === "roomDescription") { const value = parseRoomConfiguration(rawValue || fullLine); return value ? { value } : rawValue ? { value: rawValue.trim() } : null; }
   if (field === "buildingType") { const value = parseBuildingType(rawValue || fullLine); return value ? { value } : rawValue ? { value: rawValue.trim() } : null; }
+  if (field === "heatingType") { const value = normalizeHeatingType(rawValue || fullLine); return value ? { value } : null; }
   if (moneyFields.has(field)) {
     const squareRate = monthlyFields.has(field) ? parseSquareMeterRate(rawValue || fullLine) : null;
     const value = squareRate ?? (monthlyFields.has(field) ? parseMonthlyAmount(rawValue || fullLine) : parseFinnishNumber(rawValue));
@@ -156,6 +160,7 @@ function addDuplicateValueConflicts(findings: ListingFinding[]): void {
   for (const finding of findings.filter((item) => !item.aggregate)) byField.set(finding.field, [...(byField.get(finding.field) ?? []), finding]);
   for (const [field, fieldFindings] of byField) {
     if (field === "financingFeeMonthly" || fieldFindings.length < 2) continue;
+    if (field === "roomDescription" && fieldFindings.some((finding) => /huoneistoselitelmä/i.test(finding.originalLabel))) continue;
     const message = "Samalle kentälle löytyi useita eri arvoja. Valitse oikea arvo.";
     for (const finding of fieldFindings) { finding.conflicts.push(message); finding.autoAccepted = false; }
   }
@@ -209,7 +214,12 @@ export function parseListingText(text: string, source: ListingSourceType = "past
       rejectedCandidates.push({ excerpt: item.excerpt, field: item.field, fieldName: fieldDisplayNames[item.field], rawValue: String(item.value), normalizedValue: item.value, source, sourcePath: item.sourcePath ?? "structured_data", sourceConfidence: 90, fieldMatchConfidence: 0, validationConfidence: 0, validationResult: "rejected", reason: "Value matches street address pattern", rejectionReason: "Value matches street address pattern" });
       continue;
     }
-    candidates.push({ field: item.field, label: item.label, originalValue: String(item.value), value: item.value, unit: item.unit, source, excerpt: item.excerpt, semanticSource: "structured_data", section: "unknown", exactSynonym: item.matchQuality !== "general", hasUnit: Boolean(item.unit), ambiguous: item.matchQuality === "general", sourcePath: item.sourcePath });
+    const structuredValue = item.field === "heatingType" ? normalizeHeatingType(String(item.value)) : item.value;
+    if (structuredValue === null) {
+      rejectedCandidates.push({ excerpt: item.excerpt, field: item.field, fieldName: fieldDisplayNames[item.field], rawValue: String(item.value), source, sourcePath: item.sourcePath ?? "structured_data", sourceConfidence: 90, fieldMatchConfidence: 0, validationConfidence: 0, validationResult: "rejected", reason: "Lämmitysmuoto ei vastaa hyväksyttyä canonical arvoa", rejectionReason: "Lämmitysmuoto ei vastaa hyväksyttyä canonical arvoa" });
+      continue;
+    }
+    candidates.push({ field: item.field, label: item.label, originalValue: String(item.value), value: structuredValue, unit: item.unit, source, excerpt: item.excerpt, semanticSource: "structured_data", section: "unknown", exactSynonym: item.matchQuality !== "general", hasUnit: Boolean(item.unit), ambiguous: item.matchQuality === "general", sourcePath: item.sourcePath });
   }
   for (const title of structuredValues.filter((item) => item.field === "listingTitle" && typeof item.value === "string")) {
     const room = parseRoomConfiguration(String(title.value)); const building = parseBuildingType(String(title.value));

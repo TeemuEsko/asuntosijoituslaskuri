@@ -7,14 +7,14 @@ export function normalizeRoomCategory(roomDescription?: string | null, areaSqm?:
   const value = (roomDescription ?? "").toLocaleLowerCase("fi");
   if (/yksiö|\b1\s*h\b/.test(value)) return "ONE_ROOM";
   if (/kaksio|\b2\s*h\b/.test(value)) return "TWO_ROOMS";
-  if (/kolmio|\b[3-9]\d?\s*h\b/.test(value)) return "THREE_PLUS_ROOMS";
+  if (/kolmio|\b[3-9]\d?\s*h\b|\b(?:[3-9]\d?)\s+huonetta\b/.test(value)) return "THREE_PLUS_ROOMS";
   if (typeof areaSqm === "number" && areaSqm > 0) return areaSqm < 35 ? "ONE_ROOM" : areaSqm < 60 ? "TWO_ROOMS" : "THREE_PLUS_ROOMS";
   return "UNKNOWN";
 }
 
 export function roundRentToNearestFive(value: number): number { return Math.round(value / 5) * 5; }
 export function calculateEstimatedRent(rentPerSquareMeter: number, areaSqm: number): { exact: number; rounded: number } {
-  const exact = rentPerSquareMeter * areaSqm;
+  const exact = Math.round((rentPerSquareMeter * areaSqm + Number.EPSILON) * 1_000) / 1_000;
   return { exact, rounded: roundRentToNearestFive(exact) };
 }
 

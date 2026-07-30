@@ -1,4 +1,5 @@
 import type { FieldStatus } from "../domain/field";
+import { heatingTypeLabel, heatingTypeLabels } from "../domain/heating.ts";
 import type { LandOwnership, PlotShareRedemptionStatus, RedemptionClauseStatus } from "../domain/property";
 import type { RuleSeverity, RuleStatus } from "../rules/types";
 
@@ -16,6 +17,17 @@ export const landOwnershipLabels: Record<LandOwnership, string> = {
   leased: "Vuokratontti",
   optional_leasehold: "Valinnainen vuokratontti",
 };
+
+export { heatingTypeLabels };
+
+export function displayListingStringValue(field: string, value: string): string {
+  if (field === "heatingType") return heatingTypeLabel(value);
+  if (field === "landOwnership" && value in landOwnershipLabels)
+    return landOwnershipLabels[value as LandOwnership];
+  if (field === "elevator" && value.toLocaleLowerCase("fi") in booleanLabels)
+    return booleanLabels[value.toLocaleLowerCase("fi") as keyof typeof booleanLabels];
+  return value;
+}
 
 export const plotShareRedemptionLabels: Record<PlotShareRedemptionStatus, string> = {
   redeemed: "Lunastettu",

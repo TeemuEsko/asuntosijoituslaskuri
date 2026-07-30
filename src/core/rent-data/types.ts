@@ -16,6 +16,32 @@ export type RentResolutionIssue = {
   statusCode?: number | null;
 };
 
+export type RentResolutionAttempt = {
+  datasetId: string;
+  level: RentAreaLevel;
+  area: string;
+  areaCode?: string | null;
+  roomCategory: RentRoomCategory;
+  roomCode?: string | null;
+  referencePeriod?: string | null;
+  result: "success" | "missing_or_suppressed" | "not_available_in_dataset" | "http_error";
+  httpStatus?: number | null;
+  rawValue?: number | null;
+  sampleSize?: number | null;
+  suppressionValue?: string | null;
+  rejectionReason?: string | null;
+};
+
+export type RentResolutionDiagnostics = {
+  municipality: string | null;
+  postalCode: string | null;
+  roomConfiguration: string | null;
+  normalizedRoomCategory: RentRoomCategory;
+  livingArea: number | null;
+  attempts: RentResolutionAttempt[];
+  effectiveMonthlyRent: number | null;
+};
+
 export type RentEstimate = {
   /** Kaikkien laskelmien ja puuttuvien tietojen tarkistuksen käyttämä canonical arvo. */
   effectiveMonthlyRent: number | null;
@@ -25,6 +51,8 @@ export type RentEstimate = {
   sourceName?: string | null;
   sourceArea?: string | null;
   sourceAreaLevel?: RentAreaLevel;
+  postalCode?: string | null;
+  livingArea?: number | null;
   roomCategory?: RentRoomCategory | null;
   referencePeriod?: string | null;
   metricType?: RentMetricType;
@@ -42,6 +70,7 @@ export type RentEstimate = {
   resolutionStatus?: RentResolutionStatus;
   attemptedSources?: RentValueSource[];
   issues?: RentResolutionIssue[];
+  resolutionDiagnostics?: RentResolutionDiagnostics;
 };
 
 export type RentBenchmark = Omit<RentEstimate, "effectiveMonthlyRent" | "exactEstimatedMonthlyRent" | "userOverridden"> & { rentPerSquareMeter: number };
