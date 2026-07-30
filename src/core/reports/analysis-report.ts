@@ -1,6 +1,7 @@
 import type { InvestmentAnalysisInput, InvestmentAnalysisResult } from "../calculations/investment-analysis.ts";
 import { formatFinnishNumber } from "../parser/normalization.ts";
 import type { RentEstimate } from "../rent-data/types.ts";
+import { REPORT_VISUAL_CONDITION_DISCLAIMER, type VisualConditionAnalysis } from "../visual-condition/types.ts";
 
 export type AnalysisReportSummary = {
   equity: string;
@@ -9,7 +10,7 @@ export type AnalysisReportSummary = {
   collateralPosition: string;
 };
 
-export type AnalysisReportData = { generatedAt: string; source: "current_canonical_state"; input: InvestmentAnalysisInput; analysis: InvestmentAnalysisResult; summary: AnalysisReportSummary; rentEstimate?: RentEstimate; provenance: { parserValues: string[]; userValues: string[]; calculatedValues: string[] } };
+export type AnalysisReportData = { generatedAt: string; source: "current_canonical_state"; input: InvestmentAnalysisInput; analysis: InvestmentAnalysisResult; summary: AnalysisReportSummary; rentEstimate?: RentEstimate; visualCondition?: { title: "Valokuvien perusteella arvioitu kunto"; disclaimer: string; analysis: VisualConditionAnalysis }; provenance: { parserValues: string[]; userValues: string[]; calculatedValues: string[] } };
 
 function reportPercentage(value: number | null | undefined, equity: number | undefined): string {
   return typeof value === "number" && Number.isFinite(value)
@@ -31,6 +32,6 @@ function reportSummary(input: InvestmentAnalysisInput, analysis: InvestmentAnaly
   return { equity, cashOnCashReturn: reportPercentage(analysis.cashOnCashReturn, input.equity), returnOnEquity: reportPercentage(analysis.returnOnEquity, input.equity), collateralPosition };
 }
 
-export function buildAnalysisReportData(input: InvestmentAnalysisInput, analysis: InvestmentAnalysisResult, provenance: Partial<AnalysisReportData["provenance"]> = {}, rentEstimate?: RentEstimate): AnalysisReportData {
-  return { generatedAt: new Date().toISOString(), source: "current_canonical_state", input: { ...input }, analysis: structuredClone(analysis), summary: reportSummary(input, analysis), rentEstimate: rentEstimate ? structuredClone(rentEstimate) : undefined, provenance: { parserValues: provenance.parserValues ?? [], userValues: provenance.userValues ?? [], calculatedValues: provenance.calculatedValues ?? Object.keys(analysis).filter((key) => typeof analysis[key as keyof InvestmentAnalysisResult] === "number") } };
+export function buildAnalysisReportData(input: InvestmentAnalysisInput, analysis: InvestmentAnalysisResult, provenance: Partial<AnalysisReportData["provenance"]> = {}, rentEstimate?: RentEstimate, visualCondition?: VisualConditionAnalysis): AnalysisReportData {
+  return { generatedAt: new Date().toISOString(), source: "current_canonical_state", input: { ...input }, analysis: structuredClone(analysis), summary: reportSummary(input, analysis), rentEstimate: rentEstimate ? structuredClone(rentEstimate) : undefined, visualCondition: visualCondition ? { title: "Valokuvien perusteella arvioitu kunto", disclaimer: REPORT_VISUAL_CONDITION_DISCLAIMER, analysis: structuredClone(visualCondition) } : undefined, provenance: { parserValues: provenance.parserValues ?? [], userValues: provenance.userValues ?? [], calculatedValues: provenance.calculatedValues ?? Object.keys(analysis).filter((key) => typeof analysis[key as keyof InvestmentAnalysisResult] === "number") } };
 }

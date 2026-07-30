@@ -1,6 +1,6 @@
 export type InvestmentObservation = {
   id: string;
-  category: "cashFlow" | "yield" | "financing" | "housingCompany" | "renovation" | "rentalDemand" | "exit" | "dataCompleteness";
+  category: "cashFlow" | "yield" | "financing" | "housingCompany" | "apartmentCondition" | "renovation" | "rentalDemand" | "exit" | "dataCompleteness";
   type: "strength" | "risk" | "notice" | "missingData";
   severity: "info" | "low" | "medium" | "high" | "critical";
   title: string;
@@ -23,6 +23,9 @@ export type ObservationInput = {
   locationRisk?: number;
   resaleLiquidity?: number;
   loanKnown: boolean;
+  visualConditionConfirmed?: boolean;
+  visualConditionConfidence?: "high" | "medium" | "low" | "unknown";
+  visualConditionRating?: "excellent" | "good" | "fair" | "poor" | "very_poor" | "unknown";
 };
 
 export function evaluateInvestmentObservations(input: ObservationInput): InvestmentObservation[] {
@@ -42,5 +45,9 @@ export function evaluateInvestmentObservations(input: ObservationInput): Investm
   if (input.vacancyMonths >= 3) add({ id: "high-vacancy", category: "rentalDemand", type: "risk", severity: "medium", title: "Korkea tyhjäkäyntioletus", description: "Vähintään kolmen kuukauden vuotuinen tyhjäkäynti heikentää toteutuvaa vuokratuottoa.", value: input.vacancyMonths, unit: "kk/v", scoreImpact: -6 });
   if ((input.locationRisk ?? 3) >= 4) add({ id: "location-risk", category: "exit", type: "risk", severity: "high", title: "Sijaintiriski", description: "Käyttäjän sijaintiarvio voi heikentää vuokrattavuutta ja jälleenmyyntiä.", value: input.locationRisk, unit: "/5", scoreImpact: -8 });
   if ((input.resaleLiquidity ?? 3) <= 2) add({ id: "weak-resale-liquidity", category: "exit", type: "risk", severity: "medium", title: "Hidas jälleenmyytävyys", description: "Kohteen arvioitu jälleenmyyntiaika on tavallista pidempi.", value: input.resaleLiquidity, unit: "/5", scoreImpact: -6 });
+  const visualUsable = input.visualConditionConfirmed && (input.visualConditionConfidence === "high" || input.visualConditionConfidence === "medium");
+  if (visualUsable && (input.visualConditionRating === "poor" || input.visualConditionRating === "very_poor")) add({ id: "visual-condition-risk", category: "apartmentCondition", type: "risk", severity: input.visualConditionRating === "very_poor" ? "high" : "medium", title: "Valokuvissa näkyvä korjaustarve", description: "Käyttäjän vahvistamissa kuvahavainnoissa näkyy huoneiston pintoihin liittyvää korjaustarvetta. Arvio ei koske rakenteiden sisäistä kuntoa.", scoreImpact: 0 });
+  else if (visualUsable && input.visualConditionRating === "fair") add({ id: "visual-condition-notice", category: "apartmentCondition", type: "notice", severity: "low", title: "Kuvissa näkyviä kuntohuomioita", description: "Käyttäjän vahvistamissa kuvahavainnoissa on pintojen kuntoon liittyviä huomioita, jotka on hyvä tarkistaa paikan päällä.", scoreImpact: 0 });
+  else if (visualUsable && (input.visualConditionRating === "good" || input.visualConditionRating === "excellent")) add({ id: "visual-condition-strength", category: "apartmentCondition", type: "strength", severity: "info", title: "Kuvissa siisti yleisilme", description: "Käyttäjän vahvistamissa kuvissa näkyvät pinnat vaikuttavat pääosin siisteiltä. Havainto ei sulje pois kuvien ulkopuolisia tai piileviä vaurioita.", scoreImpact: 0 });
   return findings;
 }

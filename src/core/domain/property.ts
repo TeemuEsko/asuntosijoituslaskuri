@@ -1,6 +1,7 @@
 import type { RentEstimate } from "../rent-data/types";
 import type { HeatingType } from "./heating";
 import type { PropertyField } from "./field";
+import type { VisualConditionSummary } from "../visual-condition/types";
 
 export type LandOwnership = "owned" | "leased" | "optional_leasehold";
 export type PlotShareRedemptionStatus = "redeemed" | "not_redeemed" | "unknown";
@@ -15,4 +16,7 @@ export type PropertyModel = {
   rent: { currentRentMonthly: PropertyField<number>; marketRentMonthly: PropertyField<number>; estimate: RentEstimate; occupancyRate: PropertyField<number>; rentalDemand: PropertyField<1 | 2 | 3 | 4 | 5>; rentIncreasePotential: PropertyField<number>; tenantPaidCostsMonthly: PropertyField<number>; otherRentalCostsMonthly: PropertyField<number> };
   financing: { equityInvested: PropertyField<number>; bankLoanAmount: PropertyField<number>; referenceRate: PropertyField<number>; marginRate: PropertyField<number>; annualInterestRate: PropertyField<number>; loanTermYears: PropertyField<number>; repaymentType: PropertyField<"annuity" | "equal_principal" | "interest_only" | "bullet">; interestOnlyMonths: PropertyField<number>; collateralValue: PropertyField<number>; extraCollateral: PropertyField<number> };
   exit: { estimatedSalePrice: PropertyField<number>; sellingCosts: PropertyField<number>; holdingPeriodYears: PropertyField<number>; annualAppreciationRate: PropertyField<number>; locationRisk: PropertyField<1 | 2 | 3 | 4 | 5>; resaleLiquidity: PropertyField<1 | 2 | 3 | 4 | 5> };
+  apartmentVisualCondition?: VisualConditionSummary;
+  buildingVisualCondition?: VisualConditionSummary;
+  housingCompanyTechnicalCondition?: { source: "documents_and_repair_history"; technicalRiskScore: number; confidence: "high" | "medium" | "low" };
 };

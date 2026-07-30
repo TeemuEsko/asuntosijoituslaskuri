@@ -48,6 +48,16 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+@media print {
+  #visuaalinen-kunto button,
+  #visuaalinen-kunto div:has(> input[type="file"]),
+  #visuaalinen-kunto label:has(input[type="checkbox"]),
+  #visuaalinen-kunto div:has(> img),
+  #visuaalinen-kunto details:has(input, textarea, select) {
+    display: none;
+  }
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
