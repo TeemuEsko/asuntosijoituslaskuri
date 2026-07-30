@@ -22,14 +22,14 @@ function fallbackReason(result: ListingParseResult): string | null {
 }
 function hash(value: string): string { return createHash("sha256").update(value).digest("hex").slice(0, 16); }
 
-export async function acquireListing(urlInput: string, options: { browserProvider?: ListingBrowserProvider | null; forceRefresh?: boolean; fetchImpl?: typeof fetch; skipDnsCheck?: boolean } = {}): Promise<ListingAcquisitionResult> {
+export async function acquireListing(urlInput: string, options: { browserProvider?: ListingBrowserProvider | null; forceRefresh?: boolean; fetchImpl?: typeof fetch; skipDnsCheck?: boolean; includeSourceDocument?: boolean } = {}): Promise<ListingAcquisitionResult> {
   const totalStarted = Date.now(); const validation = validateListingUrl(urlInput);
   const emptyDiagnostics: ListingAcquisitionDiagnostics = { portal: validation.ok ? validation.source : "pasted_text", acquisitionMethod: "static", staticHtmlSucceeded: false, structuredDataFound: false, browserAutomationUsed: false, cookieBannerHandled: false, scrollCompleted: false, accordionsOpened: 0, rawFieldsFound: 0, normalizedFieldsCreated: 0, acceptedFields: 0, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [], htmlLength: 0, cleanedTextLength: 0, legacyParserFieldsFound: {}, canonicalFieldsMapped: [], fieldsRejected: 0, rejectionReasons: [], finalFieldsShownInReview: [], staticLoadTimeMs: 0, staticCriticalFieldCount: 0, finalCriticalFieldCount: 0, staticFindingCount: 0, finalFindingCount: 0, cacheHit: false, rawContentHash: "", totalDurationMs: 0 };
   if (!validation.ok) return { ok: false, code: validation.code, error: `${validation.error} Liitä ilmoituksen teksti.`, status: 400, diagnostics: { ...emptyDiagnostics, finalErrorType: validation.code, totalDurationMs: Date.now() - totalStarted } };
   if (!options.skipDnsCheck) { try { await assertPublicListingDestination(validation.url); } catch { return { ok: false, code: "unsafe_url", error: "Osoite ei läpäissyt verkkoturvallisuuden tarkistusta. Liitä ilmoituksen teksti.", status: 400, diagnostics: { ...emptyDiagnostics, finalErrorType: "unsafe_url", totalDurationMs: Date.now() - totalStarted } }; } }
   const adapter = getListingBrowserAdapter(validation.source); const cacheKey = `${validation.url.toString()}:${LISTING_PARSER_VERSION}:${adapter.version}`;
   const cached = cache.get(cacheKey);
-  if (!options.forceRefresh && cached && cached.expires > Date.now()) return { ok: true, result: structuredClone(cached.result), diagnostics: { ...cached.diagnostics, acquisitionMethod: "cache", cacheHit: true, totalDurationMs: Date.now() - totalStarted }, partial: cached.result.missingCriticalFields.length > 0 };
+  if (!options.includeSourceDocument && !options.forceRefresh && cached && cached.expires > Date.now()) return { ok: true, result: structuredClone(cached.result), diagnostics: { ...cached.diagnostics, acquisitionMethod: "cache", cacheHit: true, totalDurationMs: Date.now() - totalStarted }, partial: cached.result.missingCriticalFields.length > 0 };
 
   const fetchStarted = Date.now(); const fetchImpl = options.fetchImpl ?? fetch; let html = "";
   let fetchStatus: number | undefined;
@@ -47,12 +47,12 @@ export async function acquireListing(urlInput: string, options: { browserProvide
   const staticLegacy = parseLegacyListingHtml(html, validation.url.toString());
   const staticCanonical = mapLegacyFieldsToCanonical(staticLegacy.fields);
   const staticResult = parseListingText(parserInputFromHtml(html), validation.source, [...extractStructuredValues(html), ...staticCanonical]);
-  const reason = fallbackReason(staticResult); let finalResult = staticResult; let method: ListingAcquisitionDiagnostics["acquisitionMethod"] = "static"; let browserDiagnostics; let contentContexts; let browserFailureType: string | undefined;
+  const reason = fallbackReason(staticResult); let finalResult = staticResult; let finalHtml = html; let finalUrl = validation.url.toString(); let method: ListingAcquisitionDiagnostics["acquisitionMethod"] = "static"; let browserDiagnostics; let contentContexts; let browserFailureType: string | undefined;
   if (reason) {
     const provider = options.browserProvider === undefined ? createDefaultBrowserProvider() : options.browserProvider;
     if (provider) {
       const browser = await provider.acquire(validation.url.toString(), validation.source);
-      if (browser.ok) { const renderedLegacy = parseLegacyListingHtml(browser.html, validation.url.toString()); finalResult = parseListingText(parserInputFromHtml(browser.html, `${browser.visibleText}\n${browser.contexts.map((context) => context.excerpt).join("\n")}`), validation.source, [...extractStructuredValues(browser.html), ...mapLegacyFieldsToCanonical(renderedLegacy.fields)]); method = "browser"; browserDiagnostics = browser.diagnostics; contentContexts = browser.contexts; }
+      if (browser.ok) { const renderedLegacy = parseLegacyListingHtml(browser.html, validation.url.toString()); finalResult = parseListingText(parserInputFromHtml(browser.html, `${browser.visibleText}\n${browser.contexts.map((context) => context.excerpt).join("\n")}`), validation.source, [...extractStructuredValues(browser.html), ...mapLegacyFieldsToCanonical(renderedLegacy.fields)]); finalHtml = browser.html; finalUrl = browser.finalUrl; method = "browser"; browserDiagnostics = browser.diagnostics; contentContexts = browser.contexts; }
       else { browserFailureType = browser.code; if (!staticResult.findings.length) return { ok: false, code: browser.code, error: `${browser.error} Liitä ilmoituksen teksti.`, status: 502, diagnostics: { ...emptyDiagnostics, staticLoadTimeMs: Date.now() - fetchStarted, browserFallbackReason: reason, staticFindingCount: 0, finalErrorType: browser.code, totalDurationMs: Date.now() - totalStarted } }; }
     }
   }
@@ -65,7 +65,7 @@ export async function acquireListing(urlInput: string, options: { browserProvide
   if (process.env.NODE_ENV === "development") console.info("[listing-import comparison]", { fetchStatus, htmlLength: html.length, cleanedTextLength: staticLegacy.text.length, cleanedTextPreview: staticLegacy.text.slice(0, 500), labelsFound: Object.fromEntries(["Velaton hinta", "Myyntihinta", "Hoitovastike", "Pinta-ala", "Rakennusvuosi", "Lämmitysmuoto", "Tontti"].map((label) => [label, staticLegacy.text.toLocaleLowerCase("fi").includes(label.toLocaleLowerCase("fi"))])), legacyParserOutput: staticLegacy.fields, canonicalMappedOutput: staticCanonical, reviewScreenInput: finalResult.findings.map((finding) => ({ field: finding.field, value: finding.normalizedValue })) });
   finalResult.diagnostics.acquisition = diagnostics;
   if (essentialCount >= 4) cache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, result: structuredClone(finalResult), diagnostics });
-  return { ok: true, result: finalResult, diagnostics, partial: finalResult.missingCriticalFields.length > 0 };
+  return { ok: true, result: finalResult, diagnostics, partial: finalResult.missingCriticalFields.length > 0, sourceDocument: options.includeSourceDocument ? { finalUrl, html: finalHtml } : undefined };
 }
 
 export function clearListingAcquisitionCache(): void { cache.clear(); }

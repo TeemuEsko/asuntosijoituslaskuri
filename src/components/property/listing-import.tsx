@@ -208,14 +208,18 @@ function FindingCard({
 }
 
 function PreparationProgress({ status }: { status: AnalysisPreparationStatus }) {
-  const estimatingRent = ["estimating_rent", "running_enrichments", "validating_inputs"].includes(status);
+  const order: AnalysisPreparationStatus[] = ["parsing_listing", "normalizing_data", "resolving_location", "estimating_rent", "analysing_listing_images", "running_enrichments", "validating_inputs"];
+  const current = Math.max(0, order.indexOf(status));
   const steps = [
-    { label: "Myynti-ilmoitus luettu", complete: status !== "parsing_listing" },
-    { label: "Kohteen perustiedot tunnistettu", complete: estimatingRent },
-    { label: "Arvioidaan markkinavuokraa", complete: ["running_enrichments", "validating_inputs"].includes(status), active: status === "estimating_rent" },
-    { label: "Muodostetaan sijoitusanalyysi", complete: status === "validating_inputs", active: ["running_enrichments", "validating_inputs"].includes(status) },
-  ];
-  return <Card className="mt-8 border-success/25"><CardContent className="space-y-5 py-2"><div className="flex gap-3"><LoaderCircle className="mt-0.5 size-5 shrink-0 animate-spin text-success" /><div><p className="font-semibold">{estimatingRent ? "Arvioimme kohteen markkinavuokraa…" : "Valmistelemme kohteen analyysiä…"}</p><p className="mt-1 text-sm text-muted-foreground">{estimatingRent ? "Haemme alueellisen vertailuvuokran kohteen sijainnin, pinta-alan ja huoneluvun perusteella." : "Luemme ja normalisoimme myynti-ilmoituksen tiedot."}</p></div></div><ol className="space-y-2 text-sm">{steps.map((step) => <li key={step.label} className={`flex items-center gap-2 ${step.complete ? "text-success" : step.active ? "font-medium text-foreground" : "text-muted-foreground"}`}><span aria-hidden="true">{step.complete ? "✓" : step.active ? "•" : "○"}</span>{step.label}</li>)}</ol></CardContent></Card>;
+    { label: "Myynti-ilmoitus luettu", stage: "normalizing_data" as const },
+    { label: "Kohteen perustiedot tunnistettu", stage: "resolving_location" as const },
+    { label: "Arvioidaan markkinavuokraa", stage: "estimating_rent" as const },
+    { label: "Analysoidaan ilmoituksen kuvia", stage: "analysing_listing_images" as const },
+    { label: "Muodostetaan sijoitusanalyysi", stage: "running_enrichments" as const },
+  ].map((step) => ({ ...step, complete: current > order.indexOf(step.stage), active: current === order.indexOf(step.stage) }));
+  const analysingImages = status === "analysing_listing_images";
+  const estimatingRent = status === "estimating_rent";
+  return <Card className="mt-8 border-success/25"><CardContent className="space-y-5 py-2"><div className="flex gap-3"><LoaderCircle className="mt-0.5 size-5 shrink-0 animate-spin text-success" /><div><p className="font-semibold">{analysingImages ? "Analysoimme ilmoituksen valokuvia…" : estimatingRent ? "Arvioimme kohteen markkinavuokraa…" : "Valmistelemme kohteen analyysiä…"}</p><p className="mt-1 text-sm text-muted-foreground">{analysingImages ? "Poimimme kohdekuvat, poistamme kaksoiskappaleet ja arvioimme vain kuvissa näkyviä pintoja." : estimatingRent ? "Haemme alueellisen vertailuvuokran kohteen sijainnin, pinta-alan ja huoneluvun perusteella." : "Luemme ja normalisoimme myynti-ilmoituksen tiedot."}</p></div></div><ol className="space-y-2 text-sm">{steps.map((step) => <li key={step.label} className={`flex items-center gap-2 ${step.complete ? "text-success" : step.active ? "font-medium text-foreground" : "text-muted-foreground"}`}><span aria-hidden="true">{step.complete ? "✓" : step.active ? "•" : "○"}</span>{step.label}</li>)}</ol></CardContent></Card>;
 }
 
 export function ListingImport({
@@ -249,6 +253,7 @@ export function ListingImport({
       window.setTimeout(() => setPreparationStatus("normalizing_data"), 150),
       window.setTimeout(() => setPreparationStatus("resolving_location"), 350),
       window.setTimeout(() => setPreparationStatus("estimating_rent"), 550),
+      window.setTimeout(() => setPreparationStatus("analysing_listing_images"), 800),
     ];
     try {
       const response = await fetch("/api/listing-import", {
@@ -272,7 +277,7 @@ export function ListingImport({
       const parsedValues = automaticValuesWithRent(payload);
       if (payload.preparation?.nextStep === "analysis") {
         setPreparationStatus("ready");
-        onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, housingCompanyRenovations: payload.housingCompanyRenovations, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues) });
+        onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, housingCompanyRenovations: payload.housingCompanyRenovations, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues), listingImageAnalysis: payload.listingImageAnalysis, visualCondition: payload.visualCondition });
       } else {
         setResult(payload);
         setPreparationStatus("needs_user_input");
@@ -343,6 +348,8 @@ export function ListingImport({
       documentKinds: ["listing"],
       rentEstimate: result?.rentEstimate,
       importReview: result ?? undefined,
+      listingImageAnalysis: result?.listingImageAnalysis,
+      visualCondition: result?.visualCondition,
     };
     for (const finding of result?.findings ?? []) {
       const state = decisions[finding.id];
@@ -384,7 +391,7 @@ export function ListingImport({
       if (detectedDebt === "unknown" && debtChoice === null) validationErrors.push("hasDebtShare: valitse kyllä tai ei");
       if (detectedDebt === "unknown" && debtChoice === "no") { combined.companyLoanShare = 0; combined.financingFeeMonthly = 0; }
       if (debtChoice === "yes" && (typeof combined.companyLoanShare !== "number" || combined.companyLoanShare < 0 || typeof combined.financingFeeMonthly !== "number" || combined.financingFeeMonthly < 0)) validationErrors.push("Yhtiölainaosuus ja rahoitusvastike tarvitaan");
-      const canonicalPayload: ImportedPropertyData = { ...combined, rentEstimate: rentForValidation, renovations: result.renovations, housingCompanyRenovations: result.housingCompanyRenovations, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]) };
+      const canonicalPayload: ImportedPropertyData = { ...combined, rentEstimate: rentForValidation, renovations: result.renovations, housingCompanyRenovations: result.housingCompanyRenovations, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]), listingImageAnalysis: result.listingImageAnalysis, visualCondition: result.visualCondition };
       if (process.env.NODE_ENV === "development") console.info("[analysis-update]", { submittedMissingFields: userValues, parsedNumericValues: Object.fromEntries(Object.entries(userValues).filter(([, value]) => typeof value === "number")), hasDebtShare: detectedDebt === "unknown" ? debtChoice : detectedDebt, debtShare: combined.companyLoanShare, financingFee: combined.financingFeeMonthly, canonicalPayload, validationErrors, analysisResult: validationErrors.length ? "invalid" : "ready", navigationTarget: "workspace" });
       if (validationErrors.length) throw new Error(validationErrors.join(", "));
       onComplete(canonicalPayload);

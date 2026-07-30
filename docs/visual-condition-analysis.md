@@ -2,9 +2,11 @@
 
 ## Auditin tulos
 
-Nykyisessä mallissa `apartment.condition` on myynti-ilmoituksesta tai käyttäjältä saatu yleinen tekstikenttä. Se ei sisällä kuvakohtaisia havaintoja, kattavuutta, varmuutta tai lähdehistoriaa. Taloyhtiön tekninen kunto muodostetaan erikseen korjaushistoriasta ja asiakirjoista. Sitä ei saa päätellä huoneiston valokuvista.
+`apartment.condition` on myynti-ilmoituksesta tai käyttäjältä saatu yleinen tekstikenttä. Se ei sisällä kuvakohtaisia havaintoja, kattavuutta, varmuutta tai lähdehistoriaa. Taloyhtiön tekninen kunto muodostetaan erikseen korjaushistoriasta ja asiakirjoista. Sitä ei saa päätellä huoneiston valokuvista.
 
-Myynti-ilmoituksen hankinta estää kuvat ja median, eikä sovellus klikkaa kuvagallerioita. Tätä suojausta ei muuteta. Uusi ominaisuus käsittelee vain käyttäjän itse valitsemia JPG-, JPEG-, PNG- ja WEBP-kuvia. Kuvia ei kirjoiteta levylle, tietokantaan tai istuntotallennukseen. Ne pidetään selaimen ja palvelinpyynnön muistissa käsittelyn ajan ja poistuvat valinnan tyhjentämisen, sivulta poistumisen tai pyynnön valmistumisen yhteydessä.
+Aiempi kuvaominaisuus jäi käsinlataukseen, koska URL-hankinta palautti parserille vain tekstipohjaisen tuloksen ja hävitti alkuperäisen HTML:n ennen rikastusta. Selainhankinta esti kuvatiedostojen lataamisen, kuvagalleriaa ei avattu ja kuntopalvelu hyväksyi vain käyttäjän lähettämän `File`-olion. Uusi työnkulku käyttää jo palvelimella saatua staattista tai renderöityä HTML:ää kuvalähteiden poimintaan. Selain ei edelleenkään lataa kuvia hankintavaiheessa, vaan hyväksytyt kohdekuvat haetaan erillisessä rajatussa palvelinprosessissa.
+
+Kuvia ei kirjoiteta levylle, tietokantaan tai istuntotallennukseen. Ilmoituskuvan URL on olemassa vain hetkellisessä palvelinpuolen kandidaattimallissa. Canonical-analyysiin tallennetaan kuvan järjestysnumero, lähde, analyysitulos, varmuus ja käsittelyaika, ei kuvatiedostoa eikä alkuperäistä URL-osoitetta.
 
 ## Rajaus ja terminologia
 
@@ -13,7 +15,7 @@ Käyttöliittymän nimi on **Valokuvien perusteella arvioitu kunto** tai **Visua
 Huoneiston visuaalinen kunto, rakennuksen ulkopuolelta näkyvä visuaalinen kunto ja taloyhtiön asiakirjoihin perustuva tekninen kunto säilytetään erillisinä:
 
 - `apartmentVisualCondition`: huoneiston sisätilojen ja huoneistoon kuuluvien näkyvien pintojen havainnot
-- `buildingVisualCondition`: käyttäjän lisäämistä ulkokuvista tehdyt näkyvät havainnot
+- `buildingVisualCondition`: ilmoituksen tai käyttäjän lisäämistä ulkokuvista tehdyt näkyvät havainnot
 - `housingCompanyTechnicalCondition`: nykyinen korjaushistoriaan ja asiakirjoihin perustuva taloyhtiöriski
 
 Valokuvahavainto ei koskaan muuta taloyhtiön korjaushistoriaa tai teknistä riskipistettä.
@@ -34,15 +36,17 @@ Ilmoituksen kirjallinen kuntoluokitus ja vahvistettu visuaalinen arvio yhdistet�
 
 Jokainen havainto sisältää kuvatunnisteen, varmuuden, luontiajan, `userConfirmed`- ja `userEdited`-liput sekä alkuperäisen ehdotuksen lähdehistoriassa. Hyväksytyn tai muokatun havainnon lähde on `user_confirmed`; käyttäjän itse lisäämän havainnon lähde on `user_observation`.
 
-## Toteutussuunnitelma
+## Automaattinen URL-työnkulku
 
-1. Lisätään canonical-malli kuvien lähteille, huoneille, alueille, havainnoille, varmuudelle, kattavuudelle, kokonaisarviolle, korjauslaajuudelle ja kustannushaarukalle.
-2. Lisätään deterministinen validointi ja aggregointi. Kuvapalvelu ehdottaa vain kuvakohtaisia havaintoja; sovellus laskee kokonaisarvion, kattavuuden, varmuuden, korjauslaajuuden ja rajatun pistevaikutuksen.
-3. Lisätään palvelinreitti, joka hyväksyy vain käyttäjän lataamat kuvat. Toteutus ei hyväksy kuvan URL-osoitetta eikä hae ilmoituskuvia.
-4. Lisätään käyttöliittymä kuvien valintaan, esikatseluun, analyysin etenemiseen, virheisiin, tulosten tarkistamiseen sekä havaintojen hyväksymiseen, muokkaamiseen, poistamiseen ja lisäämiseen.
-5. Liitetään vahvistettu visuaalinen analyysi remonttivaraan, oikaistuun hankintahintaan, riskeihin ja vahvuuksiin. Vaikutus kokonaispisteeseen pidetään pienenä ja varmuusriippuvaisena.
-6. Lisätään analyysi ladattavaan raporttidataan ja tulostettavaan näkymään ilman kuvatiedostoja tai pysyviä pikkukuvia.
-7. Lisätään yksikkö-, integraatio-, käyttöliittymä- ja raporttiregressiotestit.
+1. URL validoidaan Etuoven tai Oikotien tuetuksi julkiseksi ilmoitusosoitteeksi.
+2. Hankinta palauttaa parserituloksen lisäksi HTML:n vain saman palvelinpyynnön sisäiseen käyttöön. Lähdedokumenttia ei lähetetä selaimelle.
+3. Poiminta tunnistaa `img`-attribuutit, lazy-load-attribuutit, `srcset`- ja `picture`-lähteet, Open Graphin, JSON-LD:n, hydraatiotilan ja sisäisen JSON-datan.
+4. Logot, välittäjäkuvat, kartat, pohjakuvat, energia-asiakirjat, mainokset, ikonit, pienet paikkamerkit ja muut kuin kohdekuvat suodatetaan. Pikkukuva- ja resoluutioversiot deduplikoidaan, ja paras resoluutio valitaan.
+5. Enintään 20 edustavaa kuvaa haetaan hyväksytyiltä kuva-CDN-isänniltä ja analysoidaan palvelimella rajatulla rinnakkaisuudella.
+6. Kuvista muodostetaan sama `VisualConditionAnalysis` kuin käyttäjän kuvista. Lähde on `listing_session`; käyttäjän myöhemmin lisäämät kuvat muuttavat lähteen muotoon `listing_and_user`.
+7. URL-analyysi jatkuu normaalisti, vaikka yhtään kuvaa ei löydy, kuvien käyttö estyy tai kuvantulkinta epäonnistuu.
+
+Käyttäjän kuvien reitti hyväksyy edelleen vain multipart-tiedoston, ei URL-osoitetta. Ilmoituskuvien haku on vain URL-tuonnin sisäinen palvelinfunktio, joten sovellus ei tarjoa avointa kuvavälityspalvelinta.
 
 ## Kuvan validointi ja säilytys
 
@@ -53,6 +57,13 @@ Jokainen havainto sisältää kuvatunnisteen, varmuuden, luontiajan, `userConfir
 - selain pienentää pitkän sivun enintään 1 600 pikseliin ja poistaa metatiedot uudelleenkoodauksella
 - kuvadataa ei sisällytetä canonical-analyysiin, raporttiin tai `sessionStorage`-tallenteeseen
 - palvelin käyttää `store: false` -asetusta kuvantulkintapyynnössä
+- ilmoituskuvan jokainen uudelleenohjaus tarkistetaan uudelleen
+- vain ennalta hyväksytyt portaalikohtaiset HTTPS-kuvaisännät sallitaan
+- DNS-tulos ei saa osoittaa localhostiin, yksityisverkkoon, link-local-osoitteeseen tai muuhun estettyyn osoiteavaruuteen
+- palvelin tarkistaa sisältötyypin, tavukoon, todelliset kuvamitat, aikakatkaisun ja uudelleenohjausten määrän
+- hyväksytyt palvelinmuodot ovat JPEG, PNG ja WEBP
+
+Ilmoituskuvien hallitut virhekoodit ovat `LISTING_IMAGES_NOT_FOUND`, `LISTING_IMAGE_ACCESS_DENIED`, `LISTING_IMAGE_FETCH_FAILED`, `UNSUPPORTED_IMAGE_FORMAT`, `IMAGE_TOO_LARGE`, `IMAGE_ANALYSIS_FAILED`, `NO_ANALYSABLE_LISTING_IMAGES` ja `IMAGE_ANALYSIS_TIMEOUT`.
 
 ## Turvallinen havaintokieli
 
@@ -62,7 +73,7 @@ Kosteutta tai piilevää vauriota ei diagnosoida. Sallittu muoto on esimerkiksi:
 
 ## Aggregointi
 
-Kokonaisarvio perustuu käyttäjän hyväksymiin tai aktiivisiin kuvahavaintoihin, arvioitujen huoneiden osuuteen, kuvien laatuun sekä havaintojen vakavuuteen. `visualConditionScore`, `coverage` ja `overallConfidence` ovat erillisiä arvoja.
+Kokonaisarvio perustuu aktiivisiin kuvahavaintoihin, arvioitujen huoneiden osuuteen, kuvien laatuun sekä havaintojen vakavuuteen. Automaattiset ilmoituskuvahavainnot merkitään `automatic`-tilaan ja huomioidaan ensimmäisessä sijoitusanalyysissä; käyttöliittymä kertoo tämän suoraan, ja käyttäjä voi korjata tai hylätä havainnot. Käyttäjän itse lisäämät kuvat pysyvät `pending`-tilassa, kunnes käyttäjä hyväksyy ne. `visualConditionScore`, `coverage` ja `overallConfidence` ovat erillisiä arvoja.
 
 Alhainen kattavuus tai varmuus estää vahvan kokonaispäätelmän ja pistemuutoksen. Hyvä visuaalinen kunto voi pienentää remonttivarauksen tarvetta, mutta ei yksin tee kohteesta hyvää sijoitusta.
 
@@ -82,9 +93,15 @@ Arvion yhteydessä näytetään aina oletukset ja epävarmuus. Käyttäjän itse
 
 ## Käyttöliittymän ja raportin vastuuvapautukset
 
-Käyttöliittymässä näytetään:
+Käyttöliittymän ensimmäinen virke määräytyy toteutuneen lähteen mukaan:
 
-> Havainnot perustuvat myynti-ilmoituksen tai käyttäjän lisäämiin valokuviin. Kuvista ei voida arvioida rakenteiden sisäistä kuntoa, kosteutta tai piileviä vaurioita. Arvio ei korvaa kuntotarkastusta.
+- ilmoitus: “Havainnot perustuvat myynti-ilmoituksen valokuviin.”
+- käyttäjän kuvat: “Havainnot perustuvat käyttäjän lisäämiin valokuviin.”
+- molemmat: “Havainnot perustuvat myynti-ilmoituksen ja käyttäjän lisäämiin valokuviin.”
+
+Sen jälkeen näytetään aina:
+
+> Kuvista ei voida arvioida rakenteiden sisäistä kuntoa, kosteutta tai piileviä vaurioita. Arvio ei korvaa kuntotarkastusta.
 
 Raportissa näytetään:
 
@@ -97,3 +114,5 @@ Raportissa näytetään:
 - Rakenteiden sisäistä kuntoa, kosteutta, ilmanlaatua, toimivuutta tai piileviä vaurioita ei voida arvioida.
 - Kustannushaarukka ei ole urakkatarjous eikä alueellinen markkinahinta-arvio.
 - Kuvantulkintapalvelu edellyttää palvelinympäristössä `OPENAI_API_KEY`-avainta. Mallin voi vaihtaa `VISUAL_CONDITION_MODEL`-muuttujalla.
+- Portaalien HTML-rakenne ja kuva-CDN-isännät voivat muuttua. Uusi CDN lisätään vain erikseen tarkistettuna `LISTING_IMAGE_HOSTS_ETUOVI`- tai `LISTING_IMAGE_HOSTS_OIKOTIE`-muuttujaan.
+- Ilmoituskuvien automaattinen analyysi on URL-tuonnin rikastus, eikä sen epäonnistuminen estä talousanalyysin muodostamista.

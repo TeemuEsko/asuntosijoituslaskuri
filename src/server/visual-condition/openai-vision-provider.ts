@@ -19,7 +19,7 @@ const responseSchema = {
   }
 } as const;
 
-const systemPrompt = `Analysoi yksi käyttäjän itse lisäämä asunnon tai rakennuksen valokuva näkyvän kunnon kannalta. Vastaa suomeksi annetun JSON-skeeman mukaan.
+const systemPrompt = `Analysoi yksi asunnon tai rakennuksen valokuva näkyvän kunnon kannalta. Kuva voi olla myynti-ilmoituksesta tai käyttäjän lisäämä. Vastaa suomeksi annetun JSON-skeeman mukaan.
 
 Tiukat rajat:
 - Kuvaa vain kuvassa näkyviä pintoja, kulumaa, pintavaurioita, halkeamia, värimuutoksia, puuttuvaa viimeistelyä, vanhentunutta ilmettä ja työnjälkeä.

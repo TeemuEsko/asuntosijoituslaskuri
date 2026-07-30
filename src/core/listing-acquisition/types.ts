@@ -86,6 +86,7 @@ export type ListingAcquisitionDiagnostics = {
   finalErrorType?: string;
 };
 
-export type ListingAcquisitionSuccess = { ok: true; result: ListingParseResult; diagnostics: ListingAcquisitionDiagnostics; partial: boolean };
+export type ListingSourceDocument = { finalUrl: string; html: string };
+export type ListingAcquisitionSuccess = { ok: true; result: ListingParseResult; diagnostics: ListingAcquisitionDiagnostics; partial: boolean; sourceDocument?: ListingSourceDocument };
 export type ListingAcquisitionFailure = { ok: false; code: string; error: string; status: number; diagnostics: ListingAcquisitionDiagnostics };
 export type ListingAcquisitionResult = ListingAcquisitionSuccess | ListingAcquisitionFailure;

@@ -1,4 +1,4 @@
-export type VisualConditionSource = "user_upload" | "user_screenshot" | "listing_session" | "user_confirmed" | "user_observation" | "unknown";
+export type VisualConditionSource = "user_upload" | "user_screenshot" | "listing_session" | "listing_and_user" | "user_confirmed" | "user_observation" | "unknown";
 export type VisualConditionConfidence = "high" | "medium" | "low" | "unknown";
 export type VisualConditionRating = "excellent" | "good" | "fair" | "poor" | "very_poor" | "unknown";
 export type RenovationScope = "none" | "minor" | "moderate" | "major" | "extensive" | "unknown";
@@ -54,6 +54,10 @@ export type VisualConditionObservation = {
 export type VisualConditionImageAssessment = {
   imageId: string;
   fileName: string;
+  source?: "listing" | "user";
+  sourceIndex?: number;
+  analyzedAt?: string;
+  confidence?: VisualConditionConfidence;
   room: VisualConditionRoom;
   visibleSurfaces: string[];
   imageQuality: VisualConditionConfidence;
@@ -86,7 +90,7 @@ export type VisualConditionAnalysis = {
   id: string;
   source: VisualConditionSource;
   status: VisualConditionStatus;
-  confirmationStatus: "pending" | "confirmed";
+  confirmationStatus: "pending" | "automatic" | "confirmed";
   apartmentVisualCondition: VisualConditionSummary;
   buildingVisualCondition: VisualConditionSummary;
   overallRating: VisualConditionRating;
@@ -109,5 +113,16 @@ export type VisualConditionAnalysis = {
   listingConditionComparison?: { listingValue: string; status: "supports" | "conflict" | "not_comparable"; message: string };
 };
 
-export const UI_VISUAL_CONDITION_DISCLAIMER = "Havainnot perustuvat myynti-ilmoituksen tai käyttäjän lisäämiin valokuviin. Kuvista ei voida arvioida rakenteiden sisäistä kuntoa, kosteutta tai piileviä vaurioita. Arvio ei korvaa kuntotarkastusta.";
-export const REPORT_VISUAL_CONDITION_DISCLAIMER = "Havainnot perustuvat valokuviin eivätkä korvaa paikan päällä tehtävää tarkastusta tai ammattilaisen kuntotutkimusta. Kuvista ei voida arvioida rakenteiden sisäistä kuntoa tai piileviä vaurioita.";
+const disclaimerLimit = "Kuvista ei voida arvioida rakenteiden sisäistä kuntoa, kosteutta tai piileviä vaurioita. Arvio ei korvaa kuntotarkastusta.";
+export const UI_VISUAL_CONDITION_DISCLAIMER = `Havainnot perustuvat myynti-ilmoituksen ja käyttäjän lisäämiin valokuviin. ${disclaimerLimit}`;
+export const REPORT_VISUAL_CONDITION_DISCLAIMER = "Havainnot perustuvat myynti-ilmoituksen ja käyttäjän lisäämiin valokuviin eivätkä korvaa paikan päällä tehtävää tarkastusta tai ammattilaisen kuntotutkimusta. Kuvista ei voida arvioida rakenteiden sisäistä kuntoa tai piileviä vaurioita.";
+
+export function visualConditionUiDisclaimer(source: VisualConditionSource): string {
+  const beginning = source === "listing_session" ? "Havainnot perustuvat myynti-ilmoituksen valokuviin." : source === "listing_and_user" ? "Havainnot perustuvat myynti-ilmoituksen ja käyttäjän lisäämiin valokuviin." : source === "user_upload" || source === "user_screenshot" || source === "user_confirmed" || source === "user_observation" ? "Havainnot perustuvat käyttäjän lisäämiin valokuviin." : "Havainnot perustuvat analyysiin toimitettuihin valokuviin.";
+  return `${beginning} ${disclaimerLimit}`;
+}
+
+export function visualConditionReportDisclaimer(source: VisualConditionSource): string {
+  const sourceText = source === "listing_session" ? "myynti-ilmoituksen valokuviin" : source === "listing_and_user" ? "myynti-ilmoituksen ja käyttäjän lisäämiin valokuviin" : source === "unknown" ? "analyysiin toimitettuihin valokuviin" : "käyttäjän lisäämiin valokuviin";
+  return `Havainnot perustuvat ${sourceText} eivätkä korvaa paikan päällä tehtävää tarkastusta tai ammattilaisen kuntotutkimusta. Kuvista ei voida arvioida rakenteiden sisäistä kuntoa tai piileviä vaurioita.`;
+}

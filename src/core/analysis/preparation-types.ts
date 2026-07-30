@@ -5,6 +5,7 @@ export type AnalysisPreparationStatus =
   | "normalizing_data"
   | "resolving_location"
   | "estimating_rent"
+  | "analysing_listing_images"
   | "running_enrichments"
   | "validating_inputs"
   | "ready"

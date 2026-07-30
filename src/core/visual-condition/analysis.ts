@@ -1,4 +1,4 @@
-import type { RenovationCostRange, RenovationScope, VisualConditionAnalysis, VisualConditionConfidence, VisualConditionImageAssessment, VisualConditionObservation, VisualConditionRating, VisualConditionRoom, VisualConditionSummary } from "./types";
+import type { RenovationCostRange, RenovationScope, VisualConditionAnalysis, VisualConditionConfidence, VisualConditionImageAssessment, VisualConditionObservation, VisualConditionRating, VisualConditionRoom, VisualConditionSource, VisualConditionSummary } from "./types";
 
 const BUILDING_ROOMS = new Set<VisualConditionRoom>(["facade", "yard", "garage", "basement", "technical_room"]);
 const confidenceWeight: Record<VisualConditionConfidence, number> = { high: 1, medium: .72, low: .35, unknown: .15 };
@@ -79,7 +79,7 @@ function buildSummary(kind: "apartment" | "building", observations: VisualCondit
   return { overallRating: rating, visualConditionScore: score, coverage, confidence, assessedRooms: rooms, unassessedAreas: relevantImages.filter((image) => image.assessability === "not_assessable").map((image) => image.fileName), summary: summarize(kind, rating, active, coverage) };
 }
 
-export function aggregateVisualCondition(input: { id?: string; observations: VisualConditionObservation[]; images: VisualConditionImageAssessment[]; imageCount: number; failedImageCount?: number; areaSqm?: number; expectedRooms?: number; sourceDisclaimerAccepted: boolean; confirmationStatus?: "pending" | "confirmed"; generatedAt?: string; renovationScope?: RenovationScope; renovationScopeSource?: "calculation" | "user"; estimatedRenovationCostRange?: RenovationCostRange | null; renovationReserveSource?: "calculation" | "user"; listingConditionComparison?: VisualConditionAnalysis["listingConditionComparison"] }): VisualConditionAnalysis {
+export function aggregateVisualCondition(input: { id?: string; source?: VisualConditionSource; observations: VisualConditionObservation[]; images: VisualConditionImageAssessment[]; imageCount: number; failedImageCount?: number; areaSqm?: number; expectedRooms?: number; sourceDisclaimerAccepted: boolean; confirmationStatus?: "pending" | "automatic" | "confirmed"; generatedAt?: string; renovationScope?: RenovationScope; renovationScopeSource?: "calculation" | "user"; estimatedRenovationCostRange?: RenovationCostRange | null; renovationReserveSource?: "calculation" | "user"; listingConditionComparison?: VisualConditionAnalysis["listingConditionComparison"] }): VisualConditionAnalysis {
   const apartment = buildSummary("apartment", input.observations, input.images, input.imageCount, input.expectedRooms);
   const building = buildSummary("building", input.observations, input.images, input.imageCount);
   const primary = apartment.visualConditionScore !== null ? apartment : building;
@@ -92,7 +92,7 @@ export function aggregateVisualCondition(input: { id?: string; observations: Vis
   const analysableImageCount = input.images.filter((image) => image.assessability !== "not_assessable").length;
   const hasLimitedImages = input.images.some((image) => image.assessability !== "good");
   return {
-    id: input.id ?? `visual-${Date.now()}`, source: "user_upload", status: failed && input.images.length || hasLimitedImages ? "partial" : input.images.length ? "completed" : "failed", confirmationStatus: input.confirmationStatus ?? "pending",
+    id: input.id ?? `visual-${Date.now()}`, source: input.source ?? "user_upload", status: failed && input.images.length || hasLimitedImages ? "partial" : input.images.length ? "completed" : "failed", confirmationStatus: input.confirmationStatus ?? "pending",
     apartmentVisualCondition: apartment, buildingVisualCondition: building, overallRating: primary.overallRating, overallConfidence: primary.confidence, visualConditionScore: primary.visualConditionScore, coverage: primary.coverage,
     observations: input.observations, images: input.images, renovationScope: scope, renovationScopeSource: input.renovationScopeSource === "user" ? "user" : "calculation", estimatedRenovationCostRange, renovationReserveSource: input.renovationReserveSource === "user" ? "user" : "calculation", imageCount: input.imageCount, analyzedImageCount: input.images.length, analysableImageCount, failedImageCount: failed,
     sourceDisclaimerAccepted: input.sourceDisclaimerAccepted, errorCodes: failed ? ["IMAGE_ANALYSIS_FAILED"] : [], generatedAt: input.generatedAt ?? new Date().toISOString(), listingConditionComparison: input.listingConditionComparison
@@ -100,7 +100,7 @@ export function aggregateVisualCondition(input: { id?: string; observations: Vis
 }
 
 export function visualConditionScoreImpact(analysis?: VisualConditionAnalysis): number {
-  if (!analysis || analysis.confirmationStatus !== "confirmed" || analysis.overallConfidence === "low" || analysis.overallConfidence === "unknown") return 0;
+  if (!analysis || analysis.confirmationStatus === "pending" || analysis.overallConfidence === "low" || analysis.overallConfidence === "unknown") return 0;
   const impacts: Record<VisualConditionRating, number> = { excellent: 1, good: 1, fair: -1, poor: -3, very_poor: -4, unknown: 0 };
   return impacts[analysis.overallRating];
 }

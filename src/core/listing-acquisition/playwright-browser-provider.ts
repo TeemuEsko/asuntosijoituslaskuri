@@ -86,7 +86,7 @@ async function extractContexts(page: Page): Promise<BrowserContentContext[]> {
       const cells = Array.from(row.querySelectorAll("th,td")).map((cell) => cell.textContent?.trim()).filter(Boolean);
       if (cells.length >= 2) contexts.push({ fieldName: cells[0], originalValue: cells.slice(1).join(" "), excerpt: cells.join(": "), domSourceType: "table", selector: "tr", revealedAfterExpansion: Boolean(row.closest("[data-expanded-by-acquisition='true']")) });
     });
-    document.querySelectorAll("script[type='application/ld+json'], script#__NEXT_DATA__").forEach((script) => contexts.push({ excerpt: script.textContent?.slice(0, 500) ?? "", domSourceType: "structured_data", selector: script.id === "__NEXT_DATA__" ? "script#__NEXT_DATA__" : "script[type='application/ld+json']", revealedAfterExpansion: false }));
+    document.querySelectorAll("script[type='application/ld+json'], script#__NEXT_DATA__").forEach((script) => contexts.push({ excerpt: "Rakenteinen data havaittu", domSourceType: "structured_data", selector: script.id === "__NEXT_DATA__" ? "script#__NEXT_DATA__" : "script[type='application/ld+json']", revealedAfterExpansion: false }));
     return contexts;
   });
 }
