@@ -2,6 +2,7 @@ import type { ListingFinding, ListingParseResult } from "../parser/listing-parse
 import type { NormalizedFieldKey } from "../parser/synonyms.ts";
 import type { RentEstimate } from "../rent-data/types.ts";
 import { isHeatingType } from "../domain/heating.ts";
+import { resolveHousingCompanyLoan } from "./housing-company-loan.ts";
 
 export const analysisBlockingFields = ["debtFreePrice", "maintenanceFeeMonthly", "areaSqm", "constructionYear", "buildingType", "heatingType", "currentRentMonthly"] as const satisfies readonly NormalizedFieldKey[];
 export const optionalRiskFields = ["companyLoanShare", "financingFeeMonthly", "landOwnership"] as const satisfies readonly NormalizedFieldKey[];
@@ -44,11 +45,14 @@ export function analysisReliability(result: ListingParseResult, values: Partial<
 }
 
 export function debtShareStatus(values: Partial<Record<NormalizedFieldKey, number | string>>): "yes" | "no" | "unknown" {
-  const debt = values.companyLoanShare; const fee = values.financingFeeMonthly;
-  if ((typeof debt === "number" && debt > 0) || (typeof fee === "number" && fee > 0)) return "yes";
-  if (debt === 0 && (fee === 0 || fee === undefined)) return "no";
-  if (typeof values.debtFreePrice === "number" && typeof values.salePrice === "number" && values.debtFreePrice === values.salePrice && debt === undefined && fee === undefined) return "no";
-  return "unknown";
+  const resolution = resolveHousingCompanyLoan({
+    directDebtShare: typeof values.companyLoanShare === "number" ? values.companyLoanShare : undefined,
+    debtFreePrice: typeof values.debtFreePrice === "number" ? values.debtFreePrice : undefined,
+    salePrice: typeof values.salePrice === "number" ? values.salePrice : undefined,
+    financingFeeMonthly: typeof values.financingFeeMonthly === "number" ? values.financingFeeMonthly : undefined,
+  });
+  if (resolution.conflicts.length || resolution.hasDebtShare === null) return "unknown";
+  return resolution.hasDebtShare ? "yes" : "no";
 }
 
 export function monthlyHousingCharges(values: Partial<Record<NormalizedFieldKey, number | string>>): number | null {

@@ -146,7 +146,7 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
 
 export const excludedCompanyLoanLabels = ["taloyhtiön lainat", "taloyhtiön koko lainamäärä", "yhtiön lainat yhteensä", "remontin kustannusarvio", "lainan enimmäismäärä", "pankkilaina", "henkilökohtainen laina"] as const;
 
-export const criticalFields: ReadonlyArray<{ key: NormalizedFieldKey | "completedRenovations" | "futureRenovations"; label: string }> = [
+export const ANALYSIS_FIELD_REGISTRY: ReadonlyArray<{ key: NormalizedFieldKey | "completedRenovations" | "futureRenovations"; label: string }> = [
   { key: "address", label: "Osoite" },
   { key: "city", label: "Kunta tai kaupunki" },
   { key: "areaSqm", label: "Pinta-ala" },

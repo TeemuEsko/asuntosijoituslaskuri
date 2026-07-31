@@ -1,4 +1,5 @@
-import { automaticValues, debtShareStatus, missingAnalysisFields } from "./requirements.ts";
+import { automaticValues, missingAnalysisFields } from "./requirements.ts";
+import { housingCompanyLoanStatus } from "./housing-company-loan.ts";
 import type { AnalysisPreparationStatus } from "./preparation-types.ts";
 import type { ListingParseResult } from "../parser/listing-parser.ts";
 import { addAutomaticRentEstimate, type RentEnrichmentOptions } from "../rent-data/enrich-listing-rent.ts";
@@ -17,7 +18,7 @@ export async function prepareListingAnalysis(parsed: ListingParseResult, options
   const enriched = await addAutomaticRentEstimate(parsed, options);
   const values = automaticValues(enriched);
   const missingCriticalFields = missingAnalysisFields(values, enriched.rentEstimate);
-  const needsUserInput = missingCriticalFields.length > 0 || debtShareStatus(values) === "unknown";
+  const needsUserInput = missingCriticalFields.length > 0 || housingCompanyLoanStatus(enriched.housingCompanyLoan) === "unknown";
   return {
     ...enriched,
     preparation: {

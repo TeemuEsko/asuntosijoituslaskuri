@@ -9,6 +9,7 @@ import { adaptInvestmentScore } from "@/core/analysis/investment-score-adapter";
 import { calculateBankLoanAmount } from "@/core/calculations/investment-analysis";
 import { synchronizePrices, type PrimaryPriceField } from "@/core/calculations/purchase-price";
 import type { AnalysisReliability } from "@/core/analysis/requirements";
+import type { HousingCompanyLoanResolution } from "@/core/analysis/housing-company-loan";
 import type { FieldStatus } from "@/core/domain/field";
 import type { RentEstimate } from "@/core/rent-data/types";
 import type { HousingCompanyRenovationTexts, ListingParseResult, RenovationFinding } from "@/core/parser/listing-parser";
@@ -36,7 +37,7 @@ import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { VisualConditionCard } from "./visual-condition-card";
 
-export type ImportedPropertyData = Partial<Record<NormalizedFieldKey, number | string>> & { renovations?: RenovationFinding[]; housingCompanyRenovations?: HousingCompanyRenovationTexts; documentKinds?: RepairDocumentKind[]; importReview?: ListingParseResult; analysisReliability?: AnalysisReliability; redemptionClause?: "no" | "yes" | "unchecked"; rentEstimate?: RentEstimate; visualCondition?: VisualConditionAnalysis; listingImageAnalysis?: ListingImageAnalysisStatus };
+export type ImportedPropertyData = Partial<Record<NormalizedFieldKey, number | string>> & { renovations?: RenovationFinding[]; housingCompanyRenovations?: HousingCompanyRenovationTexts; housingCompanyLoan?: HousingCompanyLoanResolution; documentKinds?: RepairDocumentKind[]; importReview?: ListingParseResult; analysisReliability?: AnalysisReliability; redemptionClause?: "no" | "yes" | "unchecked"; rentEstimate?: RentEstimate; visualCondition?: VisualConditionAnalysis; listingImageAnalysis?: ListingImageAnalysisStatus };
 const ANALYSIS_DRAFT_KEY = "asuntosijoituslaskuri:analysis-draft:v1";
 
 function purchaseFromImport(data: ImportedPropertyData): Record<PurchaseFieldKey, number> { return { debtFreePrice: typeof data.debtFreePrice === "number" ? data.debtFreePrice : 0, salePrice: typeof data.salePrice === "number" ? data.salePrice : 0, companyLoanShare: typeof data.companyLoanShare === "number" ? data.companyLoanShare : 0, financingFeeMonthly: typeof data.financingFeeMonthly === "number" ? data.financingFeeMonthly : 0, renovationReserve: data.visualCondition && data.visualCondition.confirmationStatus !== "pending" ? data.visualCondition.estimatedRenovationCostRange?.recommendedReserve ?? 0 : 0 }; }

@@ -19,7 +19,17 @@ test("parseriyhteenveto edeltää scorea ja score on readiness-ehdon takana", as
   assert.ok(workspace.indexOf("<ParserAnalysisSummary") < workspace.indexOf("<InvestmentOverallScore"));
   assert.match(workspace, /<InvestmentOverallScore \{\.\.\.overallScore\}/);
   assert.match(summary, /missingFields\.map/);
-  assert.ok(summary.includes("Löysimme") && summary.includes("found") && summary.includes("criticalFields.length"));
+  assert.ok(summary.includes("Löysimme") && summary.includes("fieldCount.found") && summary.includes("fieldCount.total"));
   assert.match(summary, /Parserin luotettavuus/);
   assert.match(summary, /Lähtötiedot valmiit/);
+  assert.match(summary, /Kaikki kriittiset lähtötiedot ovat käytettävissä/);
+  assert.match(summary, /Tarvitaan vielä 1 kriittinen tieto/);
+  assert.match(summary, /kriittistä tietoa/);
+});
+
+test("hinnoista päätelty yhtiölaina näyttää lähteen ja perusteen", async () => {
+  const review = await readFile(new URL("../src/components/property/import-source-review.tsx", import.meta.url), "utf8");
+  assert.match(review, /Päätelty hinnoista/);
+  assert.match(review, /Peruste:/);
+  assert.match(review, /finding\.calculationBasis/);
 });

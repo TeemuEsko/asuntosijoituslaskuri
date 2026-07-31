@@ -8,8 +8,6 @@ export type LegacyParsedFields = {
   maintenanceFee?: number;
   financingFee?: number;
   debtShare?: number;
-  hasDebtShare?: "yes" | "no";
-  debtShareSource?: "label" | "price_difference";
   rent?: number;
   size?: number;
   buildYear?: number;
@@ -63,16 +61,11 @@ export function parseLegacyListingHtml(html: string, url = ""): { text: string; 
   const debtLabels = ["Huoneistokohtainen velkaosuus", "Velkaosuus", "Yhtiölainaosuus", "Osuus yhtiön lainoista"];
   const directDebtShare = parseEuro(text, debtLabels);
   assign("debtShare", directDebtShare);
-  if (directDebtShare !== null) fields.debtShareSource = "label";
   assign("rent", parseEuro(text, ["Nykyinen vuokra", "Vuokrattu", "Vuokra"]));
   assign("size", parseNumberAfter(text, ["Asuinpinta-ala", "Huoneistoala", "Pinta-ala", "Koko"]));
   assign("totalHousingCharge", parseEuro(text, ["Yhtiövastike yhteensä", "Vastikkeet yhteensä"]));
   assign("waterFee", parseEuro(text, ["Vesimaksu"])); assign("parkingFee", parseEuro(text, ["Autopaikkamaksu"])); assign("saunaFee", parseEuro(text, ["Saunamaksu"])); assign("wasteFee", parseEuro(text, ["Jätemaksu"]));
   assign("buildYear", parseYear(text)); assign("buildingType", detectBuildingType(text)); assign("heatingType", detectHeating(text)); assign("landType", detectLand(text));
-  if (fields.debtShare === undefined && typeof fields.debtFreePrice === "number" && typeof fields.sellingPrice === "number") { const difference = fields.debtFreePrice - fields.sellingPrice; if (difference > 0 && difference <= fields.debtFreePrice) { fields.debtShare = difference; fields.debtShareSource = "price_difference"; } }
-  const debtReference = /velkaosuus|yhtiölainaosuus|huoneistokohtainen velkaosuus|pääomavastike|rahoitusvastike/i.test(text);
-  if ((fields.debtShare ?? 0) > 0 || (fields.financingFee ?? 0) > 0 || debtReference) fields.hasDebtShare = "yes";
-  else if (fields.debtFreePrice !== undefined && fields.sellingPrice !== undefined && fields.debtFreePrice === fields.sellingPrice) fields.hasDebtShare = "no";
   return { text, fields };
 }
 
@@ -82,7 +75,7 @@ const canonicalMap: { [K in keyof LegacyParsedFields]?: { field: StructuredListi
 
 export function mapLegacyFieldsToCanonical(fields: LegacyParsedFields): StructuredListingValue[] {
   const values: StructuredListingValue[] = [];
-  for (const [key, raw] of Object.entries(fields) as Array<[keyof LegacyParsedFields, LegacyParsedFields[keyof LegacyParsedFields]]>) { const mapping = canonicalMap[key]; if (!mapping || raw === undefined) continue; const value = mapping.value ? mapping.value(raw as never) : raw; if (typeof value !== "number" && typeof value !== "string") continue; const derivedDebt = key === "debtShare" && fields.debtShareSource === "price_difference"; values.push({ field: mapping.field, value, unit: mapping.unit, label: mapping.label, excerpt: `Myynti-ilmoituksen HTML: ${mapping.label} ${String(raw)}`, sourcePath: `legacy.${key}`, matchQuality: derivedDebt ? "general" : "exact" }); }
+  for (const [key, raw] of Object.entries(fields) as Array<[keyof LegacyParsedFields, LegacyParsedFields[keyof LegacyParsedFields]]>) { const mapping = canonicalMap[key]; if (!mapping || raw === undefined) continue; const value = mapping.value ? mapping.value(raw as never) : raw; if (typeof value !== "number" && typeof value !== "string") continue; values.push({ field: mapping.field, value, unit: mapping.unit, label: mapping.label, excerpt: `Myynti-ilmoituksen HTML: ${mapping.label} ${String(raw)}`, sourcePath: `legacy.${key}`, matchQuality: "exact" }); }
   return values;
 }
 

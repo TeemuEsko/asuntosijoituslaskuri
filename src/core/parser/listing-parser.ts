@@ -5,9 +5,14 @@ import type { RentEstimate } from "../rent-data/types.ts";
 import type { AnalysisPreparation } from "../analysis/preparation-types.ts";
 import type { ListingImageAnalysisStatus } from "../listing-images/types.ts";
 import type { VisualConditionAnalysis } from "../visual-condition/types.ts";
-import { criticalFields, excludedCompanyLoanLabels, fieldDisplayNames, fieldSynonyms, type NormalizedFieldKey } from "./synonyms.ts";
+import {
+  HOUSING_COMPANY_LOAN_FEE_CONFLICT,
+  resolveHousingCompanyLoan,
+  type HousingCompanyLoanResolution,
+} from "../analysis/housing-company-loan.ts";
+import { ANALYSIS_FIELD_REGISTRY, excludedCompanyLoanLabels, fieldDisplayNames, fieldSynonyms, type NormalizedFieldKey } from "./synonyms.ts";
 
-export const LISTING_PARSER_VERSION = "0.3.3-rc";
+export const LISTING_PARSER_VERSION = "0.3.4-rc";
 
 export type ConfidenceLevel = keyof typeof confidenceLabels;
 export type ListingSourceType = "etuovi" | "oikotie" | "pasted_text";
@@ -80,7 +85,7 @@ export type RenovationFinding = {
 export type RejectedCandidate = { excerpt: string; field?: NormalizedFieldKey; fieldName?: string; rawValue?: string; normalizedValue?: number | string; source?: ListingSourceType; sourcePath?: string; sourceConfidence?: number; fieldMatchConfidence?: number; validationConfidence?: number; validationResult?: "accepted" | "rejected"; reason: string; rejectionReason?: string };
 export type FieldDiagnostic = { fieldName: string; rawValue: string; normalizedValue?: number | string; source: ListingSourceType; sourcePath: string; sourceConfidence: number; fieldMatchConfidence: number; validationConfidence: number; finalConfidence: number; validationResult: "accepted" | "rejected"; rejectionReason?: string };
 export type ParserDiagnostics = { parserVersion: string; site: ListingSourceType; sections: ListingSection[]; rawCandidateCount: number; rejectedCandidates: RejectedCandidate[]; fieldDiagnostics: FieldDiagnostic[]; mergedFindingCount: number; acceptedFields: number; rejectedFields: number; conflicts: string[]; missingEssentialFields: string[]; warnings: string[]; errors: string[]; acquisition?: Record<string, unknown> };
-export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; housingCompanyRenovations: HousingCompanyRenovationTexts; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics; rentEstimate?: RentEstimate; preparation?: AnalysisPreparation; listingImageAnalysis?: ListingImageAnalysisStatus; visualCondition?: VisualConditionAnalysis };
+export type ListingParseResult = { source: ListingSourceType; findings: ListingFinding[]; renovations: RenovationFinding[]; housingCompanyRenovations: HousingCompanyRenovationTexts; housingCompanyLoan: HousingCompanyLoanResolution; missingCriticalFields: string[]; warnings: string[]; diagnostics: ParserDiagnostics; rentEstimate?: RentEstimate; preparation?: AnalysisPreparation; listingImageAnalysis?: ListingImageAnalysisStatus; visualCondition?: VisualConditionAnalysis };
 export type StructuredListingValue = { field: NormalizedFieldKey; value: number | string; unit?: ListingFinding["unit"]; label: string; excerpt: string; sourcePath?: string; matchQuality?: "exact" | "general" };
 
 type RawCandidate = { field: NormalizedFieldKey; label: string; originalValue: string; value: number | string; unit?: ListingFinding["unit"]; source: ListingSourceType; excerpt: string; semanticSource: SemanticSource; section: ListingSection; exactSynonym: boolean; hasUnit: boolean; ambiguous?: boolean; calculationBasis?: string; sourcePath?: string };
@@ -203,6 +208,72 @@ function addFinancingTotal(findings: ListingFinding[]): void {
   if (parts.length < 2) return;
   const breakdown = parts.map((part) => ({ label: part.originalLabel, value: part.normalizedValue as number, excerpt: part.sourceExcerpt }));
   findings.push({ id: "financingFeeMonthly-total", field: "financingFeeMonthly", fieldName: "Rahoitusvastikkeet yhteensä", originalLabel: "Rahoitusvastikkeiden erittely", originalValue: breakdown.map((part) => `${part.label}: ${part.value}`).join(" + "), normalizedValue: breakdown.reduce((sum, part) => sum + part.value, 0), unit: "€/kk", source: parts[0]!.source, sourceExcerpt: breakdown.map((part) => part.excerpt).join(" | "), supportingSources: parts.flatMap((part) => part.supportingSources), section: "fees", confidence: "high", confidenceScore: 95, confidenceReasons: ["Yhteissumma laskettiin näkyvistä erittelyistä"], sourceConfidence: 100, fieldMatchConfidence: 100, validationConfidence: 100, validationResult: "accepted", conflicts: [], breakdown, calculationBasis: breakdown.map((part) => `${formatMonthlyEuro(part.value)} (${part.label})`).join(" + "), aggregate: true, autoAccepted: true });
+}
+
+function singleNumericFinding(findings: ListingFinding[], field: NormalizedFieldKey): ListingFinding | undefined {
+  const candidates = findings.filter((finding) => finding.field === field && typeof finding.normalizedValue === "number" && finding.validationResult === "accepted" && finding.conflicts.length === 0);
+  if (field === "financingFeeMonthly") return candidates.find((finding) => finding.aggregate) ?? (candidates.length === 1 ? candidates[0] : undefined);
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+function addResolvedHousingCompanyLoan(
+  findings: ListingFinding[],
+  text: string,
+  source: ListingSourceType,
+): HousingCompanyLoanResolution {
+  const direct = singleNumericFinding(findings, "companyLoanShare");
+  const debtFree = singleNumericFinding(findings, "debtFreePrice");
+  const sale = singleNumericFinding(findings, "salePrice");
+  const fee = singleNumericFinding(findings, "financingFeeMonthly");
+  const explicitNoDebt = /(?:yhtiölainaosuus|huoneistokohtainen velkaosuus)[ \t]*:?[ \t]*(?:ei(?:[ \t]+ole)?|0[ \t]*€)(?=[ \t]*(?:$|[\r\n.;]))|(?:ei[ \t]+ole|ei)[ \t]+(?:yhtiölainaosuutta|huoneistokohtaista velkaosuutta|yhtiölainaa)/im.test(text);
+  const resolution = resolveHousingCompanyLoan({
+    directDebtShare: direct?.normalizedValue as number | undefined,
+    explicitHasDebtShare: explicitNoDebt ? false : undefined,
+    debtFreePrice: debtFree?.normalizedValue as number | undefined,
+    salePrice: sale?.normalizedValue as number | undefined,
+    financingFeeMonthly: fee?.normalizedValue as number | undefined,
+  });
+
+  if (resolution.source === "calculated" && resolution.debtShare !== null) {
+    const priceSources = [debtFree, sale].filter((finding): finding is ListingFinding => Boolean(finding));
+    findings.push({
+      id: "companyLoanShare-calculated",
+      field: "companyLoanShare",
+      fieldName: fieldDisplayNames.companyLoanShare,
+      originalLabel: "Päätelty hinnoista",
+      originalValue: String(resolution.debtShare),
+      normalizedValue: resolution.debtShare,
+      unit: "€",
+      source,
+      sourceExcerpt: resolution.sourceDescription,
+      supportingSources: priceSources.flatMap((finding) => finding.supportingSources),
+      section: "prices",
+      confidence: resolution.confidence === "high" ? "high" : "medium",
+      confidenceScore: resolution.confidence === "high" ? 95 : 75,
+      confidenceReasons: ["Yhtiölainaosuus pääteltiin velattoman hinnan ja myyntihinnan erotuksesta", "Hintojen vertailutoleranssi on 1 €"],
+      sourceConfidence: 95,
+      fieldMatchConfidence: 100,
+      validationConfidence: 100,
+      validationResult: "accepted",
+      conflicts: [],
+      calculationBasis: resolution.sourceDescription,
+      autoAccepted: resolution.confidence === "high",
+    });
+  }
+
+  if (resolution.conflicts.length) {
+    const feeConflicts = resolution.conflicts.filter((conflict) => conflict === HOUSING_COMPANY_LOAN_FEE_CONFLICT);
+    const conflictTargets = feeConflicts.length
+      ? [direct, fee].filter((finding): finding is ListingFinding => Boolean(finding))
+      : direct
+        ? []
+        : [debtFree, sale].filter((finding): finding is ListingFinding => Boolean(finding));
+    for (const target of conflictTargets) {
+      for (const conflict of feeConflicts.length ? feeConflicts : resolution.conflicts) if (!target.conflicts.includes(conflict)) target.conflicts.push(conflict);
+      target.autoAccepted = false;
+    }
+  }
+  return resolution;
 }
 
 function addCalculationConflicts(findings: ListingFinding[]): void {
@@ -397,21 +468,26 @@ export function parseListingText(text: string, source: ListingSourceType = "past
   for (const candidate of candidates.filter((item) => monthlyFields.has(item.field) && item.unit === "€/m²/kk")) {
     if (areaCandidate && typeof areaCandidate.value === "number" && sourcePriority(areaCandidate) >= 4) { const rate = candidate.value as number; candidate.value = Math.round((rate * areaCandidate.value + Number.EPSILON) * 100) / 100; candidate.unit = "€/kk"; candidate.calculationBasis = `${rate.toLocaleString("fi-FI")} €/m²/kk × ${areaCandidate.value.toLocaleString("fi-FI")} m² = ${formatMonthlyEuro(candidate.value)}`; }
   }
-  const findings = mergeCandidates(candidates); addDuplicateValueConflicts(findings); addFinancingTotal(findings); addCalculationConflicts(findings);
+  const findings = mergeCandidates(candidates); addDuplicateValueConflicts(findings); addFinancingTotal(findings);
+  const housingCompanyLoan = addResolvedHousingCompanyLoan(findings, text, source);
+  addCalculationConflicts(findings);
   const addressValues = new Set(findings.filter((item) => item.field === "address" || item.field === "streetAddress" || item.field === "listingTitle").map((item) => normalizedText(String(item.normalizedValue))));
   for (const finding of findings.filter((item) => item.field === "housingCompanyName" && addressValues.has(normalizedText(String(item.normalizedValue))))) { finding.conflicts.push("Sama arvo tunnistettiin osoitteeksi tai ilmoituksen otsikoksi."); finding.autoAccepted = false; finding.validationResult = "rejected"; finding.validationConfidence = 0; finding.fieldMatchConfidence = 0; finding.confidence = "low"; finding.confidenceScore = 0; }
   for (const finding of findings) { if (finding.conflicts.length) { const recalculated = confidence({ field: finding.field, label: finding.originalLabel, originalValue: finding.originalValue, value: finding.normalizedValue, unit: finding.unit, source, excerpt: finding.sourceExcerpt, semanticSource: finding.supportingSources[0]?.semanticSource ?? "named_field", section: finding.section, exactSynonym: true, hasUnit: Boolean(finding.unit) || !moneyFields.has(finding.field) }, finding.supportingSources.length, finding.conflicts.length); finding.confidence = recalculated.level; finding.confidenceScore = recalculated.score; finding.confidenceReasons = recalculated.reasons; finding.sourceConfidence = recalculated.sourceConfidence; finding.fieldMatchConfidence = recalculated.fieldMatchConfidence; finding.validationConfidence = recalculated.validationConfidence; finding.autoAccepted = false; } }
   const renovations = parseRenovations(text);
   const housingCompanyRenovations = extractHousingCompanyRenovations(text).rawTexts;
   const foundKeys = new Set(findings.map((finding) => finding.field)); if (renovations.some((item) => item.status === "completed" || item.status === "ongoing")) foundKeys.add("completedRenovations" as NormalizedFieldKey); if (renovations.some((item) => ["decided", "planned", "estimated", "proposed", "under_investigation"].includes(item.status))) foundKeys.add("futureRenovations" as NormalizedFieldKey);
-  const missingCriticalFields = criticalFields.filter((item) => !foundKeys.has(item.key as NormalizedFieldKey)).map((item) => item.label);
+  const missingCriticalFields = ANALYSIS_FIELD_REGISTRY.filter((item) => !foundKeys.has(item.key as NormalizedFieldKey)).map((item) => item.label);
   const conflicts = [...new Set(findings.flatMap((finding) => finding.conflicts))];
-  const warnings = findings.length < 3 ? ["Sivulta ei löytynyt riittävästi kohdetietoja. Liitä ilmoituksen teksti tai täydennä tiedot itse."] : [];
+  const warnings = [
+    ...(findings.length < 3 ? ["Sivulta ei löytynyt riittävästi kohdetietoja. Liitä ilmoituksen teksti tai täydennä tiedot itse."] : []),
+    ...housingCompanyLoan.conflicts,
+  ];
   const fieldDiagnostics: FieldDiagnostic[] = [
     ...findings.map((finding) => ({ fieldName: finding.field, rawValue: finding.originalValue, normalizedValue: finding.normalizedValue, source: finding.source, sourcePath: finding.supportingSources[0]?.semanticSource ?? "parser", sourceConfidence: finding.sourceConfidence, fieldMatchConfidence: finding.fieldMatchConfidence, validationConfidence: finding.validationConfidence, finalConfidence: finding.confidenceScore, validationResult: finding.validationResult })),
     ...rejectedCandidates.map((item) => ({ fieldName: item.field ?? "unknown", rawValue: item.rawValue ?? item.excerpt, normalizedValue: item.normalizedValue, source: item.source ?? source, sourcePath: item.sourcePath ?? "parser", sourceConfidence: item.sourceConfidence ?? 0, fieldMatchConfidence: item.fieldMatchConfidence ?? 0, validationConfidence: item.validationConfidence ?? 0, finalConfidence: 0, validationResult: "rejected" as const, rejectionReason: item.rejectionReason ?? item.reason })),
   ];
-  return { source, findings, renovations, housingCompanyRenovations, missingCriticalFields, warnings, diagnostics: { parserVersion: LISTING_PARSER_VERSION, site: source, sections: detectSections(text), rawCandidateCount: candidates.length + rejectedCandidates.length, rejectedCandidates, fieldDiagnostics, mergedFindingCount: findings.length, acceptedFields: findings.filter((item) => item.validationResult === "accepted").length, rejectedFields: rejectedCandidates.length + findings.filter((item) => item.validationResult === "rejected").length, conflicts, missingEssentialFields: missingCriticalFields, warnings, errors: [] } };
+  return { source, findings, renovations, housingCompanyRenovations, housingCompanyLoan, missingCriticalFields, warnings, diagnostics: { parserVersion: LISTING_PARSER_VERSION, site: source, sections: detectSections(text), rawCandidateCount: candidates.length + rejectedCandidates.length, rejectedCandidates, fieldDiagnostics, mergedFindingCount: findings.length, acceptedFields: findings.filter((item) => item.validationResult === "accepted").length, rejectedFields: rejectedCandidates.length + findings.filter((item) => item.validationResult === "rejected").length, conflicts, missingEssentialFields: missingCriticalFields, warnings, errors: [] } };
 }
 
 export function getListingSourceFromUrl(input: string): Exclude<ListingSourceType, "pasted_text"> | null {

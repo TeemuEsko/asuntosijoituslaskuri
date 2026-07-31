@@ -1,3 +1,5 @@
+import { PRICE_TOLERANCE_EUR } from "../calculations/purchase-price.ts";
+
 export type DataConflict = {
   code: "company_loan_fee_conflict" | "purchase_price_conflict";
   fieldPaths: ReadonlyArray<string>;
@@ -14,7 +16,7 @@ export type PurchaseValidationInput = {
 
 export function validatePurchaseData(
   input: PurchaseValidationInput,
-  priceToleranceEur = 1,
+  priceToleranceEur = PRICE_TOLERANCE_EUR,
 ): DataConflict[] {
   const conflicts: DataConflict[] = [];
   const expectedPrice = input.salePrice + input.companyLoanShare;
