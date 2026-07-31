@@ -115,7 +115,7 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   listingTitle: ["ilmoituksen otsikko", "kohteen otsikko"],
   listingId: ["kohdenumero", "kohde nro", "kohde-id"],
   buildingType: ["talotyyppi", "rakennuksen tyyppi", "asuntotyyppi", "kohdetyyppi", "rakennustyyppi"],
-  currentRentMonthly: ["nykyinen vuokra", "vuokra", "vuokrattu"],
+  currentRentMonthly: ["vuokrasopimuksen mukainen vuokra", "nykyinen vuokra", "kuukausivuokra", "vuokrattu hintaan"],
   totalHousingCharge: ["yhtiövastike yhteensä", "vastikkeet yhteensä"],
   waterFeeMonthly: ["vesimaksu"],
   parkingFeeMonthly: ["autopaikkamaksu"],

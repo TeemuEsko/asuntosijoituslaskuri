@@ -2,6 +2,7 @@ import { confidenceLabels } from "../i18n/display-values.ts";
 import { normalizeHeatingType } from "../domain/heating.ts";
 import { formatEuro, formatMonthlyEuro, parseArea, parseBuildingType, parseFinnishNumber, parseFloor, parseMonthlyAmount, parseRoomConfiguration, parseSquareMeterRate, parseTimeExpression, type TimeStatus } from "./normalization.ts";
 import type { RentEstimate } from "../rent-data/types.ts";
+import { classifyRentCandidateContext, parseStrictMonthlyRentCandidate } from "../rent-data/rent-candidate-parser.ts";
 import type { AnalysisPreparation } from "../analysis/preparation-types.ts";
 import type { ListingImageAnalysisStatus } from "../listing-images/types.ts";
 import type { VisualConditionAnalysis } from "../visual-condition/types.ts";
@@ -143,6 +144,10 @@ function normalizeFieldValue(field: NormalizedFieldKey, rawValue: string, fullLi
   if (field === "roomDescription") { const value = parseRoomConfiguration(rawValue || fullLine); return value ? { value } : rawValue ? { value: rawValue.trim() } : null; }
   if (field === "buildingType") { const value = parseBuildingType(rawValue || fullLine); return value ? { value } : rawValue ? { value: rawValue.trim() } : null; }
   if (field === "heatingType") { const value = normalizeHeatingType(rawValue || fullLine); return value ? { value } : null; }
+  if (field === "currentRentMonthly") {
+    const candidate = parseStrictMonthlyRentCandidate(fullLine);
+    return candidate ? { value: candidate.monthlyRent, unit: "€/kk" } : null;
+  }
   if (moneyFields.has(field)) {
     const squareRate = monthlyFields.has(field) ? parseSquareMeterRate(rawValue || fullLine) : null;
     const value = squareRate ?? (monthlyFields.has(field) ? parseMonthlyAmount(rawValue || fullLine) : parseFinnishNumber(rawValue));
@@ -435,6 +440,14 @@ export function parseListingText(text: string, source: ListingSourceType = "past
       rejectedCandidates.push({ excerpt: item.excerpt, field: item.field, fieldName: fieldDisplayNames[item.field], rawValue: String(item.value), normalizedValue: item.value, source, sourcePath: item.sourcePath ?? "structured_data", sourceConfidence: 90, fieldMatchConfidence: 0, validationConfidence: 0, validationResult: "rejected", reason: "Value matches street address pattern", rejectionReason: "Value matches street address pattern" });
       continue;
     }
+    if (item.field === "currentRentMonthly") {
+      const rentContextText = `${item.label} ${item.excerpt}`;
+      const context = parseStrictMonthlyRentCandidate(rentContextText)?.context ?? classifyRentCandidateContext(rentContextText);
+      if (typeof item.value !== "number" || item.unit !== "€/kk" || !["lease", "listing_explicit"].includes(context)) {
+        rejectedCandidates.push({ excerpt: item.excerpt, field: item.field, fieldName: fieldDisplayNames[item.field], rawValue: String(item.value), normalizedValue: item.value, source, sourcePath: item.sourcePath ?? "structured_data", sourceConfidence: 90, fieldMatchConfidence: 0, validationConfidence: 0, validationResult: "rejected", reason: "Vuokra-arvo ei ollut yksiselitteinen asunnon kuukausivuokra", rejectionReason: "Vuokra-arvo ei ollut yksiselitteinen asunnon kuukausivuokra" });
+        continue;
+      }
+    }
     const structuredValue = item.field === "heatingType" ? normalizeHeatingType(String(item.value)) : item.value;
     if (structuredValue === null) {
       rejectedCandidates.push({ excerpt: item.excerpt, field: item.field, fieldName: fieldDisplayNames[item.field], rawValue: String(item.value), source, sourcePath: item.sourcePath ?? "structured_data", sourceConfidence: 90, fieldMatchConfidence: 0, validationConfidence: 0, validationResult: "rejected", reason: "Lämmitysmuoto ei vastaa hyväksyttyä canonical arvoa", rejectionReason: "Lämmitysmuoto ei vastaa hyväksyttyä canonical arvoa" });
@@ -451,9 +464,8 @@ export function parseListingText(text: string, source: ListingSourceType = "past
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   for (const line of lines) {
     const heading = detectHeading(line); if (heading) { section = heading; continue; }
-    const rentContext = /vuokrattu|nykyinen vuokra|vuokrasopim(?:us|uksen)|vuokratuotto|vuokralainen|sijoittajalle/i.test(line) && !/hoitovastike|rahoitusvastike|vesimaksu|autopaikka|tontinvuokra|yhtiön saamat vuokrat|liikehuoneistojen vuokrat/i.test(line);
-    const contextualRent = rentContext ? parseMonthlyAmount(line) ?? (/euron\s+kuukausivuokra/i.test(line) ? parseFinnishNumber(line) : null) : null;
-    if (contextualRent !== null) candidates.push({ field: "currentRentMonthly", label: "Nykyinen vuokra", originalValue: String(contextualRent), value: contextualRent, unit: "€/kk", source, excerpt: line, semanticSource: "section_content", section, exactSynonym: true, hasUnit: true });
+    const contextualRent = parseStrictMonthlyRentCandidate(line);
+    if (contextualRent) candidates.push({ field: "currentRentMonthly", label: contextualRent.context === "lease" ? "Vuokrasopimuksen mukainen vuokra" : "Nykyinen vuokra", originalValue: String(contextualRent.monthlyRent), value: contextualRent.monthlyRent, unit: "€/kk", source, excerpt: line, semanticSource: "section_content", section, exactSynonym: true, hasUnit: true });
     const match = findField(line); if (!match) continue;
     if (match.field === "companyLoanShare" && ["housing_company", "building"].includes(section) && !/huoneisto|osakkeisiin kohdistuva|lainaosuus|velkaosuus/i.test(match.label)) { rejectedCandidates.push({ excerpt: line, field: match.field, reason: "Taloyhtiön kokonaislaina ei ole huoneistokohtainen lainaosuus" }); continue; }
     const normalized = normalizeFieldValue(match.field, match.valueText, line);

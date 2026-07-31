@@ -51,6 +51,7 @@ import { analysisReliability, automaticValues, debtShareStatus, missingAnalysisF
 import type { NormalizedFieldKey } from "@/core/parser/synonyms";
 import { ImportSourceReview } from "./import-source-review";
 import { normalizeHeatingType } from "@/core/domain/heating";
+import { resolveEffectiveRent } from "@/core/rent-data/rent-estimation";
 
 type ImportMode = "url" | "text";
 type DecisionState = Record<
@@ -61,7 +62,8 @@ type ImportError = { code?: string; error: string };
 
 function automaticValuesWithRent(result: ListingParseResult) {
   const values = automaticValues(result);
-  if (values.currentRentMonthly === undefined && result.rentEstimate?.effectiveMonthlyRent) values.currentRentMonthly = result.rentEstimate.effectiveMonthlyRent;
+  if (typeof result.rentEstimate?.effectiveMonthlyRent === "number") values.currentRentMonthly = result.rentEstimate.effectiveMonthlyRent;
+  else delete values.currentRentMonthly;
   return values;
 }
 
@@ -386,7 +388,10 @@ export function ListingImport({
       const combined = { ...parsedValues, ...suggestedValues, ...userValues };
       if (typeof combined.heatingType === "string") combined.heatingType = normalizeHeatingType(combined.heatingType) ?? combined.heatingType;
       const validationErrors: string[] = [];
-      const rentForValidation = typeof userValues.currentRentMonthly === "number" && userValues.currentRentMonthly > 0 ? { ...result.rentEstimate!, effectiveMonthlyRent: userValues.currentRentMonthly, source: "user" as const, sourceName: "Käyttäjän määrittämä vuokra", confidence: "high" as const, userOverridden: true, previousAutomaticEstimate: result.rentEstimate?.effectiveMonthlyRent ?? null, benchmark: result.rentEstimate?.effectiveMonthlyRent ? result.rentEstimate : null, resolutionStatus: "resolved" as const, attemptedSources: ["user" as const] } : result.rentEstimate;
+      const automaticRent = result.rentEstimate?.benchmark ?? result.rentEstimate;
+      const rentForValidation = typeof userValues.currentRentMonthly === "number" ? resolveEffectiveRent({ userRent: userValues.currentRentMonthly, userOverridden: true, areaSqm: typeof combined.areaSqm === "number" ? combined.areaSqm : null, statisticsEstimate: automaticRent }).estimate : result.rentEstimate;
+      if (typeof userValues.currentRentMonthly === "number" && rentForValidation?.source !== "user") validationErrors.push("currentRentMonthly: kuukausivuokra ei läpäissyt järkevyystarkistusta");
+      if (typeof rentForValidation?.effectiveMonthlyRent === "number") combined.currentRentMonthly = rentForValidation.effectiveMonthlyRent;
       for (const field of missingAnalysisFields(combined, rentForValidation)) validationErrors.push(`${field}: arvo puuttuu`);
       for (const field of ["debtFreePrice", "maintenanceFeeMonthly", "areaSqm", "constructionYear", "currentRentMonthly"] as const) if (typeof combined[field] !== "number" || !Number.isFinite(combined[field]) || combined[field] <= 0) validationErrors.push(`${field}: anna positiivinen numero`);
       const debtWasEdited = typeof userValues.companyLoanShare === "number" || debtChoice !== null;

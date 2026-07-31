@@ -21,6 +21,10 @@ export function automaticValues(result: ListingParseResult): Partial<Record<Norm
     if (!canUseFindingAutomatically(finding)) continue;
     if (values[finding.field] === undefined || finding.confidenceScore > (result.findings.find((item) => item.field === finding.field && item.normalizedValue === values[finding.field])?.confidenceScore ?? -1)) values[finding.field] = finding.normalizedValue;
   }
+  if (result.rentEstimate) {
+    if (typeof result.rentEstimate.effectiveMonthlyRent === "number") values.currentRentMonthly = result.rentEstimate.effectiveMonthlyRent;
+    else delete values.currentRentMonthly;
+  }
   return values;
 }
 

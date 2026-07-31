@@ -4,6 +4,19 @@ export type RentMetricType = "median" | "average" | "asking_rent" | "actual_rent
 export type RentAreaLevel = "postal_code" | "municipality" | "sub_region" | "region" | "comparison_area" | "unknown";
 export type RentRoomCategory = "ONE_ROOM" | "TWO_ROOMS" | "THREE_PLUS_ROOMS" | "ALL" | "UNKNOWN";
 export type RentResolutionStatus = "pending" | "resolved" | "unavailable";
+export type RentValidationStatus = "valid" | "warning" | "invalid" | "unknown";
+export type RentValidationWarningId = "monthly_rent_out_of_bounds" | "square_meter_rent_out_of_bounds" | "invalid_rent_unit" | "separate_cost_not_rent" | "benchmark_deviation" | "invalid-listing-rent";
+export type RentValidationWarning = {
+  id: RentValidationWarningId;
+  message: string;
+  source: RentValueSource;
+  candidateValue: number | null;
+  expectedValue: number | null;
+  differencePercent: number | null;
+  context: "lease" | "listing_explicit" | "ambiguous" | "separate_cost";
+  reason: string;
+  fallbackUsed?: RentValueSource | null;
+};
 export type RentResolutionErrorCode = "DATA_NOT_AVAILABLE" | "INVALID_LOCATION" | "INVALID_ROOM_CATEGORY" | "EXTERNAL_API_ERROR" | "INVALID_API_RESPONSE" | "CACHE_MISS" | "NO_ACCEPTABLE_FALLBACK";
 
 export type RentResolutionIssue = {
@@ -45,8 +58,13 @@ export type RentResolutionDiagnostics = {
 export type RentEstimate = {
   /** Kaikkien laskelmien ja puuttuvien tietojen tarkistuksen käyttämä canonical arvo. */
   effectiveMonthlyRent: number | null;
+  /** Tilasto- tai markkinadatan automaattisesti laskema kuukausiarvio. */
+  automaticMonthlyRentEstimate?: number | null;
+  /** Ilmoituksesta löydetty varsinainen kuukausivuokra, ei erillismaksu tai neliövuokra. */
+  listingMonthlyRent?: number | null;
   exactEstimatedMonthlyRent?: number | null;
   rentPerSquareMeter?: number | null;
+  benchmarkRentPerSquareMeter?: number | null;
   source: RentValueSource;
   sourceName?: string | null;
   sourceArea?: string | null;
@@ -71,6 +89,8 @@ export type RentEstimate = {
   attemptedSources?: RentValueSource[];
   issues?: RentResolutionIssue[];
   resolutionDiagnostics?: RentResolutionDiagnostics;
+  validationStatus?: RentValidationStatus;
+  validationWarnings?: RentValidationWarning[];
 };
 
 export type RentBenchmark = Omit<RentEstimate, "effectiveMonthlyRent" | "exactEstimatedMonthlyRent" | "userOverridden"> & { rentPerSquareMeter: number };

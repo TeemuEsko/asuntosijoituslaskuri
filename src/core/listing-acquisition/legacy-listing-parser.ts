@@ -1,5 +1,6 @@
 import type { StructuredListingValue } from "../parser/listing-parser.ts";
 import { normalizeHeatingType, type HeatingType } from "../domain/heating.ts";
+import { parseStrictMonthlyRentCandidate } from "../rent-data/rent-candidate-parser.ts";
 
 export type LegacyParsedFields = {
   listingId?: string;
@@ -61,7 +62,7 @@ export function parseLegacyListingHtml(html: string, url = ""): { text: string; 
   const debtLabels = ["Huoneistokohtainen velkaosuus", "Velkaosuus", "Yhtiölainaosuus", "Osuus yhtiön lainoista"];
   const directDebtShare = parseEuro(text, debtLabels);
   assign("debtShare", directDebtShare);
-  assign("rent", parseEuro(text, ["Nykyinen vuokra", "Vuokrattu", "Vuokra"]));
+  assign("rent", parseStrictMonthlyRentCandidate(text)?.monthlyRent);
   assign("size", parseNumberAfter(text, ["Asuinpinta-ala", "Huoneistoala", "Pinta-ala", "Koko"]));
   assign("totalHousingCharge", parseEuro(text, ["Yhtiövastike yhteensä", "Vastikkeet yhteensä"]));
   assign("waterFee", parseEuro(text, ["Vesimaksu"])); assign("parkingFee", parseEuro(text, ["Autopaikkamaksu"])); assign("saunaFee", parseEuro(text, ["Saunamaksu"])); assign("wasteFee", parseEuro(text, ["Jätemaksu"]));
