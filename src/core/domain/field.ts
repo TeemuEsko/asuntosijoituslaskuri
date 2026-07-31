@@ -1,4 +1,15 @@
-export type FieldStatus = "parser" | "user" | "derived" | "default" | "missing";
+export type FieldStatus =
+  | "listing"
+  | "statistics"
+  | "automatic"
+  | "user"
+  | "default"
+  | "inferred"
+  | "document"
+  | "unknown"
+  | "parser"
+  | "derived"
+  | "missing";
 
 export type FieldSource = {
   kind: "listing" | "document" | "user" | "calculation";

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { getListingSourceFromUrl, parseListingText } from "../src/core/parser/listing-parser.ts";
-import { parseArea, parseFinnishNumber, parseMonthlyAmount, parseSquareMeterRate, parseTimeExpression } from "../src/core/parser/normalization.ts";
+import { formatFinnishDecimal, formatFinnishInputNumber, parseArea, parseFinnishInputNumber, parseFinnishNumber, parseMonthlyAmount, parseSquareMeterRate, parseTimeExpression } from "../src/core/parser/normalization.ts";
 
 test("Etuovi- ja Oikotie-linkit tunnistetaan ilman muiden osoitteiden hyväksymistä", () => {
   assert.equal(getListingSourceFromUrl("https://www.etuovi.com/kohde/123"), "etuovi");
@@ -36,6 +36,13 @@ test("suomalaiset numero-, kuukausi-, neliöhinta- ja pinta-alamuodot normalisoi
   for (const value of ["185 €/kk", "185,00 euroa/kk", "185 e / kk", "185 euroa kuukaudessa"]) assert.equal(parseMonthlyAmount(value), 185);
   assert.equal(parseSquareMeterRate("19,50 €/m²/kk"), 19.5);
   for (const value of ["32 m²", "32,0 m2", "32 neliötä", "32,00 m²"]) assert.equal(parseArea(value), 32);
+});
+
+test("näyttömuotoilu poistaa liukulukuartefaktit ja desimaalipilkku toimii syötössä", () => {
+  assert.equal(formatFinnishDecimal(58799.99999999999, 1).replace(/\u00a0|\u202f/g, " "), "58 800,0");
+  assert.equal(formatFinnishInputNumber(58799.99999999999, 1, 1).replace(/\u00a0|\u202f/g, " "), "58 800,0");
+  assert.equal(parseFinnishInputNumber("58 800,5"), 58_800.5);
+  assert.equal(parseFinnishInputNumber("58\u00a0800,5"), 58_800.5);
 });
 
 test("ristiriitaiset kenttäarvot säilyvät erillisinä", () => {

@@ -100,7 +100,7 @@ test("ilmoituksen korjaukset vaikuttavat ensimmäiseen analyysiin ja tuleva katt
   assert.ok(assessment.strengths.some((item) => /sukitettu/.test(item)));
   assert.ok(assessment.risks.some((item) => /2027–2031/.test(item)));
   assert.ok(assessment.technicalRiskScore > 50, "tehdyt olennaiset korjaukset pienentävät teknistä riskiä suhteessa puuttuvaan historiaan");
-  const analysis = adaptInvestmentScore({ debtFreePrice: 120_000, currentRentMonthly: 850, maintenanceFeeMonthly: 280, vacancyMonths: 1, otherCostsMonthly: 0, maintenanceReserveMonthly: 0, renovationReserve: 0, transferTaxRate: 1.5, transactionCosts: 0, annualInterestRate: 4, loanTermYears: 20, repaymentType: "annuity", bankLoanAmount: 80_000, repairHistory: assessment });
+  const analysis = adaptInvestmentScore({ debtFreePrice: 120_000, currentRentMonthly: 850, maintenanceFeeMonthly: 280, vacancyMonths: 1, otherCostsMonthly: 0, renovationReserve: 0, transferTaxRate: 1.5, transactionCosts: 0, annualInterestRate: 4, loanTermYears: 20, repaymentType: "annuity", bankLoanAmount: 80_000, repairHistory: assessment });
   assert.equal(analysis.observations.some((item) => item.id === "missing-repair-history"), false);
 });
 

@@ -25,10 +25,14 @@ Vasen navigaatio:
 
 ## Kentän tilat
 
-- Parseri
-- Oma tieto
-- Johdettu
-- Puuttuu
+- Myynti-ilmoitus
+- Tilastokeskus
+- Automaattinen arvio
+- Käyttäjän tieto
+- Oletus
+- Päätelty
+- Asiakirja
+- Ei tiedossa
 - Ristiriita
 
 Checkbox-vahvistuksia ei käytetä.
@@ -54,6 +58,6 @@ Checkbox-vahvistuksia ei käytetä.
 
 `Markkinavuokra`
 
-- tila: Oma tieto
+- tila: Käyttäjän tieto
 - arvo: 650 €/kk
 - info: Käytä realistista pitkäaikaisen vuokrauksen markkinavuokraa.

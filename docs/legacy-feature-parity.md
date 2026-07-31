@@ -10,8 +10,8 @@ Auditointipäivä: 2026-07-28. Legacy-lähde on Git-commit `8ace2a6`, ensisijais
 | PARTIAL | 4 |
 | MISSING | 2 |
 | BROKEN | 0 |
-| REPLACED | 8 |
-| NOT_APPLICABLE | 1 |
+| REPLACED | 7 |
+| NOT_APPLICABLE | 2 |
 | **Yhteensä** | **43** |
 
 ## Ominaisuusrekisteri
@@ -39,7 +39,7 @@ Auditointipäivä: 2026-07-28. Legacy-lähde on Git-commit `8ace2a6`, ensisijais
 | Cash-on-cash | Oman rahan kassatuotto | ei nimetty | COMPLETE | analyysimoottori | vuotuinen kassavirta/equity |
 | Oman pääoman tuotto | Kassavirta ja lyhennys | pääoman lyhennykset erillisinä | COMPLETE | `returnOnEquity` | lyhennys mukana |
 | Tyhjäkäynti | Realistinen vuokratulo | ei legacyssä | REPLACED | kuukausipohjainen occupancy | 0–12 kk |
-| Kuukausittainen remonttivara | Jatkuva kulupuskuri | remonttivara oli kertaluonteinen | REPLACED | jatkuvat kulut | nettotuotto/kassavirta |
+| Kuukausittainen remonttivara | Poistettu epäselvänä kaksoiskäsitteenä | remonttivara oli kertaluonteinen | NOT_APPLICABLE | ei kuulu canonical laskentaan; kertaluonteinen remonttivara säilyy | ei renderöidy eikä vaikuta kassavirtaan |
 | Kertaluonteinen remonttivara | Oikaistu hankintahinta | `estimateRenovationReserve` | COMPLETE | kauppatiedon oletus | hankintahinta |
 | Teknisten remonttien kustannusarvio | Putket, katto ym. | `renovationCostMidpoints` | PARTIAL | nykyinen moottori luokittelee riskin; euromääräinen rakennusosakatalogi vaatii hyväksytyt kustannuslähteet | ei arvata puuttuvaa hintaa |
 | Rakennustyyppipoikkeukset | Ei kerrostalologiikkaa rivitalolle | `isLowRise` | COMPLETE | `repair-history.ts` | rivitalofixture |

@@ -13,7 +13,9 @@ export function simulateMaximumOfferPrice(input: InvestmentAnalysisInput, target
   for (let price = minimum; price <= maximum; price += 500) {
     const companyLoan = input.companyLoanShare ?? 0;
     const salePrice = Math.max(0, price - companyLoan);
-    const bankLoanAmount = input.equity === undefined ? input.bankLoanAmount : Math.max(0, salePrice - input.equity);
+    const transferTax = price * Math.max(0, input.transferTaxRate ?? 0) / 100;
+    const additionalFinancingNeeds = Math.max(0, input.renovationReserve ?? 0) + Math.max(0, input.transactionCosts ?? 0) + transferTax;
+    const bankLoanAmount = input.equity === undefined ? input.bankLoanAmount : Math.max(0, salePrice + additionalFinancingNeeds - input.equity);
     const result = calculateInvestmentAnalysis({ ...input, debtFreePrice: price, salePrice, bankLoanAmount });
     evaluatedScenarios += 1;
     if (targets.monthlyCashFlow !== undefined && (result.cashFlowAfterBankLoan === undefined || result.cashFlowAfterBankLoan < targets.monthlyCashFlow)) continue;

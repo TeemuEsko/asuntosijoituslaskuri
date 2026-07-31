@@ -43,7 +43,7 @@ test("yläpalkki, otsikot ja toimintopainikkeet voivat rivittyä törmäämätt�
   for (const text of ["Ennakkoversio", "Luonnos", "Lisää dokumentteja", "Tallenna"]) assert.ok(header.includes(text));
 });
 
-test("oletuskenttien grid vaihtuu yhdestä kahteen ja kolmeen sarakkeeseen", async () => {
+test("oletuskenttien grid vaihtuu yhdestä kahteen ja pankkirahoituksessa kolmeen sarakkeeseen", async () => {
   const assumptions = await source("assumptions-card.tsx");
   assert.match(assumptions, /grid-cols-1/);
   assert.match(assumptions, /sm:grid-cols-2/);
@@ -61,6 +61,6 @@ test("label, lähdetunniste, input ja yksikkö on erotettu responsiivisesti", as
 
 test("lyhennystyypit näkyvät vain suomenkielisinä", async () => {
   const assumptions = await source("assumptions-card.tsx");
-  for (const label of ["Annuiteetti", "Tasalyhennys", "Kertalyhenteinen laina"]) assert.ok(assumptions.includes(label));
+  for (const label of ["Annuiteetti", "Kiinteä tasaerä", "Tasalyhennys", "Vain korko", "Kertalyhennys / bullet"]) assert.ok(assumptions.includes(label));
   assert.doesNotMatch(assumptions, />annuity<|>equal_principal<|>bullet</);
 });

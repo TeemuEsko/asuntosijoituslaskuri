@@ -12,9 +12,10 @@ type PropertyFieldProps = ComponentProps<typeof Input> & {
   status: FieldStatus;
   suffix?: string;
   help?: string;
+  description?: string;
 };
 
-export function PropertyField({ label, status, suffix, help, className, ...props }: PropertyFieldProps) {
+export function PropertyField({ label, status, suffix, help, description, className, ...props }: PropertyFieldProps) {
   return (
     <div className="min-w-0 space-y-2">
       <div className="flex min-h-10 min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
@@ -31,6 +32,7 @@ export function PropertyField({ label, status, suffix, help, className, ...props
           <SourceBadge status={status} />
         </div>
       </div>
+      {description ? <p className="min-h-8 text-xs leading-4 text-muted-foreground">{description}</p> : null}
       <div className="relative">
         <Input className={cn("h-11 text-right tabular-nums", suffix ? suffix.length > 4 ? "pr-20" : "pr-12" : "pr-3", className)} {...props} />
         {suffix ? <span className="pointer-events-none absolute inset-y-0 right-3 flex max-w-16 items-center whitespace-nowrap text-sm text-muted-foreground">{suffix}</span> : null}

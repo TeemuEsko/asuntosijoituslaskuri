@@ -6,11 +6,17 @@ import type { RuleSeverity, RuleStatus } from "../rules/types";
 export const brandName = "asuntosijoituslaskuri.fi";
 
 export const fieldStatusLabels: Record<FieldStatus, string> = {
-  parser: "Tietojen haku",
-  user: "Oma tieto",
-  derived: "Laskettu",
+  listing: "Myynti-ilmoitus",
+  statistics: "Tilastokeskus",
+  automatic: "Automaattinen arvio",
+  user: "Käyttäjän tieto",
   default: "Oletus",
-  missing: "Puuttuu",
+  inferred: "Päätelty",
+  document: "Asiakirja",
+  unknown: "Ei tiedossa",
+  parser: "Myynti-ilmoitus",
+  derived: "Päätelty",
+  missing: "Ei tiedossa",
 };
 
 export const landOwnershipLabels: Record<LandOwnership, string> = {

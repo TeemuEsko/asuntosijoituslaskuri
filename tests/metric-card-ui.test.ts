@@ -19,8 +19,8 @@ test("oman pääoman käyttöliittymä näyttää oletuslähteen ja tarjoaa pala
   assert.match(workspace, /\.\.\.defaultEquityAssumption\(\)/);
   assert.match(workspace, /userEquityAssumption\(Number\(value\)\)/);
   assert.match(workspace, /onResetEquity=\{resetEquity\}/);
-  assert.match(assumptions, /status=\{values\.equitySource\}/);
-  assert.match(assumptions, /Oletus on 0 €/);
+  assert.match(assumptions, /status=\{values\.equityUserOverridden \? "user" : "default"\}/);
+  assert.match(assumptions, /Oletusarvo on 0 €/);
   assert.match(assumptions, /Palauta 0 € oletus/);
 });
 

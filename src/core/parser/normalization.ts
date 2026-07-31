@@ -31,6 +31,32 @@ export function formatFinnishNumber(value: number, maximumFractionDigits = 2): s
   return new Intl.NumberFormat("fi-FI", { maximumFractionDigits, minimumFractionDigits: 0 }).format(value);
 }
 
+export function formatFinnishDecimal(value: number, fractionDigits = 1): string {
+  return new Intl.NumberFormat("fi-FI", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+}
+
+export function formatFinnishInputNumber(
+  value: number,
+  maximumFractionDigits = 1,
+  minimumFractionDigits = 0,
+): string {
+  return new Intl.NumberFormat("fi-FI", {
+    minimumFractionDigits,
+    maximumFractionDigits,
+    useGrouping: true,
+  }).format(value);
+}
+
+export function parseFinnishInputNumber(input: string): number | null {
+  const compact = input.trim().replace(/[\s\u00a0\u202f]/g, "");
+  if (!compact || !/^-?(?:\d+(?:[,.]\d*)?|[,.]\d+)$/.test(compact)) return null;
+  const value = Number(compact.replace(",", "."));
+  return Number.isFinite(value) ? value : null;
+}
+
 export function formatEuro(value: number): string {
   return `${formatFinnishNumber(value)} €`;
 }

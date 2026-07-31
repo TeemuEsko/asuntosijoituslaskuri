@@ -20,7 +20,7 @@ function reportPercentage(value: number | null | undefined, equity: number | und
 
 function reportSummary(input: InvestmentAnalysisInput, analysis: InvestmentAnalysisResult): AnalysisReportSummary {
   const equity = typeof input.equity === "number" && Number.isFinite(input.equity)
-    ? `${formatFinnishNumber(input.equity)} € (${input.equitySource === "user" ? "oma tieto" : "oletus"})`
+    ? `${formatFinnishNumber(input.equity)} € (${input.equitySource === "user" ? "käyttäjän tieto" : "oletus"})`
     : "Ei tiedossa";
   const collateralPosition = analysis.collateralShortfall === undefined || analysis.collateralBuffer === undefined
     ? "Ei laskettavissa"

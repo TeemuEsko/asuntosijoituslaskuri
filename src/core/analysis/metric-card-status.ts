@@ -87,7 +87,7 @@ function cashFlowState(value: number | null | undefined): MetricCardState {
 export function metricCardState(key: MetricCardKey, value: number | null | undefined, context: MetricCardContext = {}): MetricCardState {
   if (key === "cashFlowAfterBankLoan") return cashFlowState(value);
   if (key === "annualCashFlowAfterBankLoan") return cashFlowState(context.monthlyCashFlow ?? value);
-  if (key === "equity") return state("neutral", context.equitySource === "user" ? "Oma tieto" : "Oletus", "info");
+  if (key === "equity") return state("neutral", context.equitySource === "user" ? "Käyttäjän tieto" : "Oletus", "info");
   if (key === "adjustedAcquisitionPrice") return isKnown(value) ? state("neutral", "Laskettu", "info") : unknown();
   if (!isKnown(value)) return unknown();
 
