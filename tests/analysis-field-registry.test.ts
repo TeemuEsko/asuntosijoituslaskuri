@@ -6,8 +6,38 @@ import {
   countAnalysisFields,
   type AnalysisFieldId,
 } from "../src/core/analysis/analysis-field-registry.ts";
-import { parseListingText } from "../src/core/parser/listing-parser.ts";
+import { parseListingText, type StructuredListingValue } from "../src/core/parser/listing-parser.ts";
 import { ANALYSIS_FIELD_REGISTRY } from "../src/core/parser/synonyms.ts";
+
+const allRelevantCanonicalFields: StructuredListingValue[] = [
+  { field: "address", value: "Testikatu 1", label: "Osoite", excerpt: "Osoite: Testikatu 1" },
+  { field: "city", value: "Helsinki", label: "Kaupunki", excerpt: "Kaupunki: Helsinki" },
+  { field: "areaSqm", value: 50, unit: "m²", label: "Pinta-ala", excerpt: "Pinta-ala: 50 m²" },
+  { field: "roomDescription", value: "2h+k", label: "Huoneistotyyppi", excerpt: "Huoneistotyyppi: 2h+k" },
+  { field: "constructionYear", value: 2000, unit: "vuosi", label: "Rakennusvuosi", excerpt: "Rakennusvuosi: 2000" },
+  { field: "salePrice", value: 80_000, unit: "€", label: "Myyntihinta", excerpt: "Myyntihinta: 80 000 €" },
+  { field: "debtFreePrice", value: 90_000, unit: "€", label: "Velaton hinta", excerpt: "Velaton hinta: 90 000 €" },
+  { field: "companyLoanShare", value: 10_000, unit: "€", label: "Yhtiölainaosuus", excerpt: "Yhtiölainaosuus: 10 000 €" },
+  { field: "maintenanceFeeMonthly", value: 250, unit: "€/kk", label: "Hoitovastike", excerpt: "Hoitovastike: 250 €/kk" },
+  { field: "financingFeeMonthly", value: 100, unit: "€/kk", label: "Rahoitusvastike", excerpt: "Rahoitusvastike: 100 €/kk" },
+  { field: "plotFeeMonthly", value: 20, unit: "€/kk", label: "Tonttivastike", excerpt: "Tonttivastike: 20 €/kk" },
+  { field: "otherMonthlyFees", value: 15, unit: "€/kk", label: "Muut maksut", excerpt: "Muut maksut: 15 €/kk" },
+  { field: "landOwnership", value: "leased", label: "Tontti", excerpt: "Tontti: vuokratontti" },
+  { field: "housingCompanyName", value: "Asunto Oy Testitalo", label: "Taloyhtiön nimi", excerpt: "Taloyhtiön nimi: Asunto Oy Testitalo" },
+  { field: "condition", value: "hyvä", label: "Kunto", excerpt: "Kunto: hyvä" },
+  { field: "heatingType", value: "district", label: "Lämmitys", excerpt: "Lämmitys: kaukolämpö" },
+  { field: "energyClass", value: "C", label: "Energialuokka", excerpt: "Energialuokka: C" },
+  { field: "floor", value: "2/5", label: "Kerros", excerpt: "Kerros: 2/5" },
+  { field: "elevator", value: "Kyllä", label: "Hissi", excerpt: "Hissi: kyllä" },
+];
+
+function completeRegistryFixture(excludedField?: StructuredListingValue["field"]) {
+  return parseListingText(
+    "Tehdyt remontit\nPutkiremontti toteutettu 2019\nTulevat remontit\nKattoremontti suunniteltu 2029",
+    "etuovi",
+    allRelevantCanonicalFields.filter((field) => field.field !== excludedField),
+  );
+}
 
 test("analyysikenttien rekisterissä ei ole päällekkäisiä tunnisteita", () => {
   assert.equal(new Set(ANALYSIS_FIELD_REGISTRY.map((field) => field.key)).size, ANALYSIS_FIELD_REGISTRY.length);
@@ -79,4 +109,14 @@ test("kehitysympäristön invariantti ilmoittaa mahdottomasta suhteesta", () => 
   const found = new Set<AnalysisFieldId>(["salePrice", "debtFreePrice"]);
   const relevant = new Set<AnalysisFieldId>(["salePrice"]);
   assert.throws(() => assertAnalysisFieldCountInvariant(found, relevant, "development"), /Analysis field count invariant violated/);
+});
+
+test("21 relevanttia ja 21 löydettyä renderöityy suhteena 21 / 21", () => {
+  const count = countAnalysisFields(completeRegistryFixture());
+  assert.deepEqual({ found: count.found, total: count.total }, { found: 21, total: 21 });
+});
+
+test("21 relevanttia ja 20 löydettyä renderöityy suhteena 20 / 21", () => {
+  const count = countAnalysisFields(completeRegistryFixture("energyClass"));
+  assert.deepEqual({ found: count.found, total: count.total }, { found: 20, total: 21 });
 });
