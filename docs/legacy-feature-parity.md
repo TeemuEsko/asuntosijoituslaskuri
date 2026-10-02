@@ -45,10 +45,10 @@ Auditointipäivä: 2026-07-28. Legacy-lähde on Git-commit `8ace2a6`, ensisijais
 | Rakennustyyppipoikkeukset | Ei kerrostalologiikkaa rivitalolle | `isLowRise` | COMPLETE | `repair-history.ts` | rivitalofixture |
 | Korjaushistorian kattavuus | Vältä perusteettomat riskit | legacy statusvalinnat | REPLACED | dokumenttipohjainen RE-005 | kattava/puutteellinen aineisto |
 | Tarjoushinta kassavirtatavoitteella | Neuvotteluraja | `findOfferForTargets` | COMPLETE | `offer-price.ts` 500 € askel | reaktiivinen tulos |
-| Tarjoushinta nettotuottotavoitteella | Tuottovaatimuksen hinta | sama | COMPLETE | sama | 6 % tavoite |
+| Tarjoushinta nettotuottotavoitteella | Tuottovaatimuksen hinta | sama | COMPLETE | sama | 8 % tavoite |
 | Tarjoushinta CoC-tavoitteella | Oman rahan tuottoraja | ei legacyssä | REPLACED | sama simulaattori | tavoiteraja |
 | Kassavirtariski | Negatiivinen tulos näkyy | `buildRiskProfile` | COMPLETE | keskitetty observation engine | severity high |
-| Matala nettotuotto | Heikko tuotto näkyy | `buildRiskProfile` | COMPLETE | keskitetty observation engine | 4,5 % raja |
+| Matala nettotuotto | Heikko tuotto näkyy | `buildRiskProfile` | COMPLETE | keskitetty observation engine | alle 5 % |
 | Korkea velkavipu | Rahoitusriski | `financeScore` | COMPLETE | keskitetty observation engine | >80 % |
 | Korkoherkkyys | Korkoriski | `financeScore` | COMPLETE | keskitetty observation engine | >=6 % |
 | Vuokrakysyntä | Tyhjäkäyntiriski | `locationDemand` | COMPLETE | käyttäjäoletus, ei parseriarvaus | asteikko 1–5 |

@@ -1,4 +1,8 @@
 import type { EquitySource } from "./equity-assumption.ts";
+import {
+  NET_RENTAL_YIELD_THRESHOLDS,
+  classifyNetRentalYield,
+} from "./net-rental-yield.ts";
 
 export type MetricCardStatus = "positive" | "warning" | "negative" | "neutral" | "unknown";
 export type MetricStatusIcon = "check" | "warning" | "error" | "info" | "unknown";
@@ -42,7 +46,7 @@ export const METRIC_CARD_ORDER: readonly MetricCardKey[] = [
 export const METRIC_THRESHOLDS = {
   cashFlow: { positive: 100 },
   grossRentalYield: { poor: 4.5, low: 5.5, good: 6.5, strong: 8 },
-  netRentalYield: { poor: 3.5, good: 6 },
+  netRentalYield: NET_RENTAL_YIELD_THRESHOLDS,
   cashOnCashReturn: { good: 5 },
   returnOnEquity: { good: 8 },
   collateralShortfall: { negativeRatio: 0.1 },
@@ -99,9 +103,11 @@ export function metricCardState(key: MetricCardKey, value: number | null | undef
   }
 
   if (key === "netRentalYield") {
-    if (value < METRIC_THRESHOLDS.netRentalYield.poor) return state("negative", "Heikko", "error");
-    if (value < METRIC_THRESHOLDS.netRentalYield.good) return state("warning", "Alle vahvan tason", "warning");
-    return state("positive", "Vahva", "check");
+    const classification = classifyNetRentalYield(value);
+    if (!classification) return unknown();
+    if (classification === "Heikko") return state("negative", classification, "error");
+    if (classification === "Välttävä" || classification === "Kohtalainen / alle tavoitetason") return state("warning", classification, "warning");
+    return state("positive", classification, "check");
   }
 
   if (key === "cashOnCashReturn" || key === "returnOnEquity") {

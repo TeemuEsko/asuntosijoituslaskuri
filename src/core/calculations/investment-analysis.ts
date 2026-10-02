@@ -1,6 +1,7 @@
 import { effectiveAnnualRent, occupancyFromVacancyMonths } from "./occupancy.ts";
 import { clampInvestmentScore, getInvestmentRating, type InvestmentOverallScoreData, type RatingSubScore } from "../analysis/investment-overall-score.ts";
 import { METRIC_THRESHOLDS } from "../analysis/metric-card-status.ts";
+import { NET_RENTAL_YIELD_THRESHOLDS, classifyNetRentalYield, type NetRentalYieldClassification } from "../analysis/net-rental-yield.ts";
 import type { EquitySource } from "../analysis/equity-assumption.ts";
 import { assessmentConfidenceWeight, type MarketAssessmentSet } from "../market-assessment/model.ts";
 import { evaluateInvestmentObservations, type InvestmentObservation } from "../rules/investment-observations.ts";
@@ -15,7 +16,7 @@ export type InvestmentAnalysisInput = {
 };
 
 export type InvestmentAnalysisResult = InvestmentOverallScoreData & {
-  preliminary: boolean; grossRentalYield?: number; netRentalYield?: number; effectiveAnnualRent?: number; cashFlowBeforeBankLoan?: number; cashFlowAfterBankLoan?: number; annualCashFlowAfterBankLoan?: number; monthlyBankLoanPayment?: number; monthlyBankLoanInterest?: number; monthlyBankLoanPrincipal?: number; annualBankLoanPrincipal?: number; remainingBankLoanPrincipalAtEnd?: number; principalDueAtMaturity?: number; bankLoanAmount?: number; repaymentType?: RepaymentType; equity?: number; equitySource?: EquitySource; equityUserOverridden?: boolean; adjustedAcquisitionPrice?: number; transferTax?: number; totalAcquisitionCosts?: number; actualEquityRequired?: number; collateralShortfall?: number; collateralBuffer?: number; leverageRatio?: number; cashOnCashReturn?: number | null; returnOnEquity?: number | null; estimatedExitPrice?: number; estimatedExitProfit?: number; visualConditionScoreImpact?: number; observations: InvestmentObservation[];
+  preliminary: boolean; grossRentalYield?: number; netRentalYield?: number; netRentalYieldClassification?: NetRentalYieldClassification; effectiveAnnualRent?: number; cashFlowBeforeBankLoan?: number; cashFlowAfterBankLoan?: number; annualCashFlowAfterBankLoan?: number; monthlyBankLoanPayment?: number; monthlyBankLoanInterest?: number; monthlyBankLoanPrincipal?: number; annualBankLoanPrincipal?: number; remainingBankLoanPrincipalAtEnd?: number; principalDueAtMaturity?: number; bankLoanAmount?: number; repaymentType?: RepaymentType; equity?: number; equitySource?: EquitySource; equityUserOverridden?: boolean; adjustedAcquisitionPrice?: number; transferTax?: number; totalAcquisitionCosts?: number; actualEquityRequired?: number; collateralShortfall?: number; collateralBuffer?: number; leverageRatio?: number; cashOnCashReturn?: number | null; returnOnEquity?: number | null; estimatedExitPrice?: number; estimatedExitProfit?: number; visualConditionScoreImpact?: number; observations: InvestmentObservation[];
 };
 
 function interpolate(value: number, points: ReadonlyArray<readonly [number, number]>): number {
@@ -26,7 +27,7 @@ function interpolate(value: number, points: ReadonlyArray<readonly [number, numb
 
 export function classifyGrossRentalYield(value: number): "Heikko" | "Matala" | "Kohtalainen" | "Hyvä" | "Vahva" { const threshold = METRIC_THRESHOLDS.grossRentalYield; return value < threshold.poor ? "Heikko" : value < threshold.low ? "Matala" : value < threshold.good ? "Kohtalainen" : value < threshold.strong ? "Hyvä" : "Vahva"; }
 export function grossYieldScore(value: number): number { const threshold = METRIC_THRESHOLDS.grossRentalYield; return clampInvestmentScore(interpolate(value, [[0, 0], [threshold.poor, 30], [threshold.low, 45], [threshold.good, 60], [threshold.strong, 80], [10, 100]])); }
-export function netYieldScore(value: number): number { const threshold = METRIC_THRESHOLDS.netRentalYield; return clampInvestmentScore(interpolate(value, [[0, 0], [2.5, 25], [threshold.poor, 40], [4.5, 60], [threshold.good, 80], [8, 100]])); }
+export function netYieldScore(value: number): number { const threshold = NET_RENTAL_YIELD_THRESHOLDS; return clampInvestmentScore(interpolate(value, [[0, 0], [2.5, 25], [threshold.poor, 40], [threshold.moderate, 60], [threshold.good, 80], [threshold.excellent, 100]])); }
 
 export function calculateBankLoanAmount(salePrice: number, equity: number, additionalFinancingNeeds = 0): number {
   const safeSalePrice = Number.isFinite(salePrice) ? Math.max(0, salePrice) : 0;
@@ -70,6 +71,7 @@ export function calculateInvestmentAnalysis(input: InvestmentAnalysisInput): Inv
   const grossYield = price && annualRent !== undefined ? annualRent / price * 100 : undefined;
   const annualOperating = maintenance === undefined || financing === undefined ? undefined : (maintenance + financing + (input.otherCostsMonthly ?? 0)) * 12;
   const netYield = price && annualRent !== undefined && annualOperating !== undefined ? (annualRent - annualOperating) / price * 100 : undefined;
+  const netYieldClassification = netYield === undefined ? undefined : classifyNetRentalYield(netYield);
   const beforeLoan = annualRent !== undefined && annualOperating !== undefined ? (annualRent - annualOperating) / 12 : undefined;
   const explicitPayment = valid(input.monthlyBankLoanPayment) && input.monthlyBankLoanPayment >= 0 ? input.monthlyBankLoanPayment : undefined;
   const loanKnown = explicitPayment !== undefined || (valid(input.bankLoanAmount) && valid(input.annualInterestRate) && valid(input.loanTermYears) && Boolean(input.repaymentType));
@@ -99,12 +101,10 @@ export function calculateInvestmentAnalysis(input: InvestmentAnalysisInput): Inv
   if (!loanKnown) missingFactors.push("Pankkilainan tiedot puuttuvat – kassavirta ja arvio ovat alustavia");
   if (!input.repairHistoryKnown) missingFactors.push("Taloyhtiön korjaushistoria on tarkistettava lähdeasiakirjoista");
   if (grossYield !== undefined && grossYield < 5.5) warningFactors.push("Bruttovuokratuotto on nykyisellä hinnalla matala.");
-  if (netYield !== undefined && netYield < 4) warningFactors.push("Nettovuokratuotto jää tavoitetason alapuolelle.");
   if (afterLoan !== undefined && afterLoan < 0) warningFactors.push("Kohde jää pankkilainan jälkeen negatiiviselle kassavirralle.");
   else if (afterLoan === 0) warningFactors.push("Kassavirta jää pankkilainan jälkeen nollaan.");
   else if (afterLoan !== undefined && afterLoan < 100) { positiveFactors.push("Kohde jää pankkilainan jälkeen lievästi positiiviselle kassavirralle."); warningFactors.push("Kassavirtapuskuri jää pankkilainan jälkeen pieneksi."); }
   else if (afterLoan !== undefined && afterLoan >= 100) positiveFactors.push("Vuokra kattaa kaikki kuukausittaiset kulut ja jättää vahvan positiivisen kassavirran.");
-  if (netYield !== undefined && netYield >= 6) positiveFactors.push("Nettovuokratuotto on vahva suhteessa velattomaan hintaan.");
   if (leverage !== undefined && leverage > 0.8) warningFactors.push("Pankkilainan määrä on suuri suhteessa kohteen arvoon."); else if (leverage !== undefined && leverage <= 0.6) positiveFactors.push("Pankkilainan velkavipu on maltillinen.");
   if (valid(input.annualInterestRate) && input.annualInterestRate >= 6) warningFactors.push("Pankkilainan korkotaso altistaa kassavirran korkoriskille.");
   if (vacancy.vacancyMonths >= 3) warningFactors.push("Korkea tyhjäkäyntioletus heikentää vuokratuottoa.");
@@ -128,6 +128,6 @@ export function calculateInvestmentAnalysis(input: InvestmentAnalysisInput): Inv
   score = Math.round(clampInvestmentScore(score + observations.reduce((sum, item) => sum + item.scoreImpact, 0) * .25));
   const visualConditionScoreImpact = Math.max(-4, Math.min(4, Math.round(input.visualConditionScoreImpact ?? 0)));
   score = Math.round(clampInvestmentScore(score + visualConditionScoreImpact));
-  if (!loanKnown) score = Math.min(score, 59); if ((grossYield ?? 0) < 5 && (netYield ?? 0) < 4.5) score = Math.min(score, 59); if (afterLoan !== undefined && afterLoan < 0) score = Math.min(score, 54);
-  return { score, preliminary: !loanKnown || missingFactors.length > 0, grossRentalYield: grossYield, netRentalYield: netYield, effectiveAnnualRent: annualRent, cashFlowBeforeBankLoan: beforeLoan, cashFlowAfterBankLoan: afterLoan, annualCashFlowAfterBankLoan: annualCashFlow, monthlyBankLoanPayment: loan?.payment, monthlyBankLoanInterest: loan?.interest, monthlyBankLoanPrincipal: loan?.principal, annualBankLoanPrincipal: annualBankPrincipal, remainingBankLoanPrincipalAtEnd: loan?.remainingPrincipalAtEnd, principalDueAtMaturity: loan?.principalDueAtMaturity, bankLoanAmount: input.bankLoanAmount, repaymentType: input.repaymentType, equity: input.equity, equitySource: input.equitySource, equityUserOverridden: input.equityUserOverridden, adjustedAcquisitionPrice, transferTax, totalAcquisitionCosts: adjustedAcquisitionPrice, actualEquityRequired, collateralShortfall, collateralBuffer, leverageRatio: leverage, cashOnCashReturn, returnOnEquity, estimatedExitPrice: exitPrice, estimatedExitProfit: exitProfit, observations, positiveFactors, warningFactors, missingFactors, subScores: { yield: sub(yieldComponent, "Nettovuokratuotto painottaa toteutuvaa vuokraa ja jatkuvia kuluja."), cashFlow: sub(cashFlowComponent, "Kassavirta huomioi pankkilainan kuukausierän."), housingCompanyRisk: sub(repairComponent, "Arvio perustuu tunnistettuun korjaushistoriaan."), financing: sub(financingComponent, "Arvio huomioi velkavivun, koron ja laina-ajan.") } };
+  if (!loanKnown) score = Math.min(score, 59); if ((grossYield ?? 0) < 5 && netYieldClassification === "Heikko") score = Math.min(score, 59); if (afterLoan !== undefined && afterLoan < 0) score = Math.min(score, 54);
+  return { score, preliminary: !loanKnown || missingFactors.length > 0, grossRentalYield: grossYield, netRentalYield: netYield, netRentalYieldClassification: netYieldClassification, effectiveAnnualRent: annualRent, cashFlowBeforeBankLoan: beforeLoan, cashFlowAfterBankLoan: afterLoan, annualCashFlowAfterBankLoan: annualCashFlow, monthlyBankLoanPayment: loan?.payment, monthlyBankLoanInterest: loan?.interest, monthlyBankLoanPrincipal: loan?.principal, annualBankLoanPrincipal: annualBankPrincipal, remainingBankLoanPrincipalAtEnd: loan?.remainingPrincipalAtEnd, principalDueAtMaturity: loan?.principalDueAtMaturity, bankLoanAmount: input.bankLoanAmount, repaymentType: input.repaymentType, equity: input.equity, equitySource: input.equitySource, equityUserOverridden: input.equityUserOverridden, adjustedAcquisitionPrice, transferTax, totalAcquisitionCosts: adjustedAcquisitionPrice, actualEquityRequired, collateralShortfall, collateralBuffer, leverageRatio: leverage, cashOnCashReturn, returnOnEquity, estimatedExitPrice: exitPrice, estimatedExitProfit: exitProfit, observations, positiveFactors, warningFactors, missingFactors, subScores: { yield: sub(yieldComponent, "Nettovuokratuotto painottaa toteutuvaa vuokraa ja jatkuvia kuluja."), cashFlow: sub(cashFlowComponent, "Kassavirta huomioi pankkilainan kuukausierän."), housingCompanyRisk: sub(repairComponent, "Arvio perustuu tunnistettuun korjaushistoriaan."), financing: sub(financingComponent, "Arvio huomioi velkavivun, koron ja laina-ajan.") } };
 }

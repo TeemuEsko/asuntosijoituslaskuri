@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 function isFiniteNumber(value: number | null | undefined): value is number { return typeof value === "number" && Number.isFinite(value); }
 function money(value: number | null | undefined, suffix = "€/kk") { return isFiniteNumber(value) ? `${formatFinnishNumber(value)} ${suffix}` : "Ei laskettavissa"; }
-function percent(value: number | null | undefined) { return isFiniteNumber(value) ? `${formatFinnishNumber(value, 1)} %` : "Ei laskettavissa"; }
+function percent(value: number | null | undefined, maximumFractionDigits = 1) { return isFiniteNumber(value) ? `${formatFinnishNumber(value, maximumFractionDigits)} %` : "Ei laskettavissa"; }
 
 type MetricCardData = {
   key: MetricCardKey;
@@ -44,7 +44,7 @@ export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult })
       : "Pankkilainan ensimmäisen kuukauden lyhennys.";
   const byKey: Record<MetricCardKey, MetricCardData> = {
     cashFlowAfterBankLoan: { key: "cashFlowAfterBankLoan", label: "Kassavirta pankkilainan jälkeen", value: analysis.cashFlowAfterBankLoan, formattedValue: money(analysis.cashFlowAfterBankLoan), description: analysis.cashFlowAfterBankLoan === undefined ? "Lisää pankkilainan ja kulujen tiedot." : "Vuokra vähennettynä kuluilla ja pankkilainan kuukausierällä." },
-    netRentalYield: { key: "netRentalYield", label: "Nettovuokratuotto", value: analysis.netRentalYield, formattedValue: percent(analysis.netRentalYield), description: "Huomioi tyhjäkäynnin ja jatkuvat kuukausikulut." },
+    netRentalYield: { key: "netRentalYield", label: "Nettovuokratuotto", value: analysis.netRentalYield, formattedValue: percent(analysis.netRentalYield, 2), description: "Huomioi tyhjäkäynnin ja jatkuvat kuukausikulut." },
     grossRentalYield: { key: "grossRentalYield", label: "Bruttovuokratuotto", value: analysis.grossRentalYield, formattedValue: percent(analysis.grossRentalYield), description: "Efektiivinen vuosivuokra suhteessa velattomaan hintaan." },
     equity: { key: "equity", label: "Oma pääoma", value: analysis.equity, formattedValue: money(analysis.equity, "€"), description: analysis.equitySource === "user" ? "Käyttäjän määrittämä sijoitettava oma pääoma." : "Oletus on 0 €. Lisää sijoitettava oma pääoma tarvittaessa. Oletus ei ole pankin hyväksymä rahoitusratkaisu." },
     returnOnEquity: { key: "returnOnEquity", label: "Oman pääoman tuotto", value: analysis.returnOnEquity, formattedValue: percent(analysis.returnOnEquity), description: analysis.equity === 0 ? equityReturnDescription : "Kassavirta ja lainan lyheneminen suhteessa omaan pääomaan." },

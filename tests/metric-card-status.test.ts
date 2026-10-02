@@ -32,7 +32,8 @@ test("brutto- ja nettotuottojen tilat käyttävät sovittuja pisteytysrajoja", (
   assert.equal(metricCardState("grossRentalYield", 7.4).status, "positive");
   assert.equal(metricCardState("grossRentalYield", 8).status, "positive");
   assert.notEqual(metricCardState("netRentalYield", 2.7).status, "positive");
-  assert.equal(metricCardState("netRentalYield", 6).status, "positive");
+  assert.equal(metricCardState("netRentalYield", 6).status, "warning");
+  assert.equal(metricCardState("netRentalYield", 8).status, "positive");
 });
 
 test("oman pääoman tuottojen ja lainan lyhenemisen tilat käsittelevät puuttuvan tiedon", () => {

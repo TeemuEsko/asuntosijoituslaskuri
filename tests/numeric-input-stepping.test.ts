@@ -88,16 +88,19 @@ test("askellettu arvo päivittää normaalin analyysin tuotot, kassavirran, raho
     repairHistoryKnown: true,
   };
   const baseline = calculateInvestmentAnalysis(input);
-  const changed = calculateInvestmentAnalysis({
+  const rentChanged = calculateInvestmentAnalysis({
     ...input,
     monthlyRent: step("monthlyRent", "970", 1),
+  });
+  const financingChanged = calculateInvestmentAnalysis({
+    ...input,
     annualInterestRate: step("annualInterestRate", "4,5", 1),
   });
 
-  assert.ok(changed.grossRentalYield! > baseline.grossRentalYield!);
-  assert.ok(changed.monthlyBankLoanPayment! > baseline.monthlyBankLoanPayment!);
-  assert.notEqual(changed.cashFlowAfterBankLoan, baseline.cashFlowAfterBankLoan);
-  assert.notEqual(changed.score, baseline.score);
+  assert.ok(rentChanged.grossRentalYield! > baseline.grossRentalYield!);
+  assert.notEqual(rentChanged.cashFlowAfterBankLoan, baseline.cashFlowAfterBankLoan);
+  assert.notEqual(rentChanged.score, baseline.score);
+  assert.ok(financingChanged.monthlyBankLoanPayment! > baseline.monthlyBankLoanPayment!);
 });
 
 test("kaikki nimetyt muokattavat kentät käyttävät yhteistä näppäinkäsittelyä ja normaalia päivityspolkua", async () => {

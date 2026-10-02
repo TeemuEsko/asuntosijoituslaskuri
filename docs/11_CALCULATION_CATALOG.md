@@ -29,7 +29,7 @@ Katalogi on laskentamoottorin sopimus. Laskenta ei arvaa puuttuvaa arvoa nollaks
 |---|---|---|---|---|---|
 | Toteutuva vuosivuokra | kuukausivuokra × (12 − tyhjäkäyntikuukaudet) | pitkäaikaisen vuokran; ei arvonnousua | €/v, senttitarkka moottorissa | unknown ilman vuokraa | tunnusluvut / epäsuora |
 | Bruttovuokratuotto | toteutuva vuosivuokra / velaton hinta × 100 | tyhjäkäynnin; ei kuluja | %, UI 1 desimaali | unknown ilman hintaa/vuokraa | analyysi / kyllä |
-| Nettovuokratuotto | (vuosivuokra − 12 × jatkuvat kulut) / velaton hinta × 100 | hoito- ja rahoitusvastikkeen sekä muut jatkuvat kulut; ei kertaluonteista remonttivaraa eikä pankkilainaa | %, UI 1 desimaali | unknown, jos jokin pakollinen kulu puuttuu | analyysi / kyllä |
+| Nettovuokratuotto | (vuosivuokra − 12 × jatkuvat kulut) / velaton hinta × 100 | hoito- ja rahoitusvastikkeen sekä muut jatkuvat kulut; ei kertaluonteista remonttivaraa eikä pankkilainaa | %, UI enintään 2 desimaalia | unknown, jos jokin pakollinen kulu puuttuu | analyysi / kyllä; hyvä tavoitetaso 8 %, erittäin hyvä 10 % |
 | Kassavirta ennen pankkilainaa | (vuosivuokra − vuosittaiset jatkuvat kulut) / 12 | vastikkeet ja muut jatkuvat kulut; ei kertaluonteista remonttivaraa eikä pankkilainaa | €/kk, UI kokonais-euro | unknown ilman vuokraa tai kuluja | kassavirta / kyllä |
 | Pankkilainan kuukausierä | annuiteetti-, kiinteä tasaerä-, tasalyhennys-, vain korko- tai bullet-kaava | pankkilainan koron ja sopimusmallin mukaisen lyhennyksen; ei yhtiölainavastiketta | €/kk, UI kokonais-euro | unknown ilman lainamäärää, korkoa, aikaa tai tyyppiä | rahoitus / kyllä |
 | Pankkilainan korko-osuus | lainapääoma × vuosikorko / 12 | ensimmäisen kuukauden koron | €/kk | unknown ilman lainatietoja | rahoitus / epäsuora |
