@@ -10,12 +10,13 @@ import { SourceBadge } from "./status-badge";
 type PropertyFieldProps = ComponentProps<typeof Input> & {
   label: string;
   status: FieldStatus;
+  sourceLabel?: string;
   suffix?: string;
   help?: string;
   description?: string;
 };
 
-export function PropertyField({ label, status, suffix, help, description, className, ...props }: PropertyFieldProps) {
+export function PropertyField({ label, status, sourceLabel, suffix, help, description, className, ...props }: PropertyFieldProps) {
   return (
     <div className="min-w-0 space-y-2">
       <div className="flex min-h-10 min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
@@ -29,7 +30,7 @@ export function PropertyField({ label, status, suffix, help, description, classN
               <TooltipContent>{help}</TooltipContent>
             </Tooltip>
           ) : null}
-          <SourceBadge status={status} />
+          <SourceBadge status={status} label={sourceLabel} />
         </div>
       </div>
       {description ? <p className="min-h-8 text-xs leading-4 text-muted-foreground">{description}</p> : null}

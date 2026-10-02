@@ -10,7 +10,7 @@ export type AnalysisReportSummary = {
   collateralPosition: string;
 };
 
-export type AnalysisReportData = { generatedAt: string; source: "current_canonical_state"; input: InvestmentAnalysisInput; analysis: InvestmentAnalysisResult; summary: AnalysisReportSummary; rentEstimate?: RentEstimate; visualCondition?: { title: "Valokuvien perusteella arvioitu kunto"; disclaimer: string; analysis: VisualConditionAnalysis }; provenance: { parserValues: string[]; userValues: string[]; calculatedValues: string[] } };
+export type AnalysisReportData = { generatedAt: string; source: "current_canonical_state"; input: InvestmentAnalysisInput; analysis: InvestmentAnalysisResult; summary: AnalysisReportSummary; rentEstimate?: RentEstimate; visualCondition?: { title: "Valokuvien perusteella arvioitu kunto"; disclaimer: string; analysis: VisualConditionAnalysis }; provenance: { parserValues: string[]; documentValues: string[]; userValues: string[]; calculatedValues: string[] } };
 
 function reportPercentage(value: number | null | undefined, equity: number | undefined): string {
   return typeof value === "number" && Number.isFinite(value)
@@ -33,5 +33,5 @@ function reportSummary(input: InvestmentAnalysisInput, analysis: InvestmentAnaly
 }
 
 export function buildAnalysisReportData(input: InvestmentAnalysisInput, analysis: InvestmentAnalysisResult, provenance: Partial<AnalysisReportData["provenance"]> = {}, rentEstimate?: RentEstimate, visualCondition?: VisualConditionAnalysis): AnalysisReportData {
-  return { generatedAt: new Date().toISOString(), source: "current_canonical_state", input: { ...input }, analysis: structuredClone(analysis), summary: reportSummary(input, analysis), rentEstimate: rentEstimate ? structuredClone(rentEstimate) : undefined, visualCondition: visualCondition ? { title: "Valokuvien perusteella arvioitu kunto", disclaimer: visualConditionReportDisclaimer(visualCondition.source), analysis: structuredClone(visualCondition) } : undefined, provenance: { parserValues: provenance.parserValues ?? [], userValues: provenance.userValues ?? [], calculatedValues: provenance.calculatedValues ?? Object.keys(analysis).filter((key) => typeof analysis[key as keyof InvestmentAnalysisResult] === "number") } };
+  return { generatedAt: new Date().toISOString(), source: "current_canonical_state", input: { ...input }, analysis: structuredClone(analysis), summary: reportSummary(input, analysis), rentEstimate: rentEstimate ? structuredClone(rentEstimate) : undefined, visualCondition: visualCondition ? { title: "Valokuvien perusteella arvioitu kunto", disclaimer: visualConditionReportDisclaimer(visualCondition.source), analysis: structuredClone(visualCondition) } : undefined, provenance: { parserValues: provenance.parserValues ?? [], documentValues: provenance.documentValues ?? [], userValues: provenance.userValues ?? [], calculatedValues: provenance.calculatedValues ?? Object.keys(analysis).filter((key) => typeof analysis[key as keyof InvestmentAnalysisResult] === "number") } };
 }

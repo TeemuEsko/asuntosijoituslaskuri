@@ -122,5 +122,9 @@ test("kaikki nimetyt muokattavat kentät käyttävät yhteistä näppäinkäsitt
   assert.match(field, /onChange=\{\(event\) => updateDraft\(event\.currentTarget\.value\)\}/);
   assert.match(field, /onBlur=\{commit\}/);
   assert.match(workspace, /setAssumptionStatuses\(\(current\) => \(\{ \.\.\.current, \[key\]: "user" \}\)\)/);
-  assert.match(workspace, /setStatuses\(\(current\) => \(\{ \.\.\.current, \[key\]: "user"/);
+  const updatePurchaseSource = workspace.slice(
+    workspace.indexOf("function updatePurchase"),
+    workspace.indexOf("function updateAssumption"),
+  );
+  assert.match(updatePurchaseSource, /setStatuses\(\(current\) => \(\{[\s\S]*?\[key\]: "user"/);
 });

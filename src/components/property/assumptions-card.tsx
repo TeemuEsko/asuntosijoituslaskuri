@@ -130,6 +130,9 @@ export function AssumptionsCard({
   rentEstimate,
   financingFeeMonthly,
   financingFeeStatus,
+  maintenanceFeeSourceLabel,
+  financingFeeSourceLabel,
+  otherCostsSourceLabel,
   financingFeeDescription,
   financingFeeDisabled,
   bankLoanAmount,
@@ -147,6 +150,9 @@ export function AssumptionsCard({
   rentEstimate: RentEstimate;
   financingFeeMonthly?: number;
   financingFeeStatus: FieldStatus;
+  maintenanceFeeSourceLabel?: string;
+  financingFeeSourceLabel?: string;
+  otherCostsSourceLabel?: string;
   financingFeeDescription: string;
   financingFeeDisabled: boolean;
   bankLoanAmount: number;
@@ -168,9 +174,9 @@ export function AssumptionsCard({
         <CardHeader className="border-b"><CardTitle>B. Kuukausitulot ja -kulut</CardTitle><CardDescription>Jatkuvat tulot ja kulut vaikuttavat suoraan vuokratuottoon ja kassavirtaan.</CardDescription></CardHeader>
         <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
           <RentEstimateField estimate={rentEstimate} onOverride={onRentOverride} onRestore={onRentRestore} />
-          <LocalizedNumberField id="maintenance-fee" numericInputKey="maintenanceFeeMonthly" label="Hoitovastike" status={status("maintenanceFeeMonthly")} suffix="€/kk" maximumFractionDigits={2} value={values.maintenanceFeeMonthly} onValueChange={(value) => onChange("maintenanceFeeMonthly", value)} description="Taloyhtiön kuukausittainen hoitovastike. Ei sisällä rahoitusvastiketta." help="Taloyhtiön kuukausittainen hoitovastike. Rahoitusvastike annetaan omassa kentässään." />
-          <LocalizedNumberField id="financing-fee" numericInputKey="financingFeeMonthly" label="Rahoitusvastike" status={financingFeeStatus} suffix="€/kk" maximumFractionDigits={2} value={financingFeeMonthly} allowUnknown disabled={financingFeeDisabled} onValueChange={onFinancingFeeChange} description={financingFeeDescription} help="Huoneistokohtaisen yhtiölainan kuukausittainen pääoma- tai rahoitusvastike. Jos yhtiölainaa ei ole, arvo päätellään nollaksi." />
-          <LocalizedNumberField id="other-costs" numericInputKey="otherCostsMonthly" label="Muut kuukausikulut" status={status("otherCostsMonthly")} suffix="€/kk" maximumFractionDigits={2} value={values.otherCostsMonthly} onValueChange={(value) => onChange("otherCostsMonthly", value)} description="Vuokranantajan maksettavaksi jäävät jatkuvat kulut vastikkeiden lisäksi." help="Esimerkiksi vakuutus tai muu jatkuva omistajalle jäävä kulu. Älä lisää kertaluonteisia ostokuluja." />
+          <LocalizedNumberField id="maintenance-fee" numericInputKey="maintenanceFeeMonthly" label="Hoitovastike" status={status("maintenanceFeeMonthly")} sourceLabel={maintenanceFeeSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={values.maintenanceFeeMonthly} onValueChange={(value) => onChange("maintenanceFeeMonthly", value)} description="Taloyhtiön kuukausittainen hoitovastike. Ei sisällä rahoitusvastiketta." help="Taloyhtiön kuukausittainen hoitovastike. Rahoitusvastike annetaan omassa kentässään." />
+          <LocalizedNumberField id="financing-fee" numericInputKey="financingFeeMonthly" label="Rahoitusvastike" status={financingFeeStatus} sourceLabel={financingFeeSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={financingFeeMonthly} allowUnknown disabled={financingFeeDisabled} onValueChange={onFinancingFeeChange} description={financingFeeDescription} help="Huoneistokohtaisen yhtiölainan kuukausittainen pääoma- tai rahoitusvastike. Jos yhtiölainaa ei ole, arvo päätellään nollaksi." />
+          <LocalizedNumberField id="other-costs" numericInputKey="otherCostsMonthly" label="Muut kuukausikulut" status={status("otherCostsMonthly")} sourceLabel={otherCostsSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={values.otherCostsMonthly} onValueChange={(value) => onChange("otherCostsMonthly", value)} description="Vuokranantajan maksettavaksi jäävät jatkuvat kulut vastikkeiden lisäksi." help="Esimerkiksi vakuutus tai muu jatkuva omistajalle jäävä kulu. Älä lisää kertaluonteisia ostokuluja." />
           <LocalizedNumberField id="vacancy-months" numericInputKey="vacancyMonths" label="Arvioitu tyhjäkäynti" status={status("vacancyMonths")} suffix="kk / vuosi" maximumFractionDigits={1} value={values.vacancyMonths} onValueChange={(value) => onChange("vacancyMonths", value)} description="Arvio siitä, kuinka monta kuukautta asunto on keskimäärin ilman vuokralaista vuoden aikana." help={`Vuokrattuna arviolta ${formatFinnishNumber(12 - values.vacancyMonths, 1)} kuukautta vuodessa.`} />
         </CardContent>
       </Card>

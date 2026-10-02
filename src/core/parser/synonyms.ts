@@ -38,6 +38,7 @@ export type NormalizedFieldKey =
   | "sauna"
   | "parking"
   | "landRentAnnual"
+  | "landLeaseEndDate"
   | "plotShareRedemptionPrice"
   | "nextPlotShareRedemptionDate"
   | "articlesRedemptionClause"
@@ -86,6 +87,7 @@ export const fieldDisplayNames: Record<NormalizedFieldKey, string> = {
   sauna: "Sauna",
   parking: "Autopaikka",
   landRentAnnual: "Tontin vuosivuokra",
+  landLeaseEndDate: "Tontin vuokrasopimuksen päättymispäivä",
   plotShareRedemptionPrice: "Tonttiosuuden lunastushinta",
   nextPlotShareRedemptionDate: "Seuraava tonttiosuuden lunastusajankohta",
   articlesRedemptionClause: "Yhtiöjärjestyksen lunastuslauseke",
@@ -103,7 +105,7 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   financingFeeMonthly: ["rahoitusvastike", "pääomavastike", "lainanlyhennysvastike", "yhtiölainavastike", "pääomavastike a", "pääomavastike b", "rahoitusvastike 1", "rahoitusvastike 2"],
   plotFeeMonthly: ["tontinvuokravastike", "tonttivastike", "maanvuokravastike", "valinnaisen vuokratontin vastike"],
   areaSqm: ["pinta-ala", "asuinpinta-ala", "huoneistoala", "yhtiöjärjestyksen mukainen pinta-ala", "pinta-ala yhtiöjärjestyksen mukaan"],
-  roomDescription: ["huoneistoselitelmä", "huoneistotyyppi", "huonejako", "asuinhuoneet", "huoneet", "kohteen tyyppi", "pohjaratkaisu"],
+  roomDescription: ["huoneistoselitelmä", "huoneistotyyppi", "huonejako", "huoneluku", "asuinhuoneet", "huoneet", "kohteen tyyppi", "pohjaratkaisu"],
   constructionYear: ["rakennusvuosi", "valmistumisvuosi", "käyttöönottovuosi", "valmistunut", "rakennettu"],
   floor: ["kerros", "sijaintikerros", "asuinkerros", "kerros / kerroksia"],
   condition: ["kunto", "asunnon kunto", "yleiskunto", "kuntoarvio"],
@@ -111,7 +113,7 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   streetAddress: ["katuosoite"],
   postalCode: ["postinumero"],
   district: ["kaupunginosa", "alue"],
-  apartmentIdentifier: ["huoneiston tunnus", "asunnon tunnus"],
+  apartmentIdentifier: ["huoneiston tunnus", "asunnon tunnus", "huoneiston numero", "huoneiston nro", "osakenumerot", "osakkeiden numerot"],
   listingTitle: ["ilmoituksen otsikko", "kohteen otsikko"],
   listingId: ["kohdenumero", "kohde nro", "kohde-id"],
   buildingType: ["talotyyppi", "rakennuksen tyyppi", "asuntotyyppi", "kohdetyyppi", "rakennustyyppi"],
@@ -125,7 +127,7 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   housingCompanyName: ["taloyhtiön nimi", "asunto-osakeyhtiön nimi", "yhtiön nimi", "taloyhtiö", "asunto-osakeyhtiö", "asunto oy", "as oy"],
   apartmentCount: ["huoneistoja", "asuntojen lukumäärä", "asuinhuoneistoja", "huoneistojen määrä"],
   landOwnership: ["tontin omistusmuoto", "tontin omistus", "tontin hallinta", "tontti", "oma tontti", "vuokratontti", "valinnainen vuokratontti", "lunastettava vuokratontti", "tonttiosuuden voi lunastaa", "valinnainen tontinvuokra"],
-  otherMonthlyFees: ["muut maksut", "muut kuukausittaiset maksut", "vesimaksu", "autopaikkamaksu", "saunamaksu"],
+  otherMonthlyFees: ["muut maksut", "muut kuukausittaiset maksut", "muu vastike", "erityisvastike", "laajakaistavastike", "vesimaksu", "autopaikkamaksu", "saunamaksu"],
   heatingType: ["lämmitystapa", "lämmitysmuoto", "lämmitysjärjestelmän kuvaus", "lämmitysjärjestelmä", "lämmitys"],
   energyClass: ["energialuokka", "energiatehokkuusluokka"],
   elevator: ["hissi", "onko talossa hissiä"],
@@ -135,6 +137,7 @@ export const fieldSynonyms: Record<NormalizedFieldKey, readonly string[]> = {
   sauna: ["sauna", "saunatyyppi"],
   parking: ["autopaikka", "autopaikat", "pysäköinti"],
   landRentAnnual: ["tontin vuosivuokra", "maanvuokra vuodessa", "tontin vuokra"],
+  landLeaseEndDate: ["tontin vuokrasopimus päättyy", "tontin vuokra-aika päättyy", "maanvuokrasopimus päättyy", "vuokrasopimuksen päättymispäivä"],
   plotShareRedemptionPrice: ["tonttiosuuden lunastushinta", "tonttiosuuden hinta", "lunastusosuus"],
   nextPlotShareRedemptionDate: ["seuraava lunastusajankohta", "tonttiosuuden lunastusajankohta"],
   articlesRedemptionClause: ["lunastuslauseke", "yhtiöjärjestyksen lunastuslauseke", "lunastusoikeus"],

@@ -9,8 +9,92 @@ import { Input } from "@/components/ui/input";
 import { brandName } from "@/core/i18n/display-values";
 import { getListingSourceFromUrl } from "@/core/parser/listing-parser";
 
-export function NewPropertyStart({ onListing, onDocuments, onManual }: { onListing: (url: string) => void; onDocuments: (files: FileList | null) => void; onManual: () => void }) {
-  const fileInput = useRef<HTMLInputElement>(null); const [url, setUrl] = useState(""); const [error, setError] = useState<string | null>(null);
-  function submit(event: FormEvent) { event.preventDefault(); const value = url.trim(); if (!value) return; let secure = false; try { secure = new URL(value).protocol === "https:"; } catch { /* Virhe näytetään alla. */ } if (!secure || !getListingSourceFromUrl(value)) { setError("Anna kelvollinen Etuovi- tai Oikotie-ilmoituksen HTTPS-linkki."); return; } setError(null); onListing(value); }
-  return <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,var(--color-success-soft),transparent_34%)] px-4 py-7 md:px-8 md:py-10"><div className="mx-auto max-w-4xl"><header><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-success text-white"><Search className="size-5" /></div><div><p className="font-semibold tracking-tight">{brandName}</p><Badge variant="outline" className="mt-1 bg-background">Ennakkoversio</Badge></div></div></header><section className="mx-auto mt-10 text-center md:mt-12"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-success">Uusi analyysi</p><h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Aloita uusi kohde</h1><p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">Valitse sinulle nopein tapa. Voit täydentää kohdetta myöhemmin asiakirjoilla ja omilla tiedoillasi.</p></section><section className="mt-8 space-y-5"><Card className="relative border-success/30 ring-2 ring-success/15"><Badge className="absolute right-4 top-4 bg-success text-white">Suositeltu</Badge><CardHeader className="pt-10"><div className="mb-2 grid size-10 place-items-center rounded-lg bg-success-soft text-success"><Search /></div><CardTitle>Hae tiedot myynti-ilmoituksesta</CardTitle><CardDescription>Liitä Etuovi- tai Oikotie-linkki, niin kohteen tiedot haetaan automaattisesti.</CardDescription></CardHeader><CardContent><form className="flex flex-col gap-3 sm:flex-row" onSubmit={submit}><Input aria-label="Etuovi- tai Oikotie-linkki" type="url" value={url} onChange={(event) => { setUrl(event.currentTarget.value); setError(null); }} placeholder="Liitä Etuovi- tai Oikotie-linkki" className="h-11 flex-1" aria-invalid={Boolean(error)} /><Button type="submit" size="lg" disabled={!url.trim()}><Search /> Hae tiedot</Button></form>{error ? <p role="alert" className="mt-3 flex items-center gap-2 text-sm text-danger"><AlertCircle className="size-4" />{error}</p> : null}</CardContent></Card><Card><CardHeader><div className="mb-2 grid size-10 place-items-center rounded-lg bg-muted text-foreground"><FileText /></div><CardTitle>Lisää asiakirjat</CardTitle><CardDescription>Lisää esimerkiksi myyntiesite tai isännöitsijäntodistus.</CardDescription></CardHeader><CardContent><input ref={fileInput} type="file" multiple className="sr-only" aria-label="Valitse lisättävät asiakirjat" onChange={(event) => onDocuments(event.currentTarget.files)} /><Button className="w-full sm:w-auto" variant="outline" size="lg" onClick={() => fileInput.current?.click()}>Lisää asiakirjat</Button></CardContent></Card><Card><CardHeader><div className="mb-2 grid size-10 place-items-center rounded-lg bg-muted text-foreground"><Keyboard /></div><CardTitle>Syötä tiedot itse</CardTitle><CardDescription>Luo uusi kohde ja täytä tiedot manuaalisesti.</CardDescription></CardHeader><CardContent><Button className="w-full sm:w-auto" variant="outline" size="lg" onClick={onManual}>Aloita tyhjästä</Button></CardContent></Card></section><p className="mt-7 text-center text-xs text-muted-foreground">Tietoja ei tallenneta ilman valintaasi.</p></div></main>;
+export function NewPropertyStart({
+  onListing,
+  onDocuments,
+  onManual,
+}: {
+  onListing: (url: string) => void;
+  onDocuments: (files: FileList | null) => Promise<void>;
+  onManual: () => void;
+}) {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const value = url.trim();
+    if (!value) return;
+    let secure = false;
+    try {
+      secure = new URL(value).protocol === "https:";
+    } catch {
+      /* Virhe näytetään alla. */
+    }
+    if (!secure || !getListingSourceFromUrl(value)) {
+      setError("Anna kelvollinen Etuovi- tai Oikotie-ilmoituksen HTTPS-linkki.");
+      return;
+    }
+    setError(null);
+    onListing(value);
+  }
+
+  async function addDocuments(files: FileList | null) {
+    if (!files?.length) return;
+    setDocumentsLoading(true);
+    setDocumentError(null);
+    try {
+      await onDocuments(files);
+    } catch (uploadError) {
+      setDocumentError(uploadError instanceof Error ? uploadError.message : "Asiakirjojen analysointi epäonnistui.");
+    } finally {
+      setDocumentsLoading(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,var(--color-success-soft),transparent_34%)] px-4 py-7 md:px-8 md:py-10">
+      <div className="mx-auto max-w-4xl">
+        <header>
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 place-items-center rounded-xl bg-success text-white"><Search className="size-5" /></div>
+            <div><p className="font-semibold tracking-tight">{brandName}</p><Badge variant="outline" className="mt-1 bg-background">Ennakkoversio</Badge></div>
+          </div>
+        </header>
+        <section className="mx-auto mt-10 text-center md:mt-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-success">Uusi analyysi</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Aloita uusi kohde</h1>
+          <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">Valitse sinulle nopein tapa. Voit täydentää kohdetta myöhemmin asiakirjoilla ja omilla tiedoillasi.</p>
+        </section>
+        <section className="mt-8 space-y-5">
+          <Card className="relative border-success/30 ring-2 ring-success/15">
+            <Badge className="absolute right-4 top-4 bg-success text-white">Suositeltu</Badge>
+            <CardHeader className="pt-10"><div className="mb-2 grid size-10 place-items-center rounded-lg bg-success-soft text-success"><Search /></div><CardTitle>Hae tiedot myynti-ilmoituksesta</CardTitle><CardDescription>Liitä Etuovi- tai Oikotie-linkki, niin kohteen tiedot haetaan automaattisesti.</CardDescription></CardHeader>
+            <CardContent>
+              <form className="flex flex-col gap-3 sm:flex-row" onSubmit={submit}><Input aria-label="Etuovi- tai Oikotie-linkki" type="url" value={url} onChange={(event) => { setUrl(event.currentTarget.value); setError(null); }} placeholder="Liitä Etuovi- tai Oikotie-linkki" className="h-11 flex-1" aria-invalid={Boolean(error)} /><Button type="submit" size="lg" disabled={!url.trim()}><Search /> Hae tiedot</Button></form>
+              {error ? <p role="alert" className="mt-3 flex items-center gap-2 text-sm text-danger"><AlertCircle className="size-4" />{error}</p> : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><div className="mb-2 grid size-10 place-items-center rounded-lg bg-muted text-foreground"><FileText /></div><CardTitle>Lisää asiakirjat</CardTitle><CardDescription>Lisää esimerkiksi myyntiesite tai isännöitsijäntodistus. Tiedosto analysoidaan ennen kohteen avaamista.</CardDescription></CardHeader>
+            <CardContent>
+              <input ref={fileInput} type="file" multiple accept=".pdf,.doc,.docx,.rtf,.txt" className="sr-only" aria-label="Valitse lisättävät asiakirjat" onChange={(event) => { void addDocuments(event.currentTarget.files); }} />
+              <Button type="button" className="w-full sm:w-auto" variant="outline" size="lg" disabled={documentsLoading} onClick={() => fileInput.current?.click()}>{documentsLoading ? "Analysoidaan asiakirjoja…" : "Lisää asiakirjat"}</Button>
+              {documentsLoading ? <p role="status" className="mt-3 text-sm text-muted-foreground">Luetaan asiakirjoja ja yhdistetään varmat tiedot analyysiin.</p> : null}
+              {documentError ? <p role="alert" className="mt-3 flex items-center gap-2 text-sm text-danger"><AlertCircle className="size-4" />{documentError}</p> : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><div className="mb-2 grid size-10 place-items-center rounded-lg bg-muted text-foreground"><Keyboard /></div><CardTitle>Syötä tiedot itse</CardTitle><CardDescription>Luo uusi kohde ja täytä tiedot manuaalisesti.</CardDescription></CardHeader>
+            <CardContent><Button type="button" className="w-full sm:w-auto" variant="outline" size="lg" onClick={onManual}>Aloita tyhjästä</Button></CardContent>
+          </Card>
+        </section>
+        <p className="mt-7 text-center text-xs text-muted-foreground">Tietoja ei tallenneta ilman valintaasi.</p>
+      </div>
+    </main>
+  );
 }

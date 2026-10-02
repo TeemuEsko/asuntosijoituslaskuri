@@ -4,7 +4,7 @@ import type { RuleStatus } from "@/core/rules/types";
 import { fieldStatusLabels, ruleStatusLabels } from "@/core/i18n/display-values";
 import { cn } from "@/lib/utils";
 
-export function SourceBadge({ status }: { status: FieldStatus }) {
+export function SourceBadge({ status, label }: { status: FieldStatus; label?: string }) {
   return (
     <Badge
       variant="outline"
@@ -17,7 +17,7 @@ export function SourceBadge({ status }: { status: FieldStatus }) {
         (status === "missing" || status === "unknown") && "border-warning/25 bg-warning-soft text-warning",
       )}
     >
-      {fieldStatusLabels[status]}
+      {label ?? fieldStatusLabels[status]}
     </Badge>
   );
 }

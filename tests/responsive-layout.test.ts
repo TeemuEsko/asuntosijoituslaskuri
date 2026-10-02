@@ -40,7 +40,13 @@ test("yläpalkki, otsikot ja toimintopainikkeet voivat rivittyä törmäämätt�
   assert.match(header, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
   assert.match(header, /truncate/);
   assert.match(header, /flex-wrap/);
-  for (const text of ["Ennakkoversio", "Luonnos", "Lisää dokumentteja", "Tallenna"]) assert.ok(header.includes(text));
+  for (const text of ["Ennakkoversio", "Luonnos", "Luo raportti"]) assert.ok(header.includes(text));
+  assert.doesNotMatch(header, /Lisää dokumentteja|>\s*Tallenna\s*</);
+  assert.match(header, /type="button"/);
+  assert.match(header, /<FileText data-icon="inline-start" \/>/);
+  assert.match(header, /disabled=!\{reportsAvailable\}|disabled=\{!reportsAvailable\}/);
+  assert.match(header, /getElementById\("raportit"\)/);
+  assert.match(header, /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/);
 });
 
 test("oletuskenttien grid vaihtuu yhdestä kahteen ja pankkirahoituksessa kolmeen sarakkeeseen", async () => {

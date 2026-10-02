@@ -20,12 +20,14 @@ type Row = { label: string; value: string; note?: string };
 export function FinancialOverviewCard({
   purchase,
   purchaseStatuses,
+  companyLoanSourceLabel,
   effectiveFinancingFee,
   assumptions,
   analysis,
 }: {
   purchase: Record<PurchaseFieldKey, number>;
   purchaseStatuses: Record<PurchaseFieldKey, FieldStatus>;
+  companyLoanSourceLabel?: string;
   effectiveFinancingFee?: number;
   assumptions: AssumptionValues;
   analysis: InvestmentAnalysisResult;
@@ -34,7 +36,9 @@ export function FinancialOverviewCard({
   const collateralTitle = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Vakuusvaje" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
   const collateralAmount = !collateralKnown ? undefined : analysis.collateralShortfall! > 0 ? analysis.collateralShortfall : analysis.collateralBuffer;
   const collateralNote = getCollateralGapGuidance(analysis.collateralShortfall);
-  const companyLoanNote = purchaseStatuses.companyLoanShare === "parser" || purchaseStatuses.companyLoanShare === "listing"
+  const companyLoanNote = purchaseStatuses.companyLoanShare === "document"
+    ? `Löydetty asiakirjasta: ${companyLoanSourceLabel ?? "taloyhtiön asiakirja"}.`
+    : purchaseStatuses.companyLoanShare === "parser" || purchaseStatuses.companyLoanShare === "listing"
     ? "Löydetty myynti-ilmoituksesta."
     : purchaseStatuses.companyLoanShare === "missing" || purchaseStatuses.companyLoanShare === "unknown"
       ? "Yhtiölainaosuuden määrää ei tiedetä."

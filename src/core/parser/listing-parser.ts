@@ -141,7 +141,7 @@ function normalizeFieldValue(field: NormalizedFieldKey, rawValue: string, fullLi
   if (field === "constructionYear") { const value = parseFinnishNumber(rawValue); return value !== null && value >= 1800 && value <= new Date().getFullYear() + 2 ? { value, unit: "vuosi" } : null; }
   if (field === "apartmentCount" || field === "floorCount") { const value = parseFinnishNumber(rawValue); return value !== null && value > 0 && Number.isInteger(value) ? { value } : null; }
   if (field === "floor") { const value = parseFloor(rawValue || fullLine); return value ? { value } : null; }
-  if (field === "roomDescription") { const value = parseRoomConfiguration(rawValue || fullLine); return value ? { value } : rawValue ? { value: rawValue.trim() } : null; }
+  if (field === "roomDescription") { const value = parseRoomConfiguration(rawValue || fullLine); if (value) return { value }; const explicitRoomCount = rawValue.trim().match(/^([1-9]\d?)$/)?.[1]; return explicitRoomCount ? { value: `${explicitRoomCount}h` } : rawValue ? { value: rawValue.trim() } : null; }
   if (field === "buildingType") { const value = parseBuildingType(rawValue || fullLine); return value ? { value } : rawValue ? { value: rawValue.trim() } : null; }
   if (field === "heatingType") { const value = normalizeHeatingType(rawValue || fullLine); return value ? { value } : null; }
   if (field === "currentRentMonthly") {
@@ -154,6 +154,7 @@ function normalizeFieldValue(field: NormalizedFieldKey, rawValue: string, fullLi
     return value !== null && value >= 0 ? { value, unit: squareRate !== null ? "€/m²/kk" : monthlyFields.has(field) ? "€/kk" : "€" } : null;
   }
   if (field === "landOwnership") { const value = normalizedText(`${rawValue} ${fullLine}`); if (/valinnainen|lunastettava|voi lunastaa/.test(value)) return { value: "optional_leasehold" }; if (/osittain oma/.test(value)) return { value: "partial_ownership" }; if (/vuokra/.test(value)) return { value: "leased" }; if (/oma tontti|oma$/.test(value)) return { value: "owned" }; if (/muu/.test(value)) return { value: "other" }; return null; }
+  if (field === "landLeaseEndDate") { const value = rawValue.trim(); return /^(?:\d{1,2}\.\d{1,2}\.(?:19|20)\d{2}|(?:19|20)\d{2})$/.test(value) ? { value } : null; }
   if (field === "elevator") { const value = normalizedText(rawValue); if (/^(kyllä|on)$|hissi on/.test(value)) return { value: "Kyllä" }; if (/^(ei|ei ole)$|ei hissiä/.test(value)) return { value: "Ei" }; return null; }
   return rawValue ? { value: rawValue.trim() } : null;
 }

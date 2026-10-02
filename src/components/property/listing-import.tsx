@@ -52,6 +52,7 @@ import type { NormalizedFieldKey } from "@/core/parser/synonyms";
 import { ImportSourceReview } from "./import-source-review";
 import { normalizeHeatingType } from "@/core/domain/heating";
 import { resolveEffectiveRent } from "@/core/rent-data/rent-estimation";
+import type { DocumentFieldProvenance } from "@/core/documents/types";
 
 type ImportMode = "url" | "text";
 type DecisionState = Record<
@@ -354,6 +355,7 @@ export function ListingImport({
       importReview: result ?? undefined,
       listingImageAnalysis: result?.listingImageAnalysis,
       visualCondition: result?.visualCondition,
+      documentProvenance: {},
     };
     for (const finding of result?.findings ?? []) {
       const state = decisions[finding.id];
@@ -373,8 +375,15 @@ export function ListingImport({
       if (
         (typeof valueToUse === "number" && Number.isFinite(valueToUse)) ||
         typeof valueToUse === "string"
-      )
+      ) {
         importedValues[finding.field] = valueToUse;
+        importedValues.documentProvenance![finding.field] = {
+          source: { kind: "user", label: "Käyttäjän tieto" },
+          status: "user",
+          sourceLabel: "Käyttäjän tieto",
+          confidence: "high",
+        };
+      }
     }
     onComplete(importedValues);
   }
@@ -403,7 +412,11 @@ export function ListingImport({
       const housingCompanyLoan = userDebtOverride
         ? resolveHousingCompanyLoan({ userOverride: typeof combined.companyLoanShare === "number" ? combined.companyLoanShare : undefined, debtFreePrice: typeof combined.debtFreePrice === "number" ? combined.debtFreePrice : undefined, salePrice: typeof combined.salePrice === "number" ? combined.salePrice : undefined, financingFeeMonthly: typeof combined.financingFeeMonthly === "number" ? combined.financingFeeMonthly : undefined })
         : result.housingCompanyLoan;
-      const canonicalPayload: ImportedPropertyData = { ...combined, rentEstimate: rentForValidation, renovations: result.renovations, housingCompanyRenovations: result.housingCompanyRenovations, housingCompanyLoan, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]), listingImageAnalysis: result.listingImageAnalysis, visualCondition: result.visualCondition };
+      const userConfirmedFields = new Set(Object.keys(userValues) as NormalizedFieldKey[]);
+      if (debtChoice !== null) { userConfirmedFields.add("companyLoanShare"); userConfirmedFields.add("financingFeeMonthly"); }
+      const documentProvenance: Partial<Record<NormalizedFieldKey, DocumentFieldProvenance>> = {};
+      for (const field of userConfirmedFields) documentProvenance[field] = { source: { kind: "user", label: "Käyttäjän tieto" }, status: "user", sourceLabel: "Käyttäjän tieto", confidence: "high" };
+      const canonicalPayload: ImportedPropertyData = { ...combined, documentProvenance, rentEstimate: rentForValidation, renovations: result.renovations, housingCompanyRenovations: result.housingCompanyRenovations, housingCompanyLoan, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]), listingImageAnalysis: result.listingImageAnalysis, visualCondition: result.visualCondition };
       if (process.env.NODE_ENV === "development") console.info("[analysis-update]", { submittedMissingFields: userValues, parsedNumericValues: Object.fromEntries(Object.entries(userValues).filter(([, value]) => typeof value === "number")), hasDebtShare: detectedDebt === "unknown" ? debtChoice : detectedDebt, debtShare: combined.companyLoanShare, financingFee: combined.financingFeeMonthly, canonicalPayload, validationErrors, analysisResult: validationErrors.length ? "invalid" : "ready", navigationTarget: "workspace" });
       if (validationErrors.length) throw new Error(validationErrors.join(", "));
       onComplete(canonicalPayload);
