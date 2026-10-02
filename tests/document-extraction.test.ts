@@ -236,7 +236,7 @@ test("tunnistamaton dokumenttilaji ei saa käyttäjän alustavan valinnan lähde
   );
 });
 
-test("providerin muu asiakirja -tunnistusta ei korvata käyttäjän alustavalla dokumenttilajilla", () => {
+test("paikallisen parserin muu asiakirja -tunnistusta ei korvata käyttäjän alustavalla dokumenttilajilla", () => {
   const result = normalizeDocumentExtraction({
     extraction: raw({
       documentType: "other",
@@ -256,7 +256,7 @@ test("providerin muu asiakirja -tunnistusta ei korvata käyttäjän alustavalla 
   );
 });
 
-test("providerin luotettava dokumenttilaji ohittaa käyttäjän alustavan valinnan", () => {
+test("paikallisen parserin luotettava dokumenttilaji ohittaa käyttäjän alustavan valinnan", () => {
   const result = normalizeDocumentExtraction({
     extraction: raw({
       documentType: "financial_statements",
@@ -272,7 +272,7 @@ test("providerin luotettava dokumenttilaji ohittaa käyttäjän alustavan valinn
   assert.equal(result.sourceLabel, "Tilinpäätös");
 });
 
-test("epäluotettavaksi merkitty provider-tyyppi ei saa käyttäjän alustavan valinnan lähdelabelia", () => {
+test("epäluotettavaksi merkitty parserityyppi ei saa käyttäjän alustavan valinnan lähdelabelia", () => {
   const result = normalizeDocumentExtraction({
     extraction: raw({
       documentType: "financial_statements",

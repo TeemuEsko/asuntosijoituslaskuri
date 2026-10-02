@@ -12,7 +12,14 @@ test("dokumenttiosio lähettää varsinaisen tiedoston analyysiin eikä merkitse
   assert.ok(source.indexOf('next[result.documentKind] = "analyzed"') > source.indexOf("await analyzePropertyDocument"));
   assert.match(source, /catch \(error\)/);
   assert.match(source, /\[kind\]: "failed"/);
-  assert.match(source, /accept="\.pdf,\.doc,\.docx,\.rtf,\.txt"/);
+  assert.match(source, /accept="\.pdf,\.txt"/);
+});
+
+test("skannatun asiakirjan palvelinviesti säilyy käyttöliittymään asti", async () => {
+  const client = await component("document-analysis-client.ts");
+  const coverage = await component("analysis-coverage-card.tsx");
+  assert.match(client, /typeof payload\.message === "string"/);
+  assert.match(coverage, /error instanceof Error \? error\.message/);
 });
 
 test("dokumenttiosio lukitsee rinnakkaisen latauksen ja kohdistaa tuloksen sekä virheen oikealle riville", async () => {

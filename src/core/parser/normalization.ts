@@ -15,7 +15,10 @@ export function parseFinnishNumber(input: string): number | null {
 
 export function parseMonthlyAmount(input: string): number | null {
   if (/(?:€|euroa?)\s*\/\s*m[²2]\s*\/\s*kk/i.test(input)) return null;
-  if (!/(?:€|euroa?|\be\b)\s*(?:\/\s*kk|kuukaudessa)/i.test(input)) return null;
+  if (/\b(?:vuodessa|vuosittain|vuosi)\b/i.test(input)) return null;
+  const hasMonthlyUnit = /(?:€|euroa?|\be\b)\s*(?:\/\s*kk|kuukaudessa)/i.test(input);
+  const namedMonthlyField = /^(?:hoitovastike|rahoitusvastike|pääomavastike(?:\s+[a-z0-9-]+)?|yhtiövastike(?:\s+yhteensä)?|vastikkeet\s+yhteensä|tonttivastike)(?=\s|:|$)/i.test(input.trim());
+  if (!hasMonthlyUnit && !(namedMonthlyField && /(?:€|euroa?|\be\b)/i.test(input))) return null;
   return parseFinnishNumber(input);
 }
 

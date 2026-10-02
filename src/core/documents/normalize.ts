@@ -53,7 +53,7 @@ function isRepairDocumentKind(value: DocumentType): value is UploadDocumentKind 
 }
 
 function resolvedDocumentType(documentType: DocumentType): DocumentType {
-  // declaredKind is only a user-selected analysis hint. Replacing the provider's
+  // declaredKind is only a user-selected analysis hint. Replacing the parser's
   // classification with it would attach a false document type and source label
   // to extracted data, especially for explicit "other" and "unknown" results.
   return documentType;
@@ -185,7 +185,7 @@ function roomCountFromConfiguration(value: string | undefined): number | null {
 }
 
 /**
- * Normalisoi mallin palauttamat, sanatarkat asiakirjaotteet olemassa olevan
+ * Normalisoi paikallisen parserin palauttamat, sanatarkat asiakirjaotteet olemassa olevan
  * suomalaisen ilmoitusparserin kautta. Vain korkean luottamuksen otteita
  * käytetään automaattisesti.
  */

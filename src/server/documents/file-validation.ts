@@ -3,9 +3,6 @@ const FIFTEEN_MEGABYTES = 15 * 1024 * 1024;
 const supportedMediaTypes = {
   ".pdf": ["application/pdf"],
   ".txt": ["text/plain"],
-  ".docx": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-  ".doc": ["application/msword"],
-  ".rtf": ["application/rtf", "text/rtf"],
 } as const;
 
 export type DocumentUploadErrorCode =
@@ -58,7 +55,7 @@ export function validateDocumentUpload(input: {
     return {
       ok: false,
       code: "UNSUPPORTED_DOCUMENT_FORMAT",
-      message: "Tiedostomuotoa ei tueta. Käytä PDF-, DOC-, DOCX-, RTF- tai TXT-tiedostoa.",
+      message: "Tiedostomuotoa ei tueta. Käytä PDF- tai TXT-tiedostoa.",
     };
   }
 

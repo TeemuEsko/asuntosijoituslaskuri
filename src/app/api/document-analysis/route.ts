@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { RepairDocumentKind } from "../../../core/rules/repair-history.ts";
 import { normalizeDocumentExtraction } from "../../../core/documents/normalize.ts";
-import {
-  DocumentAnalysisProviderError,
-  OpenAiDocumentAnalysisProvider,
-} from "../../../server/documents/openai-document-provider.ts";
+import { parseDeterministicDocument } from "../../../server/documents/deterministic-document-parser.ts";
 import { validateDocumentUpload } from "../../../server/documents/file-validation.ts";
+import {
+  extractLocalDocumentText,
+  LocalDocumentError,
+} from "../../../server/documents/local-document-text.ts";
 
 export const runtime = "nodejs";
 
@@ -55,31 +56,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return Response.json(
-      {
-        code: "DOCUMENT_ANALYSIS_FAILED",
-        message: "Asiakirjan analyysipalvelua ei ole määritetty palvelimelle.",
-      },
-      { status: 503 },
-    );
-  }
-
   const documentId = randomUUID();
   const declaredKind = declaredKindFromForm(form.get("declaredKind"));
 
   try {
-    const provider = new OpenAiDocumentAnalysisProvider({
-      apiKey,
-      model:
-        process.env.DOCUMENT_ANALYSIS_MODEL ??
-        process.env.VISUAL_CONDITION_MODEL ??
-        "gpt-5.6",
-    });
-    const extraction = await provider.analyzeDocument({
+    const text = await extractLocalDocumentText({
       bytes: new Uint8Array(await file.arrayBuffer()),
-      mediaType: validation.value.mediaType,
+      extension: validation.value.extension,
+    });
+    const extraction = parseDeterministicDocument({
+      text,
       fileName: file.name,
       declaredKind,
     });
@@ -91,10 +77,9 @@ export async function POST(request: Request) {
     });
     return Response.json(result);
   } catch (error) {
-    const code =
-      error instanceof DocumentAnalysisProviderError
-        ? error.code
-        : "DOCUMENT_ANALYSIS_FAILED";
+    const code = error instanceof LocalDocumentError
+      ? error.code
+      : "DOCUMENT_ANALYSIS_FAILED";
     return Response.json(
       {
         code,
@@ -103,7 +88,7 @@ export async function POST(request: Request) {
             ? error.message
             : "Asiakirjan analysointi epäonnistui.",
       },
-      { status: code === "TIMEOUT" ? 504 : 502 },
+      { status: code === "SCANNED_DOCUMENT" ? 422 : 400 },
     );
   }
 }

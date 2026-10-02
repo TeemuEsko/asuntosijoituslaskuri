@@ -82,7 +82,7 @@ export function NewPropertyStart({
           <Card>
             <CardHeader><div className="mb-2 grid size-10 place-items-center rounded-lg bg-muted text-foreground"><FileText /></div><CardTitle>Lisää asiakirjat</CardTitle><CardDescription>Lisää esimerkiksi myyntiesite tai isännöitsijäntodistus. Tiedosto analysoidaan ennen kohteen avaamista.</CardDescription></CardHeader>
             <CardContent>
-              <input ref={fileInput} type="file" multiple accept=".pdf,.doc,.docx,.rtf,.txt" className="sr-only" aria-label="Valitse lisättävät asiakirjat" onChange={(event) => { void addDocuments(event.currentTarget.files); }} />
+              <input ref={fileInput} type="file" multiple accept=".pdf,.txt" className="sr-only" aria-label="Valitse lisättävät asiakirjat" onChange={(event) => { void addDocuments(event.currentTarget.files); }} />
               <Button type="button" className="w-full sm:w-auto" variant="outline" size="lg" disabled={documentsLoading} onClick={() => fileInput.current?.click()}>{documentsLoading ? "Analysoidaan asiakirjoja…" : "Lisää asiakirjat"}</Button>
               {documentsLoading ? <p role="status" className="mt-3 text-sm text-muted-foreground">Luetaan asiakirjoja ja yhdistetään varmat tiedot analyysiin.</p> : null}
               {documentError ? <p role="alert" className="mt-3 flex items-center gap-2 text-sm text-danger"><AlertCircle className="size-4" />{documentError}</p> : null}

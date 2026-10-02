@@ -150,7 +150,9 @@ function normalizeFieldValue(field: NormalizedFieldKey, rawValue: string, fullLi
   }
   if (moneyFields.has(field)) {
     const squareRate = monthlyFields.has(field) ? parseSquareMeterRate(rawValue || fullLine) : null;
-    const value = squareRate ?? (monthlyFields.has(field) ? parseMonthlyAmount(rawValue || fullLine) : parseFinnishNumber(rawValue));
+    const value = squareRate ?? (monthlyFields.has(field)
+      ? parseMonthlyAmount(rawValue || fullLine) ?? parseMonthlyAmount(fullLine)
+      : parseFinnishNumber(rawValue));
     return value !== null && value >= 0 ? { value, unit: squareRate !== null ? "€/m²/kk" : monthlyFields.has(field) ? "€/kk" : "€" } : null;
   }
   if (field === "landOwnership") { const value = normalizedText(`${rawValue} ${fullLine}`); if (/valinnainen|lunastettava|voi lunastaa/.test(value)) return { value: "optional_leasehold" }; if (/osittain oma/.test(value)) return { value: "partial_ownership" }; if (/vuokra/.test(value)) return { value: "leased" }; if (/oma tontti|oma$/.test(value)) return { value: "owned" }; if (/muu/.test(value)) return { value: "other" }; return null; }
