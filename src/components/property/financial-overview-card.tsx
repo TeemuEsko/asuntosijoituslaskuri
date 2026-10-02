@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCollateralGapGuidance } from "@/core/analysis/collateral-gap-guidance";
 import type { InvestmentAnalysisResult, RepaymentType } from "@/core/calculations/investment-analysis";
 import type { FieldStatus } from "@/core/domain/field";
 import { formatFinnishNumber } from "@/core/parser/normalization";
@@ -32,6 +33,7 @@ export function FinancialOverviewCard({
   const collateralKnown = analysis.collateralShortfall !== undefined && analysis.collateralBuffer !== undefined;
   const collateralTitle = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Vakuusvaje" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
   const collateralAmount = !collateralKnown ? undefined : analysis.collateralShortfall! > 0 ? analysis.collateralShortfall : analysis.collateralBuffer;
+  const collateralNote = getCollateralGapGuidance(analysis.collateralShortfall);
   const companyLoanNote = purchaseStatuses.companyLoanShare === "parser" || purchaseStatuses.companyLoanShare === "listing"
     ? "Löydetty myynti-ilmoituksesta."
     : purchaseStatuses.companyLoanShare === "missing" || purchaseStatuses.companyLoanShare === "unknown"
@@ -78,7 +80,7 @@ export function FinancialOverviewCard({
       rows: [
         { label: "Pankin vakuusarvo", value: money(assumptions.collateralValue) },
         { label: "Pankkilaina", value: money(analysis.bankLoanAmount) },
-        { label: collateralTitle, value: money(collateralAmount) },
+        { label: collateralTitle, value: money(collateralAmount), note: collateralNote },
       ],
     },
   ];

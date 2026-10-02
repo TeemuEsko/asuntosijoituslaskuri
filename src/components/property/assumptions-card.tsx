@@ -14,7 +14,6 @@ import { rentDifference } from "@/core/rent-data/rent-estimation";
 import type { RentEstimate } from "@/core/rent-data/types";
 import { validateRentEstimate } from "@/core/financial-sanity-checks/rent";
 import { LocalizedNumberField } from "./localized-number-field";
-import { PropertyField } from "./property-field";
 import { RentalDemandSelector, type MarketAssessmentKind } from "./rental-demand-selector";
 import { SourceBadge } from "./status-badge";
 
@@ -89,7 +88,21 @@ function RentEstimateField({
       {comparison && benchmark ? <p className="text-sm text-muted-foreground">Alueellinen vertailuarvio {formatFinnishNumber(benchmark.effectiveMonthlyRent!)} €/kk · ero {comparison.euros >= 0 ? "+" : ""}{formatFinnishNumber(comparison.euros)} €/kk ({comparison.percent >= 0 ? "+" : ""}{formatFinnishNumber(comparison.percent, 1)} %)</p> : null}
       {editing ? (
         <div className="max-w-md space-y-3">
-          <PropertyField id="market-rent" label="Kuukausivuokra" status="user" suffix="€/kk" type="text" inputMode="decimal" value={draft} onChange={(event) => { setDraft(event.currentTarget.value); setValidationError(null); }} description="Syötä varsinainen kuukausivuokra ilman vesi-, autopaikka- tai muita käyttömaksuja." help="Syötä varsinainen kuukausivuokra ilman vesi-, autopaikka- tai muita käyttömaksuja." />
+          <LocalizedNumberField
+            id="market-rent"
+            numericInputKey="monthlyRent"
+            label="Kuukausivuokra"
+            status="user"
+            suffix="€/kk"
+            maximumFractionDigits={2}
+            value={estimate.effectiveMonthlyRent ?? undefined}
+            draftValue={draft}
+            onDraftValueChange={(value) => { setDraft(value); setValidationError(null); }}
+            onValueChange={(value) => { setValidationError(null); onOverride(value); }}
+            commitOnBlur={false}
+            description="Syötä varsinainen kuukausivuokra ilman vesi-, autopaikka- tai muita käyttömaksuja."
+            help="Syötä varsinainen kuukausivuokra ilman vesi-, autopaikka- tai muita käyttömaksuja."
+          />
           {validationError ? <p role="alert" className="text-sm text-danger">{validationError}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => {
@@ -155,10 +168,10 @@ export function AssumptionsCard({
         <CardHeader className="border-b"><CardTitle>B. Kuukausitulot ja -kulut</CardTitle><CardDescription>Jatkuvat tulot ja kulut vaikuttavat suoraan vuokratuottoon ja kassavirtaan.</CardDescription></CardHeader>
         <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
           <RentEstimateField estimate={rentEstimate} onOverride={onRentOverride} onRestore={onRentRestore} />
-          <LocalizedNumberField id="maintenance-fee" label="Hoitovastike" status={status("maintenanceFeeMonthly")} suffix="€/kk" min={0} maximumFractionDigits={2} value={values.maintenanceFeeMonthly} onValueChange={(value) => onChange("maintenanceFeeMonthly", value)} description="Taloyhtiön kuukausittainen hoitovastike. Ei sisällä rahoitusvastiketta." help="Taloyhtiön kuukausittainen hoitovastike. Rahoitusvastike annetaan omassa kentässään." />
-          <LocalizedNumberField id="financing-fee" label="Rahoitusvastike" status={financingFeeStatus} suffix="€/kk" min={0} maximumFractionDigits={2} value={financingFeeMonthly} allowUnknown disabled={financingFeeDisabled} onValueChange={onFinancingFeeChange} description={financingFeeDescription} help="Huoneistokohtaisen yhtiölainan kuukausittainen pääoma- tai rahoitusvastike. Jos yhtiölainaa ei ole, arvo päätellään nollaksi." />
-          <LocalizedNumberField id="other-costs" label="Muut kuukausikulut" status={status("otherCostsMonthly")} suffix="€/kk" min={0} maximumFractionDigits={2} value={values.otherCostsMonthly} onValueChange={(value) => onChange("otherCostsMonthly", value)} description="Vuokranantajan maksettavaksi jäävät jatkuvat kulut vastikkeiden lisäksi." help="Esimerkiksi vakuutus tai muu jatkuva omistajalle jäävä kulu. Älä lisää kertaluonteisia ostokuluja." />
-          <LocalizedNumberField id="vacancy-months" label="Arvioitu tyhjäkäynti" status={status("vacancyMonths")} suffix="kk / vuosi" min={0} max={12} maximumFractionDigits={1} value={values.vacancyMonths} onValueChange={(value) => onChange("vacancyMonths", value)} description="Arvio siitä, kuinka monta kuukautta asunto on keskimäärin ilman vuokralaista vuoden aikana." help={`Vuokrattuna arviolta ${formatFinnishNumber(12 - values.vacancyMonths, 1)} kuukautta vuodessa.`} />
+          <LocalizedNumberField id="maintenance-fee" numericInputKey="maintenanceFeeMonthly" label="Hoitovastike" status={status("maintenanceFeeMonthly")} suffix="€/kk" maximumFractionDigits={2} value={values.maintenanceFeeMonthly} onValueChange={(value) => onChange("maintenanceFeeMonthly", value)} description="Taloyhtiön kuukausittainen hoitovastike. Ei sisällä rahoitusvastiketta." help="Taloyhtiön kuukausittainen hoitovastike. Rahoitusvastike annetaan omassa kentässään." />
+          <LocalizedNumberField id="financing-fee" numericInputKey="financingFeeMonthly" label="Rahoitusvastike" status={financingFeeStatus} suffix="€/kk" maximumFractionDigits={2} value={financingFeeMonthly} allowUnknown disabled={financingFeeDisabled} onValueChange={onFinancingFeeChange} description={financingFeeDescription} help="Huoneistokohtaisen yhtiölainan kuukausittainen pääoma- tai rahoitusvastike. Jos yhtiölainaa ei ole, arvo päätellään nollaksi." />
+          <LocalizedNumberField id="other-costs" numericInputKey="otherCostsMonthly" label="Muut kuukausikulut" status={status("otherCostsMonthly")} suffix="€/kk" maximumFractionDigits={2} value={values.otherCostsMonthly} onValueChange={(value) => onChange("otherCostsMonthly", value)} description="Vuokranantajan maksettavaksi jäävät jatkuvat kulut vastikkeiden lisäksi." help="Esimerkiksi vakuutus tai muu jatkuva omistajalle jäävä kulu. Älä lisää kertaluonteisia ostokuluja." />
+          <LocalizedNumberField id="vacancy-months" numericInputKey="vacancyMonths" label="Arvioitu tyhjäkäynti" status={status("vacancyMonths")} suffix="kk / vuosi" maximumFractionDigits={1} value={values.vacancyMonths} onValueChange={(value) => onChange("vacancyMonths", value)} description="Arvio siitä, kuinka monta kuukautta asunto on keskimäärin ilman vuokralaista vuoden aikana." help={`Vuokrattuna arviolta ${formatFinnishNumber(12 - values.vacancyMonths, 1)} kuukautta vuodessa.`} />
         </CardContent>
       </Card>
 
@@ -166,8 +179,8 @@ export function AssumptionsCard({
         <CardHeader className="border-b"><CardTitle>C. Pankkirahoitus</CardTitle><CardDescription>Rahoitusoletukset määrittävät lainan maksuerän, kassavirran ja vakuustilanteen.</CardDescription></CardHeader>
         <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 min-[1600px]:grid-cols-3">
           <LocalizedNumberField id="bank-loan-amount" label="Pankkilainan määrä" status="inferred" suffix="€" maximumFractionDigits={1} value={bankLoanAmount} disabled description="Myyntihinnan ja kertaluonteisten hankintakulujen rahoitustarve vähennettynä sijoitetulla omalla pääomalla." help="Laskettu myyntihinnasta, remonttivarasta, varainsiirtoverosta, muista kaupantekokuluista ja omasta pääomasta." />
-          <LocalizedNumberField id="interest" label="Pankkilainan kokonaiskorko" status={status("annualInterestRate")} suffix="%" min={0} maximumFractionDigits={1} value={values.annualInterestRate} onValueChange={(value) => onChange("annualInterestRate", value)} description="Viitekorko ja pankin marginaali yhteensä." help="Syötä pankkilainan vuotuinen kokonaiskorko prosentteina." />
-          <LocalizedNumberField id="loan-term" label="Laina-aika" status={status("loanTermYears")} suffix="vuotta" min={1} maximumFractionDigits={1} value={values.loanTermYears} onValueChange={(value) => onChange("loanTermYears", value)} description="Pankkilainan takaisinmaksuaika vuosina." help="Laina-aika vaikuttaa kuukausierään ja lyhennyksen määrään." />
+          <LocalizedNumberField id="interest" numericInputKey="annualInterestRate" label="Pankkilainan kokonaiskorko" status={status("annualInterestRate")} suffix="%" maximumFractionDigits={1} value={values.annualInterestRate} onValueChange={(value) => onChange("annualInterestRate", value)} description="Viitekorko ja pankin marginaali yhteensä." help="Syötä pankkilainan vuotuinen kokonaiskorko prosentteina." />
+          <LocalizedNumberField id="loan-term" numericInputKey="loanTermYears" label="Laina-aika" status={status("loanTermYears")} suffix="vuotta" maximumFractionDigits={1} value={values.loanTermYears} onValueChange={(value) => onChange("loanTermYears", value)} description="Pankkilainan takaisinmaksuaika vuosina." help="Laina-aika vaikuttaa kuukausierään ja lyhennyksen määrään." />
           <div className="min-w-0 space-y-2">
             <div className="flex min-h-10 flex-wrap items-start justify-between gap-3"><Label>Lyhennystyyppi</Label><SourceBadge status={status("repaymentType")} /></div>
             <p className="min-h-8 text-xs leading-4 text-muted-foreground">Määrittää, miten pankkilainan lyhennys ja maksuerä muodostuvat.</p>
@@ -178,10 +191,10 @@ export function AssumptionsCard({
             <p className="text-xs leading-relaxed text-muted-foreground">{repayment.description}</p>
           </div>
           <div className="min-w-0 space-y-2">
-            <LocalizedNumberField id="equity" label="Sijoitettu oma pääoma" status={values.equityUserOverridden ? "user" : "default"} suffix="€" min={0} maximumFractionDigits={1} value={values.equity} onValueChange={(value) => onChange("equity", value)} description="Kaupantekoon käytettävä oma raha. Oletusarvo on 0 €." help="Oma pääoma pienentää laskennallista pankkilainan tarvetta. Oletus ei ole pankin hyväksymä rahoitusratkaisu." />
+            <LocalizedNumberField id="equity" numericInputKey="equity" label="Sijoitettu oma pääoma" status={values.equityUserOverridden ? "user" : "default"} suffix="€" maximumFractionDigits={1} value={values.equity} onValueChange={(value) => onChange("equity", value)} description="Kaupantekoon käytettävä oma raha. Oletusarvo on 0 €." help="Oma pääoma pienentää laskennallista pankkilainan tarvetta. Oletus ei ole pankin hyväksymä rahoitusratkaisu." />
             {values.equityUserOverridden ? <Button type="button" variant="ghost" size="sm" className="h-auto px-0 text-xs" onClick={onResetEquity}>Palauta 0 € oletus</Button> : null}
           </div>
-          <LocalizedNumberField id="collateral" label="Arvioitu vakuusarvo" status={status("collateralValue")} suffix="€" min={0} maximumFractionDigits={1} minimumFractionDigits={1} value={values.collateralValue} onValueChange={(value) => onChange("collateralValue", value)} description="Pankin kohteelle hyväksymä vakuusarvo. Tämä ei ole sama asia kuin kohteen markkinahinta." help="Vakuusarvo on pankin rahoituspäätöksessä käyttämä arvo. Tarkista todellinen vakuusarvo pankilta." />
+          <LocalizedNumberField id="collateral" numericInputKey="collateralValue" label="Arvioitu vakuusarvo" status={status("collateralValue")} suffix="€" maximumFractionDigits={1} minimumFractionDigits={1} value={values.collateralValue} onValueChange={(value) => onChange("collateralValue", value)} description="Pankin kohteelle hyväksymä vakuusarvo. Tämä ei ole sama asia kuin kohteen markkinahinta." help="Vakuusarvo on pankin rahoituspäätöksessä käyttämä arvo. Tarkista todellinen vakuusarvo pankilta." />
         </CardContent>
       </Card>
 

@@ -47,10 +47,10 @@ export function PurchaseCard({
         <div data-price-row className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <LocalizedNumberField
             id="purchase-debtFreePrice"
+            numericInputKey="debtFreePrice"
             label="Velaton hinta"
             status={statuses.debtFreePrice}
             suffix="€"
-            min={0}
             maximumFractionDigits={1}
             value={values.debtFreePrice}
             onValueChange={(value) => onChange("debtFreePrice", value)}
@@ -60,10 +60,10 @@ export function PurchaseCard({
           />
           <LocalizedNumberField
             id="purchase-salePrice"
+            numericInputKey="salePrice"
             label="Myyntihinta"
             status={statuses.salePrice}
             suffix="€"
-            min={0}
             maximumFractionDigits={1}
             value={values.salePrice}
             onValueChange={(value) => onChange("salePrice", value)}
@@ -74,10 +74,10 @@ export function PurchaseCard({
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <LocalizedNumberField
             id="purchase-renovationReserve"
+            numericInputKey="renovationReserve"
             label="Remonttivara"
             status={statuses.renovationReserve}
             suffix="€"
-            min={0}
             maximumFractionDigits={1}
             value={values.renovationReserve}
             onValueChange={(value) => onChange("renovationReserve", value)}
@@ -98,10 +98,10 @@ export function PurchaseCard({
           </div>
           <LocalizedNumberField
             id="transfer-tax"
+            numericInputKey="transferTaxRate"
             label="Varainsiirtovero"
             status={transferTaxStatus}
             suffix="%"
-            min={0}
             maximumFractionDigits={1}
             value={transferTaxRate}
             onValueChange={(value) => onAssumptionChange("transferTaxRate", value)}
@@ -110,10 +110,10 @@ export function PurchaseCard({
           />
           <LocalizedNumberField
             id="transaction-costs"
+            numericInputKey="transactionCosts"
             label="Muut kaupantekokulut"
             status={transactionCostsStatus}
             suffix="€"
-            min={0}
             maximumFractionDigits={1}
             value={transactionCosts}
             onValueChange={(value) => onAssumptionChange("transactionCosts", value)}
