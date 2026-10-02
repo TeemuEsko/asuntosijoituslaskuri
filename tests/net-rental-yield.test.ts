@@ -6,13 +6,21 @@ import {
   classifyNetRentalYield,
   type NetRentalYieldClassification,
 } from "../src/core/analysis/net-rental-yield.ts";
-import { metricCardState, type MetricCardStatus } from "../src/core/analysis/metric-card-status.ts";
-import { calculateInvestmentAnalysis, netYieldScore } from "../src/core/calculations/investment-analysis.ts";
+import {
+  metricCardState,
+  type MetricCardStatus,
+} from "../src/core/analysis/metric-card-status.ts";
+import {
+  calculateInvestmentAnalysis,
+  netYieldScore,
+} from "../src/core/calculations/investment-analysis.ts";
 import { buildAnalysisReportData } from "../src/core/reports/analysis-report.ts";
 import { evaluateInvestmentObservations } from "../src/core/rules/investment-observations.ts";
 import { formatFinnishNumber } from "../src/core/parser/normalization.ts";
 
-const boundaries: ReadonlyArray<readonly [number, NetRentalYieldClassification, MetricCardStatus]> = [
+const boundaries: ReadonlyArray<
+  readonly [number, NetRentalYieldClassification, MetricCardStatus]
+> = [
   [4.99, "Heikko", "negative"],
   [5, "Välttävä", "warning"],
   [6.49, "Välttävä", "warning"],
@@ -40,19 +48,37 @@ const analysisInput = (monthlyRent: number) => ({
   repairHistoryKnown: true,
 });
 
-const yieldObservations = (netYield: number) => evaluateInvestmentObservations({
-  netYield,
-  vacancyMonths: 0,
-  repairHistoryKnown: true,
-  loanKnown: true,
-});
+const yieldObservations = (netYield: number) =>
+  evaluateInvestmentObservations({
+    netYield,
+    vacancyMonths: 0,
+    repairHistoryKnown: true,
+    loanKnown: true,
+  });
 
 test("nettovuokratuoton rajat ja luokittelu ovat keskitettyjä", () => {
-  assert.deepEqual(NET_RENTAL_YIELD_THRESHOLDS, { poor: 5, moderate: 6.5, good: 8, excellent: 10 });
+  assert.deepEqual(NET_RENTAL_YIELD_THRESHOLDS, {
+    poor: 5,
+    moderate: 6.5,
+    good: 8,
+    excellent: 10,
+  });
   for (const [value, classification, status] of boundaries) {
-    assert.equal(classifyNetRentalYield(value), classification, `${value} % luokittelu`);
-    assert.equal(metricCardState("netRentalYield", value).statusLabel, classification, `${value} % web-label`);
-    assert.equal(metricCardState("netRentalYield", value).status, status, `${value} % väritila`);
+    assert.equal(
+      classifyNetRentalYield(value),
+      classification,
+      `${value} % luokittelu`,
+    );
+    assert.equal(
+      metricCardState("netRentalYield", value).statusLabel,
+      classification,
+      `${value} % web-label`,
+    );
+    assert.equal(
+      metricCardState("netRentalYield", value).status,
+      status,
+      `${value} % väritila`,
+    );
   }
   assert.equal(classifyNetRentalYield(Number.NaN), undefined);
   assert.equal(classifyNetRentalYield(Number.POSITIVE_INFINITY), undefined);
@@ -65,7 +91,8 @@ test("nettovuokratuoton score nousee asteittain ilman 8 prosentin rajahyppyä", 
   assert.equal(netYieldScore(8), 80);
   assert.equal(netYieldScore(10), 100);
   const values = boundaries.map(([value]) => netYieldScore(value));
-  for (let index = 1; index < values.length; index += 1) assert.ok(values[index]! >= values[index - 1]!);
+  for (let index = 1; index < values.length; index += 1)
+    assert.ok(values[index]! >= values[index - 1]!);
   assert.ok(netYieldScore(8) - netYieldScore(7.99) < 0.25);
 });
 
@@ -77,13 +104,40 @@ test("alle 8 prosentin tuotto ei ole vahvuus, mutta hyvä ja erittäin hyvä tuo
   const nearlyExcellent = yieldObservations(9.99);
   const excellent = yieldObservations(10);
 
-  assert.ok(weak.some((item) => item.id === "low-net-yield" && item.type === "risk"));
+  assert.ok(
+    weak.some((item) => item.id === "low-net-yield" && item.type === "risk"),
+  );
   assert.ok(!acceptable.some((item) => item.id === "low-net-yield"));
-  assert.ok(!belowTarget.some((item) => item.category === "yield" && item.type === "strength"));
-  assert.ok(!belowTarget.some((item) => /Hyvä nettovuokratuotto/.test(item.title)));
-  assert.ok(good.some((item) => item.id === "good-net-yield" && item.title === "Hyvä nettovuokratuotto" && item.scoreImpact === 0));
-  assert.ok(nearlyExcellent.some((item) => item.id === "good-net-yield" && item.title === "Hyvä nettovuokratuotto"));
-  assert.ok(excellent.some((item) => item.id === "excellent-net-yield" && item.title === "Erittäin hyvä nettovuokratuotto" && item.scoreImpact === 0));
+  assert.ok(
+    !belowTarget.some(
+      (item) => item.category === "yield" && item.type === "strength",
+    ),
+  );
+  assert.ok(
+    !belowTarget.some((item) => /Hyvä nettovuokratuotto/.test(item.title)),
+  );
+  assert.ok(
+    good.some(
+      (item) =>
+        item.id === "good-net-yield" &&
+        item.title === "Hyvä nettovuokratuotto" &&
+        item.scoreImpact === 0,
+    ),
+  );
+  assert.ok(
+    nearlyExcellent.some(
+      (item) =>
+        item.id === "good-net-yield" && item.title === "Hyvä nettovuokratuotto",
+    ),
+  );
+  assert.ok(
+    excellent.some(
+      (item) =>
+        item.id === "excellent-net-yield" &&
+        item.title === "Erittäin hyvä nettovuokratuotto" &&
+        item.scoreImpact === 0,
+    ),
+  );
 });
 
 test("canonical analyysi säilyttää laskentakaavan ja käyttää uutta luokitusta ilman score-hyppyä", () => {
@@ -94,12 +148,27 @@ test("canonical analyysi säilyttää laskentakaavan ja käyttää uutta luokitu
   assert.equal(belowTarget.netRentalYield, 7.99);
   assert.equal(good.netRentalYield, 8);
   assert.equal(excellent.netRentalYield, 10);
-  assert.equal(belowTarget.netRentalYieldClassification, "Kohtalainen / alle tavoitetason");
+  assert.equal(
+    belowTarget.netRentalYieldClassification,
+    "Kohtalainen / alle tavoitetason",
+  );
   assert.equal(good.netRentalYieldClassification, "Hyvä");
   assert.equal(excellent.netRentalYieldClassification, "Erittäin hyvä");
-  assert.ok(!(belowTarget.positiveFactors ?? []).some((item) => /Hyvä nettovuokratuotto/.test(item)));
-  assert.ok((good.positiveFactors ?? []).some((item) => /Hyvä nettovuokratuotto/.test(item)));
-  assert.ok((excellent.positiveFactors ?? []).some((item) => /Erittäin hyvä nettovuokratuotto/.test(item)));
+  assert.ok(
+    !(belowTarget.positiveFactors ?? []).some((item) =>
+      /Hyvä nettovuokratuotto/.test(item),
+    ),
+  );
+  assert.ok(
+    (good.positiveFactors ?? []).some((item) =>
+      /Hyvä nettovuokratuotto/.test(item),
+    ),
+  );
+  assert.ok(
+    (excellent.positiveFactors ?? []).some((item) =>
+      /Erittäin hyvä nettovuokratuotto/.test(item),
+    ),
+  );
   assert.ok(Math.abs(good.score - belowTarget.score) <= 1);
 
   const formulaCheck = calculateInvestmentAnalysis({
@@ -110,7 +179,9 @@ test("canonical analyysi säilyttää laskentakaavan ja käyttää uutta luokitu
     vacancyMonths: 1,
   });
   assert.equal(formulaCheck.effectiveAnnualRent, 11_000);
-  assert.ok(Math.abs(formulaCheck.netRentalYield! - 5_600 / 120_000 * 100) < 1e-12);
+  assert.ok(
+    Math.abs(formulaCheck.netRentalYield! - (5_600 / 120_000) * 100) < 1e-12,
+  );
 });
 
 test("heikko nettovuokratuotto säilyttää sijoitusscoren turvarajan", () => {
@@ -130,28 +201,60 @@ test("heikko nettovuokratuotto säilyttää sijoitusscoren turvarajan", () => {
 });
 
 test("nykyinen raportti ja analyysidata käyttävät samaa canonical luokitusta kuin web-analyysi", async () => {
-  for (const [monthlyRent, expectedClassification] of [[799, "Kohtalainen / alle tavoitetason"], [800, "Hyvä"], [1_000, "Erittäin hyvä"]] as const) {
+  for (const [monthlyRent, expectedClassification] of [
+    [799, "Kohtalainen / alle tavoitetason"],
+    [800, "Hyvä"],
+    [1_000, "Erittäin hyvä"],
+  ] as const) {
     const input = analysisInput(monthlyRent);
     const analysis = calculateInvestmentAnalysis(input);
     const report = buildAnalysisReportData(input, analysis);
     assert.deepEqual(report.analysis, analysis);
-    assert.equal(report.analysis.netRentalYieldClassification, expectedClassification);
-    assert.equal(report.analysis.netRentalYieldClassification, metricCardState("netRentalYield", report.analysis.netRentalYield).statusLabel);
+    assert.equal(
+      report.analysis.netRentalYieldClassification,
+      expectedClassification,
+    );
+    assert.equal(
+      report.analysis.netRentalYieldClassification,
+      metricCardState("netRentalYield", report.analysis.netRentalYield)
+        .statusLabel,
+    );
   }
 
   const [workspace, reports, offerPrice] = await Promise.all([
-    readFile(new URL("../src/components/property/property-workspace.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/property/reports-card.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../src/components/property/offer-price-card.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../src/components/property/property-workspace.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL("../src/components/property/reports-card.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../src/components/property/offer-price-card.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
   ]);
   assert.match(workspace, /<KeyMetrics analysis=\{overallScore\}/);
-  assert.match(workspace, /<ReportsCard[^>]+analysis=\{overallScore\}/);
+  assert.match(workspace, /<ReportsCard \/>/);
   assert.match(reports, /window\.print\(\)/);
   assert.match(reports, /Tulosta tai tallenna PDF/);
-  assert.match(reports, /Lataa analyysidata/);
+  assert.doesNotMatch(reports, /Lataa analyysidata/);
   assert.equal(reports.match(/Tulosta tai tallenna PDF/g)?.length, 1);
-  assert.equal(reports.match(/Lataa analyysidata/g)?.length, 1);
-  assert.match(offerPrice, /useState<number>\(NET_RENTAL_YIELD_THRESHOLDS\.good\)/);
-  const summary = await readFile(new URL("../src/components/property/analysis-summary.tsx", import.meta.url), "utf8");
+  assert.equal(reports.match(/Lataa analyysidata/g)?.length, undefined);
+  assert.match(
+    offerPrice,
+    /useState<number>\(NET_RENTAL_YIELD_THRESHOLDS\.good\)/,
+  );
+  const summary = await readFile(
+    new URL("../src/components/property/analysis-summary.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(summary, /percent\(analysis\.netRentalYield, 2\)/);
 });

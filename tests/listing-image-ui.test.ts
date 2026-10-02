@@ -11,7 +11,7 @@ test("URL-valmistelu kertoo ilmoituskuvien automaattisesta analyysistä", async 
 test("käsinlataus on tuloksen jälkeen avattava lisätoiminto tai hallittu varavaihtoehto", async () => {
   const source = await readFile(new URL("../src/components/property/visual-condition-card.tsx", import.meta.url), "utf8");
   assert.match(source, /Ilmoituksen kuvia ei voitu analysoida automaattisesti/);
-  assert.match(source, /Voit halutessasi lisätä kuvat itse visuaalista kuntoarviota varten/);
+  assert.match(source, /Voit halutessasi lisätä kuvat itse visuaalista kuntoarviota\s+varten/);
   assert.match(source, /Lisää omia kuvia/);
   assert.match(source, /Jatka ilman kuva-analyysiä/);
   assert.doesNotMatch(source, /Myynti-ilmoituksen kuvia ei haeta automaattisesti/);

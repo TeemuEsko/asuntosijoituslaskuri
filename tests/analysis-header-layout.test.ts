@@ -1,18 +1,194 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { analysisFacts, analysisTitle, showFloor } from "../src/core/analysis/analysis-presentation.ts";
-import { parseBuildingType, parseFloor, parseRoomConfiguration } from "../src/core/parser/normalization.ts";
+import {
+  analysisFacts,
+  analysisTitle,
+  showFloor,
+} from "../src/core/analysis/analysis-presentation.ts";
+import {
+  parseBuildingType,
+  parseFloor,
+  parseRoomConfiguration,
+} from "../src/core/parser/normalization.ts";
 import { parseListingText } from "../src/core/parser/listing-parser.ts";
 
-test("otsikko käyttää osoitetta, ilmoitusotsikkoa ja turvallista fallbackia", () => { assert.equal(analysisTitle({ address: "Keskuskatu 12 A 4", city: "Vaasa" }), "Keskuskatu 12 A 4, Vaasa"); assert.equal(analysisTitle({ listingTitle: "Kolmio keskustassa" }), "Kolmio keskustassa"); assert.equal(analysisTitle({}), "Analysoitu sijoituskohde"); });
-test("perustietorivi sisältää vain saatavilla olevat arvot", () => { assert.deepEqual(analysisFacts({ roomDescription: "3h + k + s", areaSqm: 99.6, buildingType: "terraced", constructionYear: 1964, floor: "1 / 2" }), ["3h + k + s", "99,6 m²", "Rivitalo", "Rakennusvuosi 1964"]); assert.deepEqual(analysisFacts({ areaSqm: 45, buildingType: "apartment", floor: "2 / 5" }), ["45 m²", "Kerrostalo", "Kerros 2 / 5"]); });
-test("huonejako, rakennustyyppi ja kerros normalisoituvat", () => { assert.equal(parseRoomConfiguration("3h, k, s"), "3h + k + s"); assert.equal(parseRoomConfiguration("2 huonetta ja keittiö"), "2h + k"); assert.equal(parseBuildingType("Valoisa rivitaloasunto"), "terraced"); assert.equal(parseBuildingType("Kerrostalo keskustassa"), "apartment"); assert.equal(parseFloor("katutaso"), "Katutaso"); assert.equal(showFloor("terraced", "1 / 2"), false); assert.equal(showFloor("apartment", "2 / 5"), true); });
-test("huonejako ja rakennustyyppi johdetaan ilmoituksen otsikosta", () => { const result = parseListingText("", "etuovi", [{ field: "listingTitle", value: "3h + k + s, rivitalo Vaasa", label: "otsikko", excerpt: "h1" }]); assert.equal(result.findings.find((item) => item.field === "roomDescription")?.normalizedValue, "3h + k + s"); assert.equal(result.findings.find((item) => item.field === "buildingType")?.normalizedValue, "terraced"); });
-test("tontin omistusmuodot parsitaan automaattisesti", () => { for (const [input, expected] of [["Oma tontti", "owned"], ["Vuokratontti", "leased"], ["Valinnainen vuokratontti", "optional_leasehold"]] as const) assert.equal(parseListingText(`Tontin omistusmuoto: ${input}`).findings[0]?.normalizedValue, expected); });
-test("saatavilla oleva kuntotieto parsitaan", () => { assert.equal(parseListingText("Asunnon kunto: Hyvä").findings.find((item) => item.field === "condition")?.normalizedValue, "Hyvä"); });
-test("analyysi etenee lähtötiedoista huomioihin, raportteihin ja yksityiskohtiin", async () => { const workspace = await readFile(new URL("../src/components/property/property-workspace.tsx", import.meta.url), "utf8"); const parser = workspace.indexOf("<ParserAnalysisSummary"); const prices = workspace.indexOf("<PurchaseCard"); const assumptions = workspace.indexOf("<AssumptionsCard"); const calculations = workspace.indexOf("<KeyMetrics"); const score = workspace.indexOf("<InvestmentOverallScore"); const highlights = workspace.indexOf("<AnalysisHighlights"); const reports = workspace.indexOf("<ReportsCard"); const evaluation = workspace.indexOf("<ProfessionalEvaluationCard"); const details = workspace.indexOf("<VisualConditionCard"); const documents = workspace.indexOf("<AnalysisCoverageCard"); const sources = workspace.indexOf("<ImportSourceReview"); assert.ok(parser > 0 && prices > parser && assumptions > prices && calculations > assumptions && score > calculations && highlights > score && reports > highlights && evaluation > reports && details > evaluation && documents > details && sources > documents); assert.equal(workspace.match(/<ReportsCard/g)?.length, 1); assert.equal(workspace.match(/<ProfessionalEvaluationCard/g)?.length, 1); assert.doesNotMatch(workspace, /PropertyDetailsCard|>Kohteen tiedot</); for (const value of ["Talous ja rahoitus", "Laskennan yhteenveto", "Dokumentit ja lähtötiedot", "analysisReady ?"]) assert.ok(workspace.includes(value)); });
-test("tarjoushintasimulaattori ei näy työtilassa mutta komponentti ja laskentalogiikka säilyvät", async () => { const workspace = await readFile(new URL("../src/components/property/property-workspace.tsx", import.meta.url), "utf8"); const component = await readFile(new URL("../src/components/property/offer-price-card.tsx", import.meta.url), "utf8"); const calculation = await readFile(new URL("../src/core/calculations/offer-price.ts", import.meta.url), "utf8"); assert.doesNotMatch(workspace, /OfferPriceCard|offer-price-card/); assert.match(component, /export function OfferPriceCard/); assert.match(calculation, /export function simulateMaximumOfferPrice/); });
-test("raporttiosio on vakaa sticky-offsetin huomioiva vierityskohde", async () => { const reports = await readFile(new URL("../src/components/property/reports-card.tsx", import.meta.url), "utf8"); assert.match(reports, /id="raportit"/); assert.match(reports, /scroll-mt-40/); assert.match(reports, /sm:scroll-mt-24/); assert.match(reports, /Tulosta tai tallenna PDF/); assert.match(reports, /Lataa analyysidata/); });
-test("työtilan brändit ovat saavutettavia etusivulinkkejä", async () => { for (const file of ["workspace-sidebar.tsx", "workspace-header.tsx"]) { const source = await readFile(new URL(`../src/components/property/${file}`, import.meta.url), "utf8"); assert.match(source, /import Link from "next\/link"/); assert.match(source, /<Link href="\/" aria-label="Siirry etusivulle"/); assert.match(source, /cursor-pointer/); assert.match(source, /focus-visible:ring/); } });
-test("puuttuvat kentät ja suuret tonttilomakkeet eivät renderöidy", async () => { const details = await readFile(new URL("../src/components/property/details-cards.tsx", import.meta.url), "utf8"); assert.doesNotMatch(details, /SelectField|SelectTrigger|placeholder="Ei tiedossa"/); assert.match(details, /if \(present\(importedData\.landOwnership\)\)/); assert.match(details, /if \(present\(importedData\.condition\)\)/); });
+test("otsikko käyttää osoitetta, ilmoitusotsikkoa ja turvallista fallbackia", () => {
+  assert.equal(
+    analysisTitle({ address: "Keskuskatu 12 A 4", city: "Vaasa" }),
+    "Keskuskatu 12 A 4, Vaasa",
+  );
+  assert.equal(
+    analysisTitle({ listingTitle: "Kolmio keskustassa" }),
+    "Kolmio keskustassa",
+  );
+  assert.equal(analysisTitle({}), "Analysoitu sijoituskohde");
+});
+test("perustietorivi sisältää vain saatavilla olevat arvot", () => {
+  assert.deepEqual(
+    analysisFacts({
+      roomDescription: "3h + k + s",
+      areaSqm: 99.6,
+      buildingType: "terraced",
+      constructionYear: 1964,
+      floor: "1 / 2",
+    }),
+    ["3h + k + s", "99,6 m²", "Rivitalo", "Rakennusvuosi 1964"],
+  );
+  assert.deepEqual(
+    analysisFacts({ areaSqm: 45, buildingType: "apartment", floor: "2 / 5" }),
+    ["45 m²", "Kerrostalo", "Kerros 2 / 5"],
+  );
+});
+test("huonejako, rakennustyyppi ja kerros normalisoituvat", () => {
+  assert.equal(parseRoomConfiguration("3h, k, s"), "3h + k + s");
+  assert.equal(parseRoomConfiguration("2 huonetta ja keittiö"), "2h + k");
+  assert.equal(parseBuildingType("Valoisa rivitaloasunto"), "terraced");
+  assert.equal(parseBuildingType("Kerrostalo keskustassa"), "apartment");
+  assert.equal(parseFloor("katutaso"), "Katutaso");
+  assert.equal(showFloor("terraced", "1 / 2"), false);
+  assert.equal(showFloor("apartment", "2 / 5"), true);
+});
+test("huonejako ja rakennustyyppi johdetaan ilmoituksen otsikosta", () => {
+  const result = parseListingText("", "etuovi", [
+    {
+      field: "listingTitle",
+      value: "3h + k + s, rivitalo Vaasa",
+      label: "otsikko",
+      excerpt: "h1",
+    },
+  ]);
+  assert.equal(
+    result.findings.find((item) => item.field === "roomDescription")
+      ?.normalizedValue,
+    "3h + k + s",
+  );
+  assert.equal(
+    result.findings.find((item) => item.field === "buildingType")
+      ?.normalizedValue,
+    "terraced",
+  );
+});
+test("tontin omistusmuodot parsitaan automaattisesti", () => {
+  for (const [input, expected] of [
+    ["Oma tontti", "owned"],
+    ["Vuokratontti", "leased"],
+    ["Valinnainen vuokratontti", "optional_leasehold"],
+  ] as const)
+    assert.equal(
+      parseListingText(`Tontin omistusmuoto: ${input}`).findings[0]
+        ?.normalizedValue,
+      expected,
+    );
+});
+test("saatavilla oleva kuntotieto parsitaan", () => {
+  assert.equal(
+    parseListingText("Asunnon kunto: Hyvä").findings.find(
+      (item) => item.field === "condition",
+    )?.normalizedValue,
+    "Hyvä",
+  );
+});
+test("analyysi etenee lähtötiedoista huomioihin, raportteihin ja yksityiskohtiin", async () => {
+  const workspace = await readFile(
+    new URL(
+      "../src/components/property/property-workspace.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const parser = workspace.indexOf("<ParserAnalysisSummary");
+  const prices = workspace.indexOf("<PurchaseCard");
+  const assumptions = workspace.indexOf("<AssumptionsCard");
+  const calculations = workspace.indexOf("<KeyMetrics");
+  const score = workspace.indexOf("<InvestmentOverallScore");
+  const highlights = workspace.indexOf("<AnalysisHighlights");
+  const reports = workspace.indexOf("<ReportsCard");
+  const evaluation = workspace.indexOf("<ProfessionalEvaluationCard");
+  const details = workspace.indexOf("<VisualConditionCard");
+  const sources = workspace.indexOf("<ImportSourceReview");
+  assert.ok(
+    parser > 0 &&
+      prices > parser &&
+      assumptions > prices &&
+      calculations > assumptions &&
+      score > calculations &&
+      highlights > score &&
+      reports > highlights &&
+      evaluation > reports &&
+      details > evaluation &&
+      sources > details,
+  );
+  assert.equal(workspace.match(/<ReportsCard/g)?.length, 1);
+  assert.equal(workspace.match(/<ProfessionalEvaluationCard/g)?.length, 1);
+  assert.doesNotMatch(
+    workspace,
+    /PropertyDetailsCard|>Kohteen tiedot|AnalysisCoverageCard|Dokumentit ja lähtötiedot/,
+  );
+  for (const value of [
+    "Talous ja rahoitus",
+    "Laskennan yhteenveto",
+    "Myynti-ilmoituksen lähtötiedot ja lähteet",
+    "analysisReady ?",
+  ])
+    assert.ok(workspace.includes(value));
+});
+test("tarjoushintasimulaattori ei näy työtilassa mutta komponentti ja laskentalogiikka säilyvät", async () => {
+  const workspace = await readFile(
+    new URL(
+      "../src/components/property/property-workspace.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const component = await readFile(
+    new URL("../src/components/property/offer-price-card.tsx", import.meta.url),
+    "utf8",
+  );
+  const calculation = await readFile(
+    new URL("../src/core/calculations/offer-price.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(workspace, /OfferPriceCard|offer-price-card/);
+  assert.match(component, /export function OfferPriceCard/);
+  assert.match(calculation, /export function simulateMaximumOfferPrice/);
+});
+test("raporttiosio on vakaa sticky-offsetin huomioiva vierityskohde ja tarjoaa vain ensisijaisen PDF-toiminnon", async () => {
+  const reports = await readFile(
+    new URL("../src/components/property/reports-card.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(reports, /id="raportit"/);
+  assert.match(reports, /scroll-mt-40/);
+  assert.match(reports, /sm:scroll-mt-24/);
+  assert.match(reports, /Tulosta tai tallenna PDF/);
+  assert.match(reports, /h-14/);
+  assert.doesNotMatch(
+    reports,
+    /Lataa analyysidata|buildAnalysisReportData|\.json/,
+  );
+});
+test("työtilan brändit ovat saavutettavia etusivulinkkejä", async () => {
+  for (const file of ["workspace-sidebar.tsx", "workspace-header.tsx"]) {
+    const source = await readFile(
+      new URL(`../src/components/property/${file}`, import.meta.url),
+      "utf8",
+    );
+    assert.match(source, /import Link from "next\/link"/);
+    assert.match(source, /<Link\s+href="\/"\s+aria-label="Siirry etusivulle"/);
+    assert.match(source, /cursor-pointer/);
+    assert.match(source, /focus-visible:ring/);
+  }
+});
+test("puuttuvat kentät ja suuret tonttilomakkeet eivät renderöidy", async () => {
+  const details = await readFile(
+    new URL("../src/components/property/details-cards.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    details,
+    /SelectField|SelectTrigger|placeholder="Ei tiedossa"/,
+  );
+  assert.match(details, /if \(present\(importedData\.landOwnership\)\)/);
+  assert.match(details, /if \(present\(importedData\.condition\)\)/);
+});

@@ -1,14 +1,39 @@
 "use client";
 
-import { Download, Printer } from "lucide-react";
+import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { buildAnalysisReportData, type AnalysisReportData } from "@/core/reports/analysis-report";
-import type { InvestmentAnalysisInput, InvestmentAnalysisResult } from "@/core/calculations/investment-analysis";
-import type { RentEstimate } from "@/core/rent-data/types";
-import type { VisualConditionAnalysis } from "@/core/visual-condition/types";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
-export function ReportsCard({ input, analysis, provenance, rentEstimate, visualCondition }: { input: InvestmentAnalysisInput; analysis: InvestmentAnalysisResult; provenance?: Partial<AnalysisReportData["provenance"]>; rentEstimate?: RentEstimate; visualCondition?: VisualConditionAnalysis }) {
-  function downloadData() { const data = buildAnalysisReportData(input, analysis, provenance, rentEstimate, visualCondition); const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })); const link = document.createElement("a"); link.href = url; link.download = "asuntosijoitusanalyysi.json"; link.click(); URL.revokeObjectURL(url); }
-  return <Card id="raportit" className="scroll-mt-40 print:hidden sm:scroll-mt-24"><CardHeader className="border-b"><CardTitle>Raportit</CardTitle><CardDescription>Raportit muodostetaan aina ruudulla olevan ajantasaisen analyysin lähtötiedoista.</CardDescription></CardHeader><CardContent className="flex flex-wrap gap-3"><Button type="button" onClick={() => window.print()}><Printer className="size-4" />Tulosta tai tallenna PDF</Button><Button type="button" variant="outline" onClick={downloadData}><Download className="size-4" />Lataa analyysidata</Button></CardContent></Card>;
+export function ReportsCard() {
+  return (
+    <Card
+      id="raportit"
+      className="scroll-mt-40 border-primary/25 print:hidden sm:scroll-mt-24"
+    >
+      <CardHeader className="border-b">
+        <CardTitle>Raportit</CardTitle>
+        <CardDescription>
+          Raportti muodostetaan aina ruudulla olevan ajantasaisen analyysin
+          lähtötiedoista.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          type="button"
+          size="lg"
+          className="h-14 w-full text-base font-semibold sm:w-auto sm:min-w-72"
+          onClick={() => window.print()}
+        >
+          <Printer className="size-5" />
+          Tulosta tai tallenna PDF
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }

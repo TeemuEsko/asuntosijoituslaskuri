@@ -20,12 +20,26 @@ const declaredKinds = new Set<RepairDocumentKind>([
   "shareholder_register",
 ]);
 
-function declaredKindFromForm(value: FormDataEntryValue | null): RepairDocumentKind | undefined {
+function declaredKindFromForm(
+  value: FormDataEntryValue | null,
+): RepairDocumentKind | undefined {
   if (typeof value !== "string") return undefined;
-  return declaredKinds.has(value as RepairDocumentKind) ? (value as RepairDocumentKind) : undefined;
+  return declaredKinds.has(value as RepairDocumentKind)
+    ? (value as RepairDocumentKind)
+    : undefined;
 }
 
 export async function POST(request: Request) {
+  if (process.env.ENABLE_DOCUMENT_ANALYSIS !== "true") {
+    return Response.json(
+      {
+        code: "DOCUMENT_ANALYSIS_DISABLED",
+        message: "Asiakirja-analyysi ei ole käytettävissä.",
+      },
+      { status: 404 },
+    );
+  }
+
   let form: FormData;
   try {
     form = await request.formData();
@@ -77,9 +91,10 @@ export async function POST(request: Request) {
     });
     return Response.json(result);
   } catch (error) {
-    const code = error instanceof LocalDocumentError
-      ? error.code
-      : "DOCUMENT_ANALYSIS_FAILED";
+    const code =
+      error instanceof LocalDocumentError
+        ? error.code
+        : "DOCUMENT_ANALYSIS_FAILED";
     return Response.json(
       {
         code,
