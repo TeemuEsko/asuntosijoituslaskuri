@@ -242,7 +242,7 @@ test("nykyinen raportti ja analyysidata käyttävät samaa canonical luokitusta 
     ),
   ]);
   assert.match(workspace, /<KeyMetrics analysis=\{overallScore\}/);
-  assert.match(workspace, /<ReportsCard \/>/);
+  assert.match(workspace, /<ReportsCard/);
   assert.match(reports, /window\.print\(\)/);
   assert.match(reports, /Tulosta tai tallenna PDF/);
   assert.doesNotMatch(reports, /Lataa analyysidata/);

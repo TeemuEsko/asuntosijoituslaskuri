@@ -66,6 +66,7 @@ import { HousingCompanyRenovationsCard } from "./housing-company-renovations-car
 import { ImportSourceReview } from "./import-source-review";
 import { FinancialOverviewCard } from "./financial-overview-card";
 import { InvestmentOverallScore } from "./investment-overall-score";
+import { InvestmentAnalysisPrintReport } from "./investment-analysis-print-report";
 import { ParserAnalysisSummary } from "./parser-analysis-summary";
 import { ProfessionalEvaluationCard } from "./professional-evaluation-card";
 import { PurchaseCard } from "./purchase-card";
@@ -939,7 +940,7 @@ export function PropertyWorkspace({
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen">
+      <div className="workspace-screen min-h-screen">
         <WorkspaceSidebar />
         <div className="min-w-0 min-[1100px]:pl-18 min-[1600px]:pl-60">
           <WorkspaceHeader
@@ -1080,7 +1081,13 @@ export function PropertyWorkspace({
                   <section id="riskit" className="scroll-mt-24">
                     <AnalysisHighlights rating={overallScore} />
                   </section>
-                  <ReportsCard />
+                  <ReportsCard
+                    reportAddress={
+                      pageTitle === "Analysoitu sijoituskohde"
+                        ? undefined
+                        : pageTitle
+                    }
+                  />
                   <ProfessionalEvaluationCard
                     onRequestEvaluation={onRequestEvaluation}
                   />
@@ -1125,6 +1132,21 @@ export function PropertyWorkspace({
           </main>
         </div>
       </div>
+      <InvestmentAnalysisPrintReport
+        reportAddress={
+          pageTitle === "Analysoitu sijoituskohde" ? undefined : pageTitle
+        }
+        facts={facts}
+        data={data}
+        purchase={purchase}
+        assumptions={assumptions}
+        effectiveFinancingFee={effectiveFinancingFee}
+        companyLoanKnown={companyLoanKnown}
+        analysis={overallScore}
+        rentEstimate={rentEstimate}
+        marketAssessments={marketAssessments}
+        repairHistory={repairHistory}
+      />
     </TooltipProvider>
   );
 }

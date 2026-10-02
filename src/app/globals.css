@@ -48,13 +48,463 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+.print-report {
+  display: none;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm 13mm 14mm;
+}
+
 @media print {
-  #visuaalinen-kunto button,
-  #visuaalinen-kunto div:has(> input[type="file"]),
-  #visuaalinen-kunto label:has(input[type="checkbox"]),
-  #visuaalinen-kunto div:has(> img),
-  #visuaalinen-kunto details:has(input, textarea, select) {
-    display: none;
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  body {
+    font-family: Arial, "Segoe UI", sans-serif;
+    color: #17221d;
+    font-size: 9.5pt;
+    line-height: 1.4;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .workspace-screen {
+    display: none !important;
+  }
+
+  .print-report {
+    display: block !important;
+    width: 100%;
+  }
+
+  .print-report-page {
+    break-after: page;
+  }
+
+  .print-report-page:last-child {
+    break-after: auto;
+  }
+
+  .print-avoid-break,
+  .print-kpi-card,
+  .print-market-card,
+  .print-report-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-section-heading,
+  .print-report-section > header,
+  .print-review-block > header {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-report-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 4mm;
+    border-bottom: 1px solid #cdd8d2;
+    color: #216647;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .print-report-property {
+    padding: 9mm 0 6mm;
+  }
+
+  .print-report-property h1 {
+    margin: 1.5mm 0 1.5mm;
+    font-size: 24pt;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+  }
+
+  .print-report-property > p:last-child {
+    margin: 0;
+    color: #5d6d65;
+    font-size: 10pt;
+  }
+
+  .print-eyebrow {
+    margin: 0;
+    color: #287a57;
+    font-size: 7.5pt;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .print-score-hero {
+    padding: 7mm;
+    border: 1px solid #b8d2c4;
+    border-radius: 4mm;
+    background: #f0f8f3;
+  }
+
+  .print-score-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8mm;
+    margin-top: 2mm;
+  }
+
+  .print-score-heading > strong {
+    font-size: 34pt;
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .print-score-heading > strong span {
+    color: #718078;
+    font-size: 15pt;
+    font-weight: 600;
+  }
+
+  .print-score-heading > div {
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+    padding-bottom: 1mm;
+  }
+
+  .print-score-heading b {
+    display: grid;
+    width: 10mm;
+    height: 10mm;
+    place-items: center;
+    border-radius: 50%;
+    background: #216647;
+    color: #ffffff;
+    font-size: 12pt;
+  }
+
+  .print-score-heading > div span {
+    max-width: 52mm;
+    font-size: 11pt;
+    font-weight: 700;
+  }
+
+  .print-score-track {
+    height: 3mm;
+    margin-top: 5mm;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #d8e3dd;
+  }
+
+  .print-score-track span {
+    display: block;
+    height: 100%;
+    min-width: 1.5mm;
+    border-radius: inherit;
+  }
+
+  .print-score-hero > p:last-child {
+    max-width: 150mm;
+    margin: 4mm 0 0;
+    color: #4d5e55;
+  }
+
+  .print-kpi-grid,
+  .print-highlight-grid,
+  .print-financial-grid,
+  .print-repair-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4mm;
+  }
+
+  .print-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 5mm;
+  }
+
+  .print-kpi-card {
+    min-height: 22mm;
+    padding: 4mm;
+    border: 1px solid #d9e2dd;
+    border-radius: 3mm;
+    background: #ffffff;
+  }
+
+  .print-kpi-card p {
+    min-height: 7mm;
+    margin: 0;
+    color: #617068;
+    font-size: 7.5pt;
+  }
+
+  .print-kpi-card strong {
+    display: block;
+    margin-top: 2mm;
+    font-size: 14pt;
+    line-height: 1.1;
+  }
+
+  .print-highlight-grid {
+    margin-top: 5mm;
+  }
+
+  .print-report-highlight {
+    padding: 4mm;
+    border-left: 1.2mm solid #287a57;
+    border-radius: 2mm;
+    background: #f5f8f6;
+  }
+
+  .print-report-highlight-risk {
+    border-left-color: #c26a2b;
+    background: #fff8f1;
+  }
+
+  .print-report-highlight h3,
+  .print-report-panel h3,
+  .print-rent-summary h3,
+  .print-repair-summary h3 {
+    margin: 0 0 2.5mm;
+    font-size: 11pt;
+  }
+
+  .print-report-highlight ul,
+  .print-repair-list,
+  .print-review-block ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .print-report-highlight li {
+    display: flex;
+    gap: 2.5mm;
+    margin-top: 2mm;
+    font-size: 8.2pt;
+  }
+
+  .print-report-highlight li > span:first-child {
+    flex: 0 0 auto;
+    color: #287a57;
+    font-weight: 800;
+  }
+
+  .print-report-highlight-risk li > span:first-child {
+    color: #b3591d;
+  }
+
+  .print-section-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 4mm;
+    margin-bottom: 6mm;
+    padding-bottom: 3mm;
+    border-bottom: 1px solid #b8c9c0;
+  }
+
+  .print-section-heading h2,
+  .print-report-section h2,
+  .print-review-block h2 {
+    margin: 0;
+    font-size: 18pt;
+    letter-spacing: -0.02em;
+  }
+
+  .print-report-panel {
+    padding: 5mm;
+    border: 1px solid #d9e2dd;
+    border-radius: 3mm;
+    background: #ffffff;
+  }
+
+  .print-financial-grid {
+    align-items: start;
+  }
+
+  .print-report-rows {
+    margin: 0;
+  }
+
+  .print-report-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 5mm;
+    padding: 2.2mm 0;
+    border-bottom: 0.25mm solid #e5ebe7;
+  }
+
+  .print-report-row:last-child {
+    border-bottom: 0;
+  }
+
+  .print-report-row dt {
+    color: #607068;
+  }
+
+  .print-report-row dd {
+    margin: 0;
+    text-align: right;
+    font-weight: 700;
+  }
+
+  .print-market-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4mm;
+  }
+
+  .print-market-card {
+    min-height: 45mm;
+    padding: 5mm;
+    border: 1px solid #cedbd4;
+    border-radius: 3mm;
+    background: #f8faf9;
+  }
+
+  .print-market-value {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 3mm;
+    margin: 3mm 0;
+  }
+
+  .print-market-value strong {
+    font-size: 19pt;
+  }
+
+  .print-market-value span {
+    font-weight: 700;
+  }
+
+  .print-market-card > p:not(.print-eyebrow) {
+    margin: 0 0 2mm;
+    color: #506057;
+    font-size: 8pt;
+  }
+
+  .print-market-card small,
+  .print-repair-summary small {
+    color: #6b7972;
+  }
+
+  .print-rent-summary {
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 8mm;
+    margin-top: 6mm;
+    padding: 6mm;
+    border-radius: 3mm;
+    background: #eff6f2;
+  }
+
+  .print-rent-summary h3 {
+    margin-top: 2mm;
+    font-size: 22pt;
+  }
+
+  .print-rent-summary p {
+    margin: 1mm 0 0;
+  }
+
+  .print-report-notice {
+    grid-column: 1 / -1;
+    padding: 2.5mm 3mm;
+    border-left: 1mm solid #c88b23;
+    background: #fff8e8;
+  }
+
+  .print-report-section {
+    margin-top: 7mm;
+  }
+
+  .print-report-section > header,
+  .print-review-block > header {
+    margin-bottom: 3mm;
+  }
+
+  .print-repair-summary {
+    margin-bottom: 5mm;
+    padding: 5mm;
+    border-left: 1.2mm solid #c88b23;
+    background: #fff8e8;
+  }
+
+  .print-repair-summary p {
+    margin: 0 0 2mm;
+  }
+
+  .print-repair-list li {
+    padding: 2.5mm 0;
+    border-bottom: 0.25mm solid #e5ebe7;
+  }
+
+  .print-repair-list li:last-child {
+    border-bottom: 0;
+  }
+
+  .print-repair-list strong,
+  .print-repair-list span {
+    display: block;
+  }
+
+  .print-repair-list span,
+  .print-empty {
+    margin-top: 1mm;
+    color: #68776f;
+    font-size: 8pt;
+  }
+
+  .print-review-block {
+    margin-top: 7mm;
+  }
+
+  .print-review-block li {
+    position: relative;
+    margin-top: 2mm;
+    padding: 2.5mm 3mm 2.5mm 8mm;
+    background: #fff8e8;
+  }
+
+  .print-review-block li::before {
+    position: absolute;
+    left: 3mm;
+    color: #a86813;
+    content: "!";
+    font-weight: 800;
+  }
+
+  .print-disclaimer {
+    margin-top: 8mm;
+    padding-top: 4mm;
+    border-top: 1px solid #bdcac3;
+    color: #526159;
+    font-size: 7.5pt;
+  }
+
+  .print-disclaimer h2 {
+    margin: 0 0 2mm;
+    color: #17221d;
+    font-size: 10pt;
+  }
+
+  .print-disclaimer p {
+    margin: 1.5mm 0;
+  }
+
+  .print-disclaimer strong {
+    display: block;
+    margin-top: 3mm;
+    color: #216647;
   }
 }
 
