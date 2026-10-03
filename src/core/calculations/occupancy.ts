@@ -1,5 +1,7 @@
+export const DEFAULT_VACANCY_MONTHS = 0;
+
 export function clampVacancyMonths(value: number | null | undefined): number {
-  return Number.isFinite(value) ? Math.min(12, Math.max(0, Math.round(value as number))) : 1;
+  return Number.isFinite(value) ? Math.min(12, Math.max(0, Math.round((value as number) * 2) / 2)) : DEFAULT_VACANCY_MONTHS;
 }
 
 export function occupancyFromVacancyMonths(value: number | null | undefined) {
@@ -9,7 +11,7 @@ export function occupancyFromVacancyMonths(value: number | null | undefined) {
 }
 
 export function vacancyMonthsFromOccupancyRate(rate: number | null | undefined): number {
-  if (!Number.isFinite(rate)) return 1;
+  if (!Number.isFinite(rate)) return DEFAULT_VACANCY_MONTHS;
   const normalized = (rate as number) > 1 ? (rate as number) / 100 : rate as number;
   return clampVacancyMonths(12 * (1 - Math.min(1, Math.max(0, normalized))));
 }

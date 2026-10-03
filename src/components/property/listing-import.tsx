@@ -218,12 +218,10 @@ function PreparationProgress({ status }: { status: AnalysisPreparationStatus }) 
     { label: "Myynti-ilmoitus luettu", stage: "normalizing_data" as const },
     { label: "Kohteen perustiedot tunnistettu", stage: "resolving_location" as const },
     { label: "Arvioidaan markkinavuokraa", stage: "estimating_rent" as const },
-    { label: "Analysoidaan ilmoituksen kuvia", stage: "analysing_listing_images" as const },
     { label: "Muodostetaan sijoitusanalyysi", stage: "running_enrichments" as const },
   ].map((step) => ({ ...step, complete: current > order.indexOf(step.stage), active: current === order.indexOf(step.stage) }));
-  const analysingImages = status === "analysing_listing_images";
   const estimatingRent = status === "estimating_rent";
-  return <Card className="mt-8 border-success/25"><CardContent className="space-y-5 py-2"><div className="flex gap-3"><LoaderCircle className="mt-0.5 size-5 shrink-0 animate-spin text-success" /><div><p className="font-semibold">{analysingImages ? "Analysoimme ilmoituksen valokuvia…" : estimatingRent ? "Arvioimme kohteen markkinavuokraa…" : "Valmistelemme kohteen analyysiä…"}</p><p className="mt-1 text-sm text-muted-foreground">{analysingImages ? "Poimimme kohdekuvat, poistamme kaksoiskappaleet ja arvioimme vain kuvissa näkyviä pintoja." : estimatingRent ? "Haemme alueellisen vertailuvuokran kohteen sijainnin, pinta-alan ja huoneluvun perusteella." : "Luemme ja normalisoimme myynti-ilmoituksen tiedot."}</p></div></div><ol className="space-y-2 text-sm">{steps.map((step) => <li key={step.label} className={`flex items-center gap-2 ${step.complete ? "text-success" : step.active ? "font-medium text-foreground" : "text-muted-foreground"}`}><span aria-hidden="true">{step.complete ? "✓" : step.active ? "•" : "○"}</span>{step.label}</li>)}</ol></CardContent></Card>;
+  return <Card className="mt-8 border-success/25"><CardContent className="space-y-5 py-2"><div className="flex gap-3"><LoaderCircle className="mt-0.5 size-5 shrink-0 animate-spin text-success" /><div><p className="font-semibold">{estimatingRent ? "Arvioimme kohteen markkinavuokraa…" : "Valmistelemme kohteen analyysiä…"}</p><p className="mt-1 text-sm text-muted-foreground">{estimatingRent ? "Haemme alueellisen vertailuvuokran kohteen sijainnin, pinta-alan ja huoneluvun perusteella." : "Luemme ja normalisoimme myynti-ilmoituksen tiedot."}</p></div></div><ol className="space-y-2 text-sm">{steps.map((step) => <li key={step.label} className={`flex items-center gap-2 ${step.complete ? "text-success" : step.active ? "font-medium text-foreground" : "text-muted-foreground"}`}><span aria-hidden="true">{step.complete ? "✓" : step.active ? "•" : "○"}</span>{step.label}</li>)}</ol></CardContent></Card>;
 }
 
 export function ListingImport({
@@ -257,7 +255,7 @@ export function ListingImport({
       window.setTimeout(() => setPreparationStatus("normalizing_data"), 150),
       window.setTimeout(() => setPreparationStatus("resolving_location"), 350),
       window.setTimeout(() => setPreparationStatus("estimating_rent"), 550),
-      window.setTimeout(() => setPreparationStatus("analysing_listing_images"), 800),
+      window.setTimeout(() => setPreparationStatus("running_enrichments"), 800),
     ];
     try {
       const response = await fetch("/api/listing-import", {

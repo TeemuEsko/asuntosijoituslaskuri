@@ -330,6 +330,16 @@
     align-items: start;
   }
 
+  .print-assumption-note {
+    margin: 4mm 0 0;
+    padding: 3mm 4mm;
+    border-left: 1mm solid #b7791f;
+    border-radius: 2mm;
+    background: #fff8e8;
+    color: #665122;
+    font-size: 8.5pt;
+  }
+
   .print-report-rows {
     margin: 0;
   }

@@ -260,7 +260,7 @@ export function calculateInvestmentAnalysis(
   const financing = valid(input.financingFeeMonthly)
     ? input.financingFeeMonthly
     : undefined;
-  const vacancy = occupancyFromVacancyMonths(input.vacancyMonths ?? 1);
+  const vacancy = occupancyFromVacancyMonths(input.vacancyMonths);
   const annualRent =
     rent === undefined
       ? undefined

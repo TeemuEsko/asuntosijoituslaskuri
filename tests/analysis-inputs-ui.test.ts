@@ -8,11 +8,12 @@ test("hintaryhmä näyttää pääkentät vierekkäin ja pitää remonttivaran k
   const purchase = await source("purchase-card.tsx");
   assert.match(purchase, /data-price-row/);
   assert.match(purchase, /grid-cols-1/);
-  assert.match(purchase, /sm:grid-cols-2/);
+  assert.match(purchase, /sm:grid-cols-3/);
   assert.ok(purchase.indexOf("Velaton hinta") < purchase.indexOf("Myyntihinta"));
-  assert.ok(purchase.indexOf("Myyntihinta") < purchase.indexOf("Remonttivara"));
+  assert.ok(purchase.indexOf("Myyntihinta") < purchase.indexOf("Yhtiölainaosuus"));
+  assert.ok(purchase.indexOf("Yhtiölainaosuus") < purchase.indexOf("Remonttivara"));
   assert.match(purchase, /Oikaistu hankintahinta/);
-  assert.doesNotMatch(purchase, /Yhtiölainaosuus|Rahoitusvastike/);
+  assert.doesNotMatch(purchase, /Rahoitusvastike/);
 });
 
 test("rahoitusvastike kuuluu kuukausikuluihin ja yhtiölaina yhteenvetoon", async () => {
@@ -40,7 +41,7 @@ test("keskeisillä lähtötiedoilla on käyttäjälle näkyvät selitteet", asyn
     "Myyjälle maksettava kauppahinta ilman huoneistokohtaista yhtiölainaosuutta.",
     "Taloyhtiön kuukausittainen hoitovastike. Ei sisällä rahoitusvastiketta.",
     "Viitekorko ja pankin marginaali yhteensä.",
-    "Pankin kohteelle hyväksymä vakuusarvo.",
+    "Pankkilainan vakuudeksi arvioitu osuus.",
     "omistuksen rekisteröinti ja muut kertaluonteiset ostokulut",
   ]) assert.match(combined, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(combined, /Esimerkiksi pankin lainan järjestely- tai nostopalkkio/);

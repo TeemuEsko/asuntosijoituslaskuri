@@ -21,6 +21,7 @@ type Props = {
 const fieldDescriptions = {
   debtFreePrice: "Kohteen hinta sisältäen mahdollisen huoneistokohtaisen yhtiölainaosuuden.",
   salePrice: "Myyjälle maksettava kauppahinta ilman huoneistokohtaista yhtiölainaosuutta.",
+  companyLoanShare: "Velattomaan hintaan sisältyvä huoneistokohtainen yhtiölainaosuus.",
   renovationReserve: "Huoneiston hankinnan yhteydessä tai lähiaikoina arvioitu kertaluonteinen remonttivara.",
 } as const;
 
@@ -44,7 +45,7 @@ export function PurchaseCard({
         <CardDescription>Hinnat ja kertaluonteiset hankintakulut muodostavat todellisen hankintahinnan.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div data-price-row className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div data-price-row className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           <LocalizedNumberField
             id="purchase-debtFreePrice"
             numericInputKey="debtFreePrice"
@@ -70,6 +71,18 @@ export function PurchaseCard({
             description={fieldDescriptions.salePrice}
             help={fieldDescriptions.salePrice}
           />
+          <div className="min-w-0 space-y-2 rounded-lg border bg-muted/25 p-4">
+            <div className="flex min-h-10 flex-wrap items-start justify-between gap-2">
+              <p className="text-[13px] font-medium leading-5">Yhtiölainaosuus</p>
+              <SourceBadge status={statuses.companyLoanShare} />
+            </div>
+            <p className="min-h-8 text-xs leading-4 text-muted-foreground">
+              {fieldDescriptions.companyLoanShare}
+            </p>
+            <p className="pt-1 text-right text-xl font-semibold tabular-nums">
+              {formatFinnishNumber(values.companyLoanShare, 1)} €
+            </p>
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <LocalizedNumberField

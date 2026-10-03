@@ -237,9 +237,10 @@ export function InvestmentAnalysisPrintReport({
             ["Velaton hinta", money(purchase.debtFreePrice)],
             ["Myyntihinta", money(purchase.salePrice)],
             ["Yhtiölainaosuus", companyLoanKnown ? money(purchase.companyLoanShare) : "Ei tiedossa"],
+            ["Remonttivara", money(purchase.renovationReserve)],
             ["Varainsiirtovero", money(analysis.transferTax)],
             ["Muut hankintakulut", money(assumptions.transactionCosts)],
-            ["Kokonaisinvestointi", money(analysis.adjustedAcquisitionPrice)],
+            ["Oikaistu hankintahinta", money(analysis.adjustedAcquisitionPrice)],
           ]} />
           <FinancialGroup title="Tuotto" rows={[
             ["Kuukausivuokra", money(rentEstimate.effectiveMonthlyRent, "€/kk")],
@@ -260,12 +261,18 @@ export function InvestmentAnalysisPrintReport({
             ["Lainan lyhennys", money(analysis.monthlyBankLoanPrincipal, "€/kk")],
           ]} />
           <FinancialGroup title="Vakuudet" rows={[
-            ["Vakuusarvo", money(assumptions.collateralValue)],
+            ["Vakuusarvoprosentti", `${assumptions.collateralPercentage} %`],
+            ["Arvioitu vakuusarvo", money(assumptions.collateralValue)],
             ["Pankkilaina", money(analysis.bankLoanAmount)],
             [collateralIsGap ? "Vakuusvaje" : "Vakuuspuskuri", money(collateralValue)],
             ["Velkavipu", percent(typeof analysis.leverageRatio === "number" ? analysis.leverageRatio * 100 : undefined)],
           ]} />
         </div>
+        {assumptions.vacancyMonths === 0 ? (
+          <p className="print-assumption-note print-avoid-break">
+            Laskelma perustuu täyteen 12 kuukauden vuokrausasteeseen.
+          </p>
+        ) : null}
       </section>
 
       <section className="print-report-page">

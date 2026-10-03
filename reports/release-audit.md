@@ -1,6 +1,6 @@
 # Release Audit
 
-Luotu: 2026-07-28T07:28:09.667Z
+Luotu: 2026-10-03T10:27:51.584Z
 
 ## Yhteenveto
 

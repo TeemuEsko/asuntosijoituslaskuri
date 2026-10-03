@@ -91,6 +91,8 @@ test("raportti käyttää suoraan työtilan canonical- ja analyysiarvoja", async
   assert.match(report, /analysis\.netRentalYield/);
   assert.match(report, /analysis\.cashFlowAfterBankLoan/);
   assert.match(report, /analysis\.monthlyBankLoanPayment/);
+  for (const label of ["Yhtiölainaosuus", "Remonttivara", "Oikaistu hankintahinta", "Vakuusarvoprosentti", "Arvioitu vakuusarvo"]) assert.match(report, new RegExp(label));
+  assert.match(report, /Laskelma perustuu täyteen 12 kuukauden vuokrausasteeseen/);
 });
 
 test("A4-tyylit hallitsevat värit ja sivukatkot", async () => {

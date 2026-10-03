@@ -12,7 +12,12 @@ import {
   userEquityAssumption,
 } from "@/core/analysis/equity-assumption";
 import { adaptInvestmentScore } from "@/core/analysis/investment-score-adapter";
+import {
+  calculateAutomaticCollateralValue,
+  DEFAULT_COLLATERAL_PERCENTAGE,
+} from "@/core/calculations/collateral-value";
 import { calculateBankLoanAmount } from "@/core/calculations/investment-analysis";
+import { DEFAULT_VACANCY_MONTHS } from "@/core/calculations/occupancy";
 import {
   synchronizePrices,
   type PrimaryPriceField,
@@ -355,17 +360,25 @@ export function PropertyWorkspace({
       typeof importedData.maintenanceFeeMonthly === "number"
         ? importedData.maintenanceFeeMonthly
         : 0,
-    vacancyMonths: 1,
+    vacancyMonths: DEFAULT_VACANCY_MONTHS,
     annualInterestRate: 4.5,
     loanTermYears: 20,
     ...defaultEquityAssumption(),
     repaymentType: "annuity",
     rentalDemand: initialMarketAssessments.rentalDemand.effectiveValue ?? 3,
     otherCostsMonthly: otherCostsFromImport(importedData),
-    collateralValue:
-      typeof importedData.debtFreePrice === "number"
-        ? importedData.debtFreePrice * 0.7
-        : 0,
+    collateralPercentage: DEFAULT_COLLATERAL_PERCENTAGE,
+    collateralValue: calculateAutomaticCollateralValue({
+      debtFreePrice:
+        typeof importedData.debtFreePrice === "number"
+          ? importedData.debtFreePrice
+          : 0,
+      companyLoanShare:
+        typeof importedData.companyLoanShare === "number"
+          ? importedData.companyLoanShare
+          : 0,
+      collateralPercentage: DEFAULT_COLLATERAL_PERCENTAGE,
+    }),
     transferTaxRate: 1.5,
     transactionCosts: 0,
     locationRisk: initialMarketAssessments.locationRisk.effectiveValue ?? 3,
@@ -399,6 +412,7 @@ export function PropertyWorkspace({
       otherCostsMonthly: otherCostsStatus(importedData),
       collateralValue:
         importedData.debtFreePrice === undefined ? "default" : "inferred",
+      collateralPercentage: "default",
       transferTaxRate: "default",
       transactionCosts: "default",
       locationRisk: "automatic",
@@ -476,7 +490,7 @@ export function PropertyWorkspace({
     equity: assumptions.equity,
     equitySource: assumptions.equitySource,
     equityUserOverridden: assumptions.equityUserOverridden,
-    collateralValue: assumptions.collateralValue || undefined,
+    collateralValue: assumptions.collateralValue,
     rentalDemand: assumptions.rentalDemand,
     locationRisk: assumptions.locationRisk,
     resaleLiquidity: assumptions.resaleLiquidity,
@@ -573,6 +587,23 @@ export function PropertyWorkspace({
         }
       : { ...purchase, [key]: value };
     setPurchase(nextPurchase);
+    if (
+      ["debtFreePrice", "salePrice", "companyLoanShare"].includes(key) &&
+      assumptionStatuses.collateralValue !== "user"
+    ) {
+      setAssumptions((current) => ({
+        ...current,
+        collateralValue: calculateAutomaticCollateralValue({
+          debtFreePrice: nextPurchase.debtFreePrice,
+          companyLoanShare: nextPurchase.companyLoanShare,
+          collateralPercentage: current.collateralPercentage,
+        }),
+      }));
+      setAssumptionStatuses((current) => ({
+        ...current,
+        collateralValue: "inferred",
+      }));
+    }
     if (key === "debtFreePrice" || key === "salePrice")
       setLastEditedPriceField(key);
     if (key === "renovationReserve") setRenovationReserveUserEdited(true);
@@ -627,6 +658,30 @@ export function PropertyWorkspace({
     key: K,
     value: AssumptionValues[K],
   ) {
+    if (key === "collateralPercentage") {
+      setAssumptions((current) => ({
+        ...current,
+        collateralPercentage: value as AssumptionValues["collateralPercentage"],
+        ...(assumptionStatuses.collateralValue === "user"
+          ? {}
+          : {
+              collateralValue: calculateAutomaticCollateralValue({
+                debtFreePrice: purchase.debtFreePrice,
+                companyLoanShare: purchase.companyLoanShare,
+                collateralPercentage:
+                  value as AssumptionValues["collateralPercentage"],
+              }),
+            }),
+      }));
+      setAssumptionStatuses((current) => ({
+        ...current,
+        collateralPercentage: "user",
+        ...(current.collateralValue === "user"
+          ? {}
+          : { collateralValue: "inferred" as const }),
+      }));
+      return;
+    }
     setAssumptions((current) =>
       key === "equity"
         ? { ...current, ...userEquityAssumption(Number(value)) }
@@ -662,6 +717,20 @@ export function PropertyWorkspace({
   function resetEquity() {
     setAssumptions((current) => ({ ...current, ...defaultEquityAssumption() }));
     setAssumptionStatuses((current) => ({ ...current, equity: "default" }));
+  }
+  function resetCollateral() {
+    setAssumptions((current) => ({
+      ...current,
+      collateralValue: calculateAutomaticCollateralValue({
+        debtFreePrice: purchase.debtFreePrice,
+        companyLoanShare: purchase.companyLoanShare,
+        collateralPercentage: current.collateralPercentage,
+      }),
+    }));
+    setAssumptionStatuses((current) => ({
+      ...current,
+      collateralValue: "inferred",
+    }));
   }
   function updateFinancingFee(value: number) {
     updatePurchase("financingFeeMonthly", value);
@@ -1036,6 +1105,7 @@ export function PropertyWorkspace({
                   onChange={updateAssumption}
                   onFinancingFeeChange={updateFinancingFee}
                   onResetEquity={resetEquity}
+                  onResetCollateral={resetCollateral}
                   onMarketChange={updateMarketAssessment}
                   onMarketRestore={restoreMarketAssessment}
                 />
@@ -1091,22 +1161,26 @@ export function PropertyWorkspace({
                   <ProfessionalEvaluationCard
                     onRequestEvaluation={onRequestEvaluation}
                   />
-                  <VisualConditionCard
-                    initialAnalysis={data.visualCondition}
-                    listingImageAnalysis={data.listingImageAnalysis}
-                    areaSqm={
-                      typeof data.areaSqm === "number"
-                        ? data.areaSqm
-                        : undefined
-                    }
-                    expectedRooms={expectedRoomsFromImport(data)}
-                    listingCondition={
-                      typeof data.condition === "string"
-                        ? data.condition
-                        : undefined
-                    }
-                    onChange={updateVisualCondition}
-                  />
+                  {data.visualCondition?.analyzedImageCount ||
+                  data.listingImageAnalysis?.status === "completed" ||
+                  data.listingImageAnalysis?.status === "partial" ? (
+                    <VisualConditionCard
+                      initialAnalysis={data.visualCondition}
+                      listingImageAnalysis={data.listingImageAnalysis}
+                      areaSqm={
+                        typeof data.areaSqm === "number"
+                          ? data.areaSqm
+                          : undefined
+                      }
+                      expectedRooms={expectedRoomsFromImport(data)}
+                      listingCondition={
+                        typeof data.condition === "string"
+                          ? data.condition
+                          : undefined
+                      }
+                      onChange={updateVisualCondition}
+                    />
+                  ) : null}
                   <HousingCompanyRenovationsCard
                     renovations={data.renovations}
                     rawTexts={data.housingCompanyRenovations}

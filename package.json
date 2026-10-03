@@ -20,6 +20,7 @@
     "test:responsive": "node --test --experimental-strip-types tests/responsive-layout.test.ts",
     "test:browser": "node --test --experimental-strip-types tests/listing-browser.integration.test.ts",
     "test:screenshots": "node scripts/audit-checks/responsive-screenshots.mjs",
+    "test:mobile-flow": "node scripts/audit-checks/mobile-url-flow.mjs",
     "test:localization": "node --test --experimental-strip-types tests/localization.test.ts && node --test tests/rendered-ui.test.mjs",
     "audit:release": "node scripts/release-audit.mjs",
     "check": "npm run test && npm run lint && npm run typecheck && npm run build && npm run test:rendered"
