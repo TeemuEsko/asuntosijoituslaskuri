@@ -1,6 +1,8 @@
 import type { StructuredListingValue } from "../parser/listing-parser.ts";
+import { parseFinnishNumber } from "../parser/normalization.ts";
 import { normalizeHeatingType, type HeatingType } from "../domain/heating.ts";
 import { parseStrictMonthlyRentCandidate } from "../rent-data/rent-candidate-parser.ts";
+import { extractNamedPairs } from "./html-extraction.ts";
 
 export type LegacyParsedFields = {
   listingId?: string;
@@ -36,6 +38,39 @@ export function parseEuro(text: string, labels: readonly string[]): number | nul
   return null;
 }
 
+function normalizedFeeLabel(value: string): string {
+  return value.toLocaleLowerCase("fi").replace(/\s+/g, " ").replace(/\s*:\s*$/, "").trim();
+}
+
+function monthlyEuroValue(valueText: string, periodDeclaredByLabel = false): number | null {
+  if (/(?:€|euroa?)\s*\/\s*m[²2](?:\s*\/\s*kk)?/i.test(valueText)) return null;
+  if (/\b(?:vuodessa|vuosittain|vuosi)\b/i.test(valueText)) return null;
+  const explicitMonthly = /(?:€|euroa?|\be\b)\s*(?:\/\s*kk|kuukaudessa)/i.test(valueText);
+  if (!explicitMonthly && !(periodDeclaredByLabel && /(?:€|euroa?|\be\b)/i.test(valueText))) return null;
+  return parseFinnishNumber(valueText);
+}
+
+/** Poimii kuukausisummaa vain nimetystä label-value-parista tai selvästä €/kk-osumasta. */
+export function parseMonthlyEuro(text: string, namedPairs: readonly string[], labels: readonly string[]): number | null {
+  const normalizedLabels = labels.map(normalizedFeeLabel);
+  for (const pair of namedPairs) {
+    const separator = pair.indexOf(":");
+    if (separator < 0) continue;
+    const label = normalizedFeeLabel(pair.slice(0, separator));
+    if (!normalizedLabels.includes(label)) continue;
+    const value = monthlyEuroValue(pair.slice(separator + 1), /(?:\/\s*kk|kuukaudessa)/i.test(label));
+    if (value !== null) return value;
+  }
+  for (const label of labels) {
+    const matches = text.matchAll(new RegExp(`${escapeRegExp(label)}[^0-9]{0,40}([0-9][0-9\\s.,]*)\\s*(?:€|euroa?|e)\\s*\\/\\s*kk`, "gi"));
+    for (const match of matches) {
+      const value = parseFinnishNumber(match[1] ?? "");
+      if (value !== null) return value;
+    }
+  }
+  return null;
+}
+
 export function parseNumberAfter(text: string, labels: readonly string[]): number | null {
   for (const label of labels) { const match = text.match(new RegExp(`${escapeRegExp(label)}[^0-9]{0,40}([0-9]+(?:[,.][0-9]+)?)`, "i")); if (match?.[1]) return Number(match[1].replace(",", ".")); }
   return null;
@@ -52,20 +87,20 @@ export function detectHeating(text: string): LegacyParsedFields["heatingType"] {
 export function detectLand(text: string): LegacyParsedFields["landType"] { const value = text.toLocaleLowerCase("fi"); if (value.includes("oma tontti")) return "own"; if (value.includes("vuokratontti")) return "leased"; return undefined; }
 
 export function parseLegacyListingHtml(html: string, url = ""): { text: string; fields: LegacyParsedFields } {
-  const text = cleanText(html); const fields: LegacyParsedFields = {};
+  const text = cleanText(html); const namedPairs = extractNamedPairs(html); const fields: LegacyParsedFields = {};
   const assign = <K extends keyof LegacyParsedFields>(key: K, value: LegacyParsedFields[K] | null | undefined) => { if (value !== null && value !== undefined) fields[key] = value; };
   assign("listingId", parseListingId(text, url));
   assign("debtFreePrice", parseEuro(text, ["Velaton hinta", "Hinta"]));
   assign("sellingPrice", parseEuro(text, ["Myyntihinta"]));
-  assign("maintenanceFee", parseEuro(text, ["Hoitovastike / kk", "Hoitovastike"]));
-  assign("financingFee", parseEuro(text, ["Rahoitusvastike / kk", "Pääomavastike / kk", "Rahoitusvastike", "Pääomavastike"]));
+  assign("maintenanceFee", parseMonthlyEuro(text, namedPairs, ["Hoitovastike / kk", "Hoitovastike"]));
+  assign("financingFee", parseMonthlyEuro(text, namedPairs, ["Rahoitusvastike / kk", "Pääomavastike / kk", "Rahoitusvastike", "Pääomavastike"]));
   const debtLabels = ["Huoneistokohtainen velkaosuus", "Velkaosuus", "Yhtiölainaosuus", "Osuus yhtiön lainoista"];
   const directDebtShare = parseEuro(text, debtLabels);
   assign("debtShare", directDebtShare);
   assign("rent", parseStrictMonthlyRentCandidate(text)?.monthlyRent);
   assign("size", parseNumberAfter(text, ["Asuinpinta-ala", "Huoneistoala", "Pinta-ala", "Koko"]));
-  assign("totalHousingCharge", parseEuro(text, ["Yhtiövastike yhteensä", "Vastikkeet yhteensä"]));
-  assign("waterFee", parseEuro(text, ["Vesimaksu"])); assign("parkingFee", parseEuro(text, ["Autopaikkamaksu"])); assign("saunaFee", parseEuro(text, ["Saunamaksu"])); assign("wasteFee", parseEuro(text, ["Jätemaksu"]));
+  assign("totalHousingCharge", parseMonthlyEuro(text, namedPairs, ["Yhtiövastike yhteensä", "Vastikkeet yhteensä"]));
+  assign("waterFee", parseMonthlyEuro(text, namedPairs, ["Vesimaksu"])); assign("parkingFee", parseMonthlyEuro(text, namedPairs, ["Autopaikkamaksu"])); assign("saunaFee", parseMonthlyEuro(text, namedPairs, ["Saunamaksu"])); assign("wasteFee", parseMonthlyEuro(text, namedPairs, ["Jätemaksu"]));
   assign("buildYear", parseYear(text)); assign("buildingType", detectBuildingType(text)); assign("heatingType", detectHeating(text)); assign("landType", detectLand(text));
   return { text, fields };
 }

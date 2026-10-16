@@ -679,6 +679,53 @@ function sourcePriority(candidate: RawCandidate): number {
         : 1;
 }
 
+function maintenanceSourcePriority(candidate: RawCandidate): number {
+  const label = normalizedText(candidate.label).replace(/\s*\/\s*kk$/, "").trim();
+  const exactMaintenanceLabel = label === "hoitovastike";
+  if (candidate.unit !== "€/kk") return 1;
+  if (candidate.semanticSource === "structured_data" && exactMaintenanceLabel) return 6;
+  if (candidate.semanticSource === "named_field" && exactMaintenanceLabel) return 5;
+  if (candidate.semanticSource === "named_field") return 4;
+  if (candidate.semanticSource === "structured_data") return 3;
+  return 2;
+}
+
+function preferReliableMaintenanceFee(
+  candidates: RawCandidate[],
+  rejectedCandidates: RejectedCandidate[],
+): void {
+  const maintenance = candidates.filter((candidate) => candidate.field === "maintenanceFeeMonthly");
+  const directMonthly = maintenance.filter((candidate) => candidate.unit === "€/kk");
+  if (!directMonthly.length) return;
+  const strongestPriority = Math.max(...directMonthly.map(maintenanceSourcePriority));
+  const strongestValues = new Set(
+    directMonthly
+      .filter((candidate) => maintenanceSourcePriority(candidate) === strongestPriority)
+      .map(valueIdentity),
+  );
+  for (let index = candidates.length - 1; index >= 0; index -= 1) {
+    const candidate = candidates[index]!;
+    if (candidate.field !== "maintenanceFeeMonthly") continue;
+    if (strongestValues.has(valueIdentity(candidate))) continue;
+    candidates.splice(index, 1);
+    rejectedCandidates.push({
+      excerpt: candidate.excerpt,
+      field: candidate.field,
+      fieldName: fieldDisplayNames[candidate.field],
+      rawValue: candidate.originalValue,
+      normalizedValue: candidate.value,
+      source: candidate.source,
+      sourcePath: candidate.sourcePath ?? `${candidate.semanticSource}:${candidate.label}`,
+      sourceConfidence: 0,
+      fieldMatchConfidence: 0,
+      validationConfidence: 0,
+      validationResult: "rejected",
+      reason: "Vahvempi nimetty hoitovastikkeen kuukausisummaa sisältävä lähde löytyi",
+      rejectionReason: "Heikompi hoitovastikeosuma ei ohita nimettyä €/kk-kenttää",
+    });
+  }
+}
+
 function mergeCandidates(candidates: RawCandidate[]): ListingFinding[] {
   const groups = new Map<string, RawCandidate[]>();
   for (const candidate of candidates) {
@@ -1623,9 +1670,11 @@ export function parseListingText(
       candidate.value =
         Math.round((rate * areaCandidate.value + Number.EPSILON) * 100) / 100;
       candidate.unit = "€/kk";
+      candidate.semanticSource = "calculation";
       candidate.calculationBasis = `${rate.toLocaleString("fi-FI")} €/m²/kk × ${areaCandidate.value.toLocaleString("fi-FI")} m² = ${formatMonthlyEuro(candidate.value)}`;
     }
   }
+  preferReliableMaintenanceFee(candidates, rejectedCandidates);
   const findings = mergeCandidates(candidates);
   addDuplicateValueConflicts(findings);
   addFinancingTotal(findings);

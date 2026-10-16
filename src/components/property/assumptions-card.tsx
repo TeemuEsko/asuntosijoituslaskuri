@@ -217,7 +217,7 @@ export function AssumptionsCard({
             <p className="min-h-8 text-xs leading-4 text-muted-foreground">Laskurin arvio kohteen vakuudeksi hyväksyttävästä osuudesta.</p>
             <Select value={String(values.collateralPercentage)} onValueChange={(value) => value && onChange("collateralPercentage", Number(value) as CollateralPercentage)}>
               <SelectTrigger className="h-11 w-full"><SelectValue>{values.collateralPercentage} %</SelectValue></SelectTrigger>
-              <SelectContent><SelectItem value="70">70 %</SelectItem><SelectItem value="80">80 %</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="50">50 %</SelectItem><SelectItem value="60">60 %</SelectItem><SelectItem value="70">70 %</SelectItem><SelectItem value="80">80 %</SelectItem><SelectItem value="90">90 %</SelectItem></SelectContent>
             </Select>
           </div>
           <div className="min-w-0 space-y-2">

@@ -10,22 +10,9 @@ test("vakuusarvon oletusprosentti on 70", () => {
 });
 
 test("yhtiölaina vähennetään velattomasta hinnasta lasketusta vakuusarvosta", () => {
-  assert.equal(
-    calculateAutomaticCollateralValue({
-      debtFreePrice: 38_000,
-      companyLoanShare: 14_318,
-      collateralPercentage: 70,
-    }),
-    12_282,
-  );
-  assert.equal(
-    calculateAutomaticCollateralValue({
-      debtFreePrice: 38_000,
-      companyLoanShare: 14_318,
-      collateralPercentage: 80,
-    }),
-    16_082,
-  );
+  for (const [collateralPercentage, expected] of [[50, 4_682], [60, 8_482], [70, 12_282], [80, 16_082], [90, 19_882]] as const) {
+    assert.equal(calculateAutomaticCollateralValue({ debtFreePrice: 38_000, companyLoanShare: 14_318, collateralPercentage }), expected);
+  }
 });
 
 test("lainattoman kohteen vakuusarvo perustuu prosenttiin eikä arvo alita nollaa", () => {
@@ -54,7 +41,20 @@ test("työtila säilyttää käyttäjän override-arvon ja tarjoaa automaattisen
   const assumptions = await import("node:fs/promises").then(({ readFile }) =>
     readFile(new URL("../src/components/property/assumptions-card.tsx", import.meta.url), "utf8"),
   );
+  const report = await import("node:fs/promises").then(({ readFile }) =>
+    readFile(new URL("../src/components/property/investment-analysis-print-report.tsx", import.meta.url), "utf8"),
+  );
+  const engine = await import("node:fs/promises").then(({ readFile }) =>
+    readFile(new URL("../src/core/calculations/investment-analysis.ts", import.meta.url), "utf8"),
+  );
   assert.match(workspace, /assumptionStatuses\.collateralValue !== "user"/);
   assert.match(workspace, /function resetCollateral/);
   assert.match(assumptions, /Palauta automaattinen arvio/);
+  const options = [...assumptions.matchAll(/<SelectItem value="(\d+)">\d+ %<\/SelectItem>/g)].map((match) => Number(match[1]));
+  assert.deepEqual(options, [50, 60, 70, 80, 90]);
+  assert.match(workspace, /collateralPercentage:\s*DEFAULT_COLLATERAL_PERCENTAGE/);
+  assert.match(workspace, /collateralPercentage:\s*current\.collateralPercentage/);
+  assert.match(engine, /Math\.max\(0, input\.bankLoanAmount - input\.collateralValue\)/);
+  assert.match(report, /assumptions\.collateralPercentage/);
+  assert.match(report, /assumptions\.collateralValue/);
 });

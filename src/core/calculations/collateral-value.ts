@@ -1,4 +1,4 @@
-export type CollateralPercentage = 70 | 80;
+export type CollateralPercentage = 50 | 60 | 70 | 80 | 90;
 
 export const DEFAULT_COLLATERAL_PERCENTAGE: CollateralPercentage = 70;
 
