@@ -501,6 +501,40 @@
     font-size: 7.5pt;
   }
 
+  .print-training-cta {
+    margin-top: 7mm;
+    padding: 5mm;
+    border: 1px solid #b8d2c4;
+    border-radius: 3mm;
+    background: #f0f8f3;
+  }
+
+  .print-training-cta h2 {
+    margin: 2mm 0;
+    color: #17221d;
+    font-size: 14pt;
+  }
+
+  .print-training-cta p {
+    margin: 1.5mm 0;
+    color: #45564d;
+  }
+
+  .print-training-cta a {
+    display: inline-block;
+    margin-top: 2.5mm;
+    color: #216647;
+    font-weight: 800;
+    text-decoration: underline;
+  }
+
+  .print-training-cta small {
+    display: block;
+    margin-top: 1.5mm;
+    color: #526159;
+    overflow-wrap: anywhere;
+  }
+
   .print-disclaimer h2 {
     margin: 0 0 2mm;
     color: #17221d;

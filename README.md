@@ -12,7 +12,7 @@ npm.cmd run dev
 
 Avaa selaimessa [http://localhost:3000](http://localhost:3000).
 
-Liidinkeräys ja analyysiin pääsy edellyttävät PostgreSQL-tietokantaa sekä `DATABASE_URL`- ja `SESSION_SECRET`-asetuksia. Suorita ennen käynnistystä `npm.cmd run db:migrate`. Valokuvien perusteella arvioitu kunto edellyttää lisäksi palvelinpuolen `OPENAI_API_KEY`-avainta.
+Analyysi, lähtötietojen muokkaus ja PDF-tulostus toimivat ilman rekisteröitymistä, PostgreSQL-tietokantaa tai `SESSION_SECRET`-asetusta. Valokuvien perusteella arvioitu kunto edellyttää palvelinpuolen `OPENAI_API_KEY`-avainta. Kajabin koulutuslinkin voi vaihtaa asetuksella `NEXT_PUBLIC_KAJABI_TRAINING_URL`.
 
 Tarkka Vercel-käyttöönotto, CSV-vienti, suostumuksen peruuttaminen ja tietojen poistomenettely on kuvattu tiedostossa `docs/15_LEAD_CAPTURE_DEPLOYMENT.md`.
 

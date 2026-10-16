@@ -46,12 +46,14 @@ export async function allowListingIdentifyAttempt({
   logger = console,
 }: {
   request: Request;
-  repository: Pick<LeadRepository, "allowAttempt">;
+  repository?: Pick<LeadRepository, "allowAttempt">;
   secret?: string;
   now?: number;
   logger?: Pick<Console, "error">;
 }): Promise<ListingIdentifyRateLimitResult> {
   const identifierHash = requestFingerprint(request, secret && secret.length >= 32 ? secret : fallbackSecret);
+  if (!repository)
+    return { allowed: fallbackAllows(identifierHash, now), persistent: false };
   try {
     return {
       allowed: await repository.allowAttempt("listing_identify", identifierHash, 20, 15 * 60),

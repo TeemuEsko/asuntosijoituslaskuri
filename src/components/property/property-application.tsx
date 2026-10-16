@@ -7,9 +7,8 @@ import {
   PropertyWorkspace,
   type ImportedPropertyData,
 } from "./property-workspace";
-import { LeadOptIn } from "./lead-opt-in";
 
-type View = "start" | "listing" | "manual_optin" | "workspace";
+type View = "start" | "listing" | "workspace";
 const ANALYSIS_DRAFT_KEY = "asuntosijoituslaskuri:analysis-draft:v1";
 
 export function PropertyApplication() {
@@ -23,10 +22,10 @@ export function PropertyApplication() {
       const saved = window.sessionStorage.getItem(ANALYSIS_DRAFT_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as ImportedPropertyData;
-        void fetch("/api/access/session", { credentials: "same-origin", cache: "no-store" }).then((response) => {
-          if (!response.ok) { window.sessionStorage.removeItem(ANALYSIS_DRAFT_KEY); return; }
-          restoreTimer = window.setTimeout(() => { setImportedData(parsed); setView("workspace"); }, 0);
-        }).catch(() => window.sessionStorage.removeItem(ANALYSIS_DRAFT_KEY));
+        restoreTimer = window.setTimeout(() => {
+          setImportedData(parsed);
+          setView("workspace");
+        }, 0);
       }
     } catch {
       /* Istuntotallennus ei ole välttämättä käytettävissä yksityisessä selaustilassa. */
@@ -66,19 +65,13 @@ export function PropertyApplication() {
     );
   if (view === "workspace")
     return <PropertyWorkspace importedData={importedData} />;
-  if (view === "manual_optin")
-    return <main className="min-h-screen px-4 py-8 md:px-8 md:py-12"><LeadOptIn onComplete={() => openWorkspace()} /></main>;
   return (
     <NewPropertyStart
       onListing={(url) => {
         setListingUrl(url);
         setView("listing");
       }}
-      onManual={() => {
-        void fetch("/api/access/session", { credentials: "same-origin", cache: "no-store" })
-          .then((response) => response.ok ? openWorkspace() : setView("manual_optin"))
-          .catch(() => setView("manual_optin"));
-      }}
+      onManual={() => openWorkspace()}
     />
   );
 }

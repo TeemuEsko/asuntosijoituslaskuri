@@ -1,10 +1,15 @@
-# Liidinkeräyksen käyttöönotto
+# Vanhan liidikeräyksen ylläpito
+
+> Nykyinen julkinen laskuri ei käytä omaa opt-in-lomaketta eikä tarvitse tätä
+> infrastruktuuria analyysin tai PDF-raportin avaamiseen. Sähköpostiliidit
+> kerätään vapaaehtoisen Kajabi-linkin kautta. Älä poista vanhaa tietokantaa tai
+> sen tietoja ilman erillistä päätöstä ja dokumentoitua säilytys-/poistomenettelyä.
 
 ## Julkaisun estävät asetukset
 
-Toteutus käyttää pysyvää PostgreSQL-tietokantaa. Paikallinen testi voi käyttää paikallista PostgreSQL:ää; Vercelissä voidaan käyttää esimerkiksi projektin Marketplace-integraation kautta luotua PostgreSQL-palvelua. Tuotantoa ei saa julkaista ennen kuin tietokanta, migraatio, salaisuudet ja tietosuojatiedot on konfiguroitu.
+Vanha liidi- ja CSV-infrastruktuuri käyttää pysyvää PostgreSQL-tietokantaa. Paikallinen testi voi käyttää paikallista PostgreSQL:ää; Vercelissä voidaan käyttää esimerkiksi projektin Marketplace-integraation kautta luotua PostgreSQL-palvelua. Julkinen maksuton analyysipolku ei kutsu näitä reittejä.
 
-Pakolliset ympäristömuuttujat:
+Vain vanhan liidi-infrastruktuurin ylläpidossa tarvittavat ympäristömuuttujat:
 
 - `DATABASE_URL`: PostgreSQL-palvelun antama yhteysosoite. Älä käytä selaimelle näkyvää `NEXT_PUBLIC_`-muuttujaa.
 - `SESSION_SECRET`: vähintään 32 merkin satunnainen salaisuus. Luo salaisuuksien hallintaan sopivalla työkalulla, esimerkiksi `openssl rand -base64 48`.
@@ -15,6 +20,12 @@ Pakolliset ympäristömuuttujat:
 - `PRIVACY_INTERNATIONAL_TRANSFERS`: todellinen kuvaus siirroista tai niiden puuttumisesta ja suojatoimista.
 
 ## Vercelin manuaaliset vaiheet
+
+Julkista laskuria varten tarvitsee haluttaessa asettaa vain:
+
+- `NEXT_PUBLIC_KAJABI_TRAINING_URL`: Kajabin koulutussivun URL. Jos arvo puuttuu, sovellus käyttää koodissa määriteltyä nykyistä oletuslinkkiä. Julkisen muuttujan muutos vaatii uuden buildin ja deploymentin.
+
+Seuraavat vaiheet koskevat vain vanhan liididatan hallintaa:
 
 1. Luo tai yhdistä PostgreSQL-tietokanta Vercel-projektiin.
 2. Aseta yllä olevat muuttujat Production-, Preview- ja tarvittaessa Development-ympäristöihin. Käytä eri salaisuuksia ympäristöittäin.
@@ -39,6 +50,6 @@ npm run lead:admin -- delete kayttaja@example.fi
 
 Sähköpostia ei pidä käyttää yksin pyytäjän henkilöllisyyden vahvistamiseen. Organisaation pitää määrittää pyyntöjen vastaanotto- ja varmennusmenettely ennen julkaisua.
 
-## Tunnettu suojausraja
+## Nykyinen käyttöraja
 
-Analyysin API-payload ja tulostuksen avaus on suojattu allekirjoitetulla palvelinsessiolla. Nykyinen talouslaskennan JavaScript on kuitenkin edelleen osittain asiakassovelluksen bundle-tiedostoissa. Siksi proprietary-laskentalogiikan täydellinen tekninen salaus ei toteudu tässä buildissa. Jos tämä on julkaisuvaatimus, laskenta on siirrettävä kokonaan palvelinpuolelle ennen tuotantoa.
+Analyysi ja tulostus ovat tarkoituksella maksuttomia eivätkä vaadi palvelinsessiota. Vanhoja liidi-, suostumus- ja CSV-reittejä ei ole poistettu, mutta julkinen käyttöliittymä ei kutsu niitä. Tietokannan säilytysajat, vanhan liididatan käsittely ja mahdollinen myöhempi poistaminen vaativat erillisen omistajapäätöksen.

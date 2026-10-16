@@ -9,6 +9,7 @@ import type { RepairHistoryAssessment } from "@/core/rules/repair-history";
 import type { PurchaseFieldKey } from "@/data/property-demo";
 import type { AssumptionValues } from "./assumptions-card";
 import type { ImportedPropertyData } from "./property-workspace";
+import { kajabiTrainingUrl } from "@/config/marketing";
 
 const money = (value: number | null | undefined, suffix = "€") =>
   typeof value === "number" && Number.isFinite(value)
@@ -336,12 +337,28 @@ export function InvestmentAnalysisPrintReport({
           <header><p className="print-eyebrow">Tarkistettavat tiedot</p><h2>Varmista ennen sijoituspäätöstä</h2></header>
           {reviewItems.length ? <ul>{reviewItems.map((item) => <li key={item} className="print-avoid-break">{item}</li>)}</ul> : <p>Ei erillisiä tarkistettavia tietoja käytettävissä olevilla lähtötiedoilla.</p>}
         </section>
-        <footer className="print-disclaimer print-avoid-break">
-          <h2>Vastuuvapaus</h2>
-          <p>Analyysi on laskennallinen arvio ja tarkoitettu sijoituspäätöksen tueksi. Se ei ole sijoitussuositus, kiinteistönvälittäjän arviolausunto eikä lupaus tulevasta tuotosta tai arvonkehityksestä.</p>
-          <p>Analyysi ei määritä kohteen todellista markkinahintaa eikä ota kantaa siihen, onko pyyntihinta markkinahintaan nähden edullinen tai kallis. Varmista olennaiset tiedot alkuperäisistä asiakirjoista ja asiantuntijoilta ennen päätöstä.</p>
-          <strong>asuntosijoituslaskuri.fi</strong>
-        </footer>
+        <div className="print-report-ending print-avoid-break">
+          <footer className="print-disclaimer">
+            <h2>Vastuuvapaus</h2>
+            <p>Analyysi on laskennallinen arvio ja tarkoitettu sijoituspäätöksen tueksi. Se ei ole sijoitussuositus, kiinteistönvälittäjän arviolausunto eikä lupaus tulevasta tuotosta tai arvonkehityksestä.</p>
+            <p>Analyysi ei määritä kohteen todellista markkinahintaa eikä ota kantaa siihen, onko pyyntihinta markkinahintaan nähden edullinen tai kallis. Varmista olennaiset tiedot alkuperäisistä asiakirjoista ja asiantuntijoilta ennen päätöstä.</p>
+            <strong>asuntosijoituslaskuri.fi</strong>
+          </footer>
+          <section className="print-training-cta">
+            <p className="print-eyebrow">Maksuton koulutus</p>
+            <h2>Haluatko oppia rakentamaan kasvavaa asuntosalkkua?</h2>
+            <p>
+              Hyvä sijoitusasunto ei tuota ainoastaan kassavirtaa. Parhaimmillaan
+              se auttaa sinua rahoittamaan myös seuraavan sijoituksen.
+            </p>
+            <p>
+              Maksuttomassa koulutuksessani opit, miten tunnistat tällaisia
+              mahdollisuuksia.
+            </p>
+            <a href={kajabiTrainingUrl}>Katso maksuton koulutus</a>
+            <small>{kajabiTrainingUrl}</small>
+          </section>
+        </div>
       </section>
     </article>
   );

@@ -76,6 +76,7 @@ import { ParserAnalysisSummary } from "./parser-analysis-summary";
 import { ProfessionalEvaluationCard } from "./professional-evaluation-card";
 import { PurchaseCard } from "./purchase-card";
 import { ReportsCard } from "./reports-card";
+import { TrainingCta } from "./training-cta";
 import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { VisualConditionCard } from "./visual-condition-card";
@@ -1169,6 +1170,7 @@ export function PropertyWorkspace({
                   <section id="riskit" className="scroll-mt-24">
                     <AnalysisHighlights rating={overallScore} />
                   </section>
+                  <TrainingCta placement="analysis" />
                   <ReportsCard
                     reportAddress={
                       pageTitle === "Analysoitu sijoituskohde"
@@ -1218,6 +1220,11 @@ export function PropertyWorkspace({
                     result={data.importReview}
                     onChange={updateImportedField}
                   />
+                </section>
+              ) : null}
+              {analysisReady ? (
+                <section className="mt-12 border-t pt-10 sm:mt-16 sm:pt-12">
+                  <TrainingCta placement="footer" />
                 </section>
               ) : null}
             </div>

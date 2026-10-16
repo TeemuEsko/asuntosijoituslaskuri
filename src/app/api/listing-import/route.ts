@@ -11,10 +11,6 @@ import type {
   ListingImageAnalysisStatus,
   ListingImagePipelineResult,
 } from "@/core/listing-images/types";
-import { sessionFromRequest } from "@/server/access/session";
-import { unauthorizedResponse } from "@/server/access/http";
-import { funnelIdForRequest } from "@/server/leads/funnel";
-import { leadRepository } from "@/server/leads/postgres";
 import { fetchStatisticsFinlandMarketEvidence } from "@/core/market-assessment/statistics-finland";
 import { resolveMarketAssessments } from "@/core/market-assessment/model";
 
@@ -39,16 +35,6 @@ export function clientSafeListingResult(result: ListingParseResult) {
 }
 
 export async function POST(request: Request) {
-  const session = sessionFromRequest(request);
-  if (!session) return unauthorizedResponse();
-  try {
-    if (!await leadRepository.touchLead(session.leadId)) return unauthorizedResponse();
-  } catch {
-    return NextResponse.json(
-      { error: "Istuntoa ei voitu tarkistaa. Yritä hetken kuluttua uudelleen." },
-      { status: 503 },
-    );
-  }
   let body: ImportRequest;
   try {
     body = (await request.json()) as ImportRequest;
@@ -84,7 +70,6 @@ export async function POST(request: Request) {
       );
     const prepared = await prepareListingAnalysis(parsed);
     const result = { ...clientSafeListingResult(prepared), marketAssessments: resolveMarketAssessments({ statisticalRentAvailable: Boolean(prepared.rentEstimate?.benchmark) }) };
-    await leadRepository.recordFunnelEvent("analysis_opened", funnelIdForRequest(request), session.leadId).catch(() => undefined);
     return NextResponse.json(result);
   }
   if (body.kind !== "url")
@@ -159,7 +144,6 @@ export async function POST(request: Request) {
     imagePromise,
     fetchStatisticsFinlandMarketEvidence({ municipality: typeof city === "string" ? city : undefined, buildingType: typeof buildingType === "string" ? buildingType : undefined }).catch(() => ({})),
   ]);
-  await leadRepository.recordFunnelEvent("analysis_opened", funnelIdForRequest(request), session.leadId).catch(() => undefined);
   return NextResponse.json({
     ...clientSafeListingResult(prepared),
     listingImageAnalysis: listingImages.status,

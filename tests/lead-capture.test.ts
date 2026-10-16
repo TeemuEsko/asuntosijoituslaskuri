@@ -74,14 +74,14 @@ test("Postgres-upsert estää duplikaatit eikä muuta kieltoa suostumukseksi ilm
   assert.match(source, /if \(input\.marketingConsent\)[\s\S]*consent_events/);
 });
 
-test("suojatut analyysi- ja raporttireitit tarkistavat allekirjoitetun session ja tietokantarivin", async () => {
+test("maksuton analyysi ja raportti eivät tarkista liidisessiota tai tietokantariviä", async () => {
   const [analysis, report] = await Promise.all([read("../src/app/api/listing-import/route.ts"), read("../src/app/api/report/route.ts")]);
   for (const source of [analysis, report]) {
-    assert.match(source, /sessionFromRequest/);
-    assert.match(source, /touchLead/);
+    assert.doesNotMatch(source, /sessionFromRequest/);
+    assert.doesNotMatch(source, /touchLead|leadRepository|DATABASE_URL|SESSION_SECRET/);
   }
-  assert.match(analysis, /unauthorizedResponse/);
-  assert.match(report, /status: 401/);
+  assert.doesNotMatch(analysis, /unauthorizedResponse|recordFunnelEvent/);
+  assert.match(report, /status: 204/);
 });
 
 test("CSV-reitti vaatii palvelinpuolisen bearer-tunnistuksen", async () => {
@@ -92,11 +92,10 @@ test("CSV-reitti vaatii palvelinpuolisen bearer-tunnistuksen", async () => {
   assert.match(source, /LEAD_EXPORT_ADMIN_TOKEN/);
 });
 
-test("selainvarasto ei myönnä analyysioikeutta ilman palvelinsessiota", async () => {
+test("selainvaraston analyysiluonnos palautuu ilman henkilötietoja tai palvelinsessiota", async () => {
   const source = await read("../src/components/property/property-application.tsx");
-  assert.match(source, /fetch\("\/api\/access\/session"/);
-  assert.match(source, /sessionStorage\.removeItem/);
-  assert.doesNotMatch(source, /accessGranted\s*=\s*true/);
+  assert.match(source, /sessionStorage\.getItem/);
+  assert.doesNotMatch(source, /api\/access\/session|LeadOptIn|manual_optin|firstName|email/);
 });
 
 test("opt-in on mobiiliystävällinen, vapaaehtoinen ja estää tuplalähetyksen", async () => {
@@ -108,9 +107,8 @@ test("opt-in on mobiiliystävällinen, vapaaehtoinen ja estää tuplalähetyksen
   assert.match(source, /AbortSignal\.timeout/);
 });
 
-test("raportin tulostus vaatii palvelimen käyttöoikeustarkistuksen", async () => {
+test("raportin tulostus toimii suoraan ilman palvelimen käyttöoikeustarkistusta", async () => {
   const source = await read("../src/components/property/reports-card.tsx");
-  assert.match(source, /fetch\("\/api\/report"/);
-  assert.match(source, /if \(!access\.ok\)/);
-  assert.ok(source.indexOf("fetch(\"/api/report\"") < source.indexOf("window.print()"));
+  assert.match(source, /window\.print\(\)/);
+  assert.doesNotMatch(source, /api\/report|accessError|checkingAccess|yhteystietosi|Istuntosi/);
 });
