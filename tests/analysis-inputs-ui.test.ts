@@ -16,13 +16,26 @@ test("hintaryhmä näyttää pääkentät vierekkäin ja pitää remonttivaran k
   assert.doesNotMatch(purchase, /Rahoitusvastike/);
 });
 
-test("rahoitusvastike kuuluu kuukausikuluihin ja yhtiölaina yhteenvetoon", async () => {
+test("rahoitusvastike kuuluu vuokrauksen ja tuottojen osioon ja yhtiölaina yhteenvetoon", async () => {
   const assumptions = await source("assumptions-card.tsx");
   const overview = await source("financial-overview-card.tsx");
-  assert.match(assumptions, /B\. Kuukausitulot ja -kulut/);
+  assert.match(assumptions, /C\. Vuokraus ja tuotot/);
   assert.match(assumptions, /label="Rahoitusvastike"/);
   assert.match(overview, /Yhtiölainaosuus/);
   assert.match(overview, /Päätelty hinnoista/);
+});
+
+test("lähtötieto-osiot etenevät A-hankinnasta B-rahoitukseen ja C-vuokraukseen", async () => {
+  const [purchase, assumptions, workspace] = await Promise.all([
+    source("purchase-card.tsx"),
+    source("assumptions-card.tsx"),
+    source("property-workspace.tsx"),
+  ]);
+
+  assert.match(purchase, /A\. Hinta ja hankinta/);
+  assert.ok(workspace.indexOf("<PurchaseCard") < workspace.indexOf("<AssumptionsCard"));
+  assert.ok(assumptions.indexOf("B. Pankkirahoitus") < assumptions.indexOf("C. Vuokraus ja tuotot"));
+  assert.ok(assumptions.indexOf('data-input-group="bank-financing"') < assumptions.indexOf('data-input-group="monthly-income-and-costs"'));
 });
 
 test("kuukausittaista remonttivaraa ei renderöidä eikä lasketa", async () => {
@@ -55,7 +68,7 @@ test("viisi lyhennystapaa ja niiden suomenkieliset selitteet ovat käyttöliitty
 
 test("oma pääoma on rahoitusosion ensimmäinen koko leveä kenttä ja laina heti sen alla", async () => {
   const assumptions = await source("assumptions-card.tsx");
-  const financing = assumptions.slice(assumptions.indexOf('data-input-group="bank-financing"'), assumptions.indexOf('data-input-group="market-assessments"'));
+  const financing = assumptions.slice(assumptions.indexOf('data-input-group="bank-financing"'), assumptions.indexOf('data-input-group="monthly-income-and-costs"'));
   assert.ok(financing.indexOf("Sijoitettu oma pääoma") < financing.indexOf("Pankkilainan määrä"));
   assert.ok(financing.indexOf("Pankkilainan määrä") < financing.indexOf("Pankkilainan kokonaiskorko"));
   assert.match(financing, /sm:col-span-2/);

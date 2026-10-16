@@ -40,6 +40,11 @@ try {
     assert.equal(await page.getByText("Analyysisi on pian valmis!").count(), 0);
     assert.equal(await page.getByLabel("Etunimi").count(), 0);
     assert.equal(await page.getByLabel("Sähköpostiosoite").count(), 0);
+    const inputSectionTitles = await page.locator('[data-slot="card-title"]').allTextContents();
+    const purchaseSection = inputSectionTitles.indexOf("A. Hinta ja hankinta");
+    const financingSection = inputSectionTitles.indexOf("B. Pankkirahoitus");
+    const rentalSection = inputSectionTitles.indexOf("C. Vuokraus ja tuotot");
+    assert.ok(purchaseSection >= 0 && purchaseSection < financingSection && financingSection < rentalSection);
     if (artifactDirectory) {
       await page.screenshot({
         path: path.join(artifactDirectory, `mobile-top-${viewport.width}x${viewport.height}.png`),

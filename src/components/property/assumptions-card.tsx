@@ -174,27 +174,8 @@ export function AssumptionsCard({
 
   return (
     <div className="space-y-6">
-      <Card data-input-group="monthly-income-and-costs">
-        <CardHeader className="border-b"><CardTitle>B. Kuukausitulot ja -kulut</CardTitle><CardDescription>Jatkuvat tulot ja kulut vaikuttavat suoraan vuokratuottoon ja kassavirtaan.</CardDescription></CardHeader>
-        <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
-          <RentEstimateField estimate={rentEstimate} onOverride={onRentOverride} onRestore={onRentRestore} />
-          <LocalizedNumberField id="maintenance-fee" numericInputKey="maintenanceFeeMonthly" label="Hoitovastike" status={status("maintenanceFeeMonthly")} sourceLabel={maintenanceFeeSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={values.maintenanceFeeMonthly} onValueChange={(value) => onChange("maintenanceFeeMonthly", value)} description="Taloyhtiön kuukausittainen hoitovastike. Ei sisällä rahoitusvastiketta." help="Taloyhtiön kuukausittainen hoitovastike. Rahoitusvastike annetaan omassa kentässään." />
-          <LocalizedNumberField id="financing-fee" numericInputKey="financingFeeMonthly" label="Rahoitusvastike" status={financingFeeStatus} sourceLabel={financingFeeSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={financingFeeMonthly} allowUnknown disabled={financingFeeDisabled} onValueChange={onFinancingFeeChange} description={financingFeeDescription} help="Huoneistokohtaisen yhtiölainan kuukausittainen pääoma- tai rahoitusvastike. Jos yhtiölainaa ei ole, arvo päätellään nollaksi." />
-          <LocalizedNumberField id="other-costs" numericInputKey="otherCostsMonthly" label="Muut kuukausikulut" status={status("otherCostsMonthly")} sourceLabel={otherCostsSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={values.otherCostsMonthly} onValueChange={(value) => onChange("otherCostsMonthly", value)} description="Vuokranantajan maksettavaksi jäävät jatkuvat kulut vastikkeiden lisäksi." help="Esimerkiksi vakuutus tai muu jatkuva omistajalle jäävä kulu. Älä lisää kertaluonteisia ostokuluja." />
-          <LocalizedNumberField id="vacancy-months" numericInputKey="vacancyMonths" label="Arvioitu tyhjäkäynti" status={status("vacancyMonths")} suffix="kk / vuosi" maximumFractionDigits={1} value={values.vacancyMonths} onValueChange={(value) => onChange("vacancyMonths", value)} description="Arvio siitä, kuinka monta kuukautta asunto on keskimäärin ilman vuokralaista vuoden aikana." help={`Vuokrattuna arviolta ${formatFinnishNumber(12 - values.vacancyMonths, 1)} kuukautta vuodessa.`} />
-          {values.vacancyMonths === 0 ? (
-            <aside className="rounded-lg border border-warning/25 bg-warning-soft/45 p-4 sm:col-span-2">
-              <p className="font-semibold">Huomioi tyhjäkäynti</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Laskelmat on tehty täydellä vuokrausasteella (12 kk/vuosi). Mahdollinen tyhjäkäynti heikentää vuokratuottoa ja kassavirtaa.
-              </p>
-            </aside>
-          ) : null}
-        </CardContent>
-      </Card>
-
       <Card data-input-group="bank-financing">
-        <CardHeader className="border-b"><CardTitle>C. Pankkirahoitus</CardTitle><CardDescription>Rahoitusoletukset määrittävät lainan maksuerän, kassavirran ja vakuustilanteen.</CardDescription></CardHeader>
+        <CardHeader className="border-b"><CardTitle>B. Pankkirahoitus</CardTitle><CardDescription>Rahoitusoletukset määrittävät lainan maksuerän, kassavirran ja vakuustilanteen.</CardDescription></CardHeader>
         <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
           <div className="min-w-0 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:col-span-2">
             <LocalizedNumberField id="equity" numericInputKey="equity" label="Sijoitettu oma pääoma" status={values.equityUserOverridden ? "user" : "default"} suffix="€" maximumFractionDigits={1} value={values.equity} onValueChange={(value) => onChange("equity", value)} description="Kaupantekoon käytettävä oma raha. Oletusarvo on 0 €." help="Oma pääoma pienentää laskennallista pankkilainan tarvetta. Oletus ei ole pankin hyväksymä rahoitusratkaisu." />
@@ -224,6 +205,25 @@ export function AssumptionsCard({
             <LocalizedNumberField id="collateral" numericInputKey="collateralValue" label="Arvioitu vakuusarvo" status={status("collateralValue")} suffix="€" maximumFractionDigits={1} minimumFractionDigits={1} value={values.collateralValue} onValueChange={(value) => onChange("collateralValue", value)} description="Pankkilainan vakuudeksi arvioitu osuus. Yhtiölainaosuus vähennetään velattomasta hinnasta lasketusta vakuusarvosta." help="Laskurin arvio ei välttämättä vastaa pankin käyttämää vakuusarvoa. Tarkista todellinen vakuusarvo pankilta." />
             {status("collateralValue") === "user" ? <Button type="button" variant="ghost" size="sm" className="h-auto px-0 text-xs" onClick={onResetCollateral}>Palauta automaattinen arvio</Button> : null}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card data-input-group="monthly-income-and-costs">
+        <CardHeader className="border-b"><CardTitle>C. Vuokraus ja tuotot</CardTitle><CardDescription>Jatkuvat tulot ja kulut vaikuttavat suoraan vuokratuottoon ja kassavirtaan.</CardDescription></CardHeader>
+        <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
+          <RentEstimateField estimate={rentEstimate} onOverride={onRentOverride} onRestore={onRentRestore} />
+          <LocalizedNumberField id="maintenance-fee" numericInputKey="maintenanceFeeMonthly" label="Hoitovastike" status={status("maintenanceFeeMonthly")} sourceLabel={maintenanceFeeSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={values.maintenanceFeeMonthly} onValueChange={(value) => onChange("maintenanceFeeMonthly", value)} description="Taloyhtiön kuukausittainen hoitovastike. Ei sisällä rahoitusvastiketta." help="Taloyhtiön kuukausittainen hoitovastike. Rahoitusvastike annetaan omassa kentässään." />
+          <LocalizedNumberField id="financing-fee" numericInputKey="financingFeeMonthly" label="Rahoitusvastike" status={financingFeeStatus} sourceLabel={financingFeeSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={financingFeeMonthly} allowUnknown disabled={financingFeeDisabled} onValueChange={onFinancingFeeChange} description={financingFeeDescription} help="Huoneistokohtaisen yhtiölainan kuukausittainen pääoma- tai rahoitusvastike. Jos yhtiölainaa ei ole, arvo päätellään nollaksi." />
+          <LocalizedNumberField id="other-costs" numericInputKey="otherCostsMonthly" label="Muut kuukausikulut" status={status("otherCostsMonthly")} sourceLabel={otherCostsSourceLabel} suffix="€/kk" maximumFractionDigits={2} value={values.otherCostsMonthly} onValueChange={(value) => onChange("otherCostsMonthly", value)} description="Vuokranantajan maksettavaksi jäävät jatkuvat kulut vastikkeiden lisäksi." help="Esimerkiksi vakuutus tai muu jatkuva omistajalle jäävä kulu. Älä lisää kertaluonteisia ostokuluja." />
+          <LocalizedNumberField id="vacancy-months" numericInputKey="vacancyMonths" label="Arvioitu tyhjäkäynti" status={status("vacancyMonths")} suffix="kk / vuosi" maximumFractionDigits={1} value={values.vacancyMonths} onValueChange={(value) => onChange("vacancyMonths", value)} description="Arvio siitä, kuinka monta kuukautta asunto on keskimäärin ilman vuokralaista vuoden aikana." help={`Vuokrattuna arviolta ${formatFinnishNumber(12 - values.vacancyMonths, 1)} kuukautta vuodessa.`} />
+          {values.vacancyMonths === 0 ? (
+            <aside className="rounded-lg border border-warning/25 bg-warning-soft/45 p-4 sm:col-span-2">
+              <p className="font-semibold">Huomioi tyhjäkäynti</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Laskelmat on tehty täydellä vuokrausasteella (12 kk/vuosi). Mahdollinen tyhjäkäynti heikentää vuokratuottoa ja kassavirtaa.
+              </p>
+            </aside>
+          ) : null}
         </CardContent>
       </Card>
 

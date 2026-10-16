@@ -95,6 +95,19 @@ test("raportti käyttää suoraan työtilan canonical- ja analyysiarvoja", async
   assert.match(report, /Laskelma perustuu täyteen 12 kuukauden vuokrausasteeseen/);
 });
 
+test("PDF:n lähtötiedot etenevät järjestyksessä A hankinta, B pankkirahoitus ja C vuokraus", async () => {
+  const report = await read("../src/components/property/investment-analysis-print-report.tsx");
+  const purchase = report.indexOf('title="A. Hinta ja hankinta"');
+  const financing = report.indexOf('title="B. Pankkirahoitus"');
+  const rental = report.indexOf('title="C. Vuokraus ja tuotot"');
+
+  assert.ok(purchase >= 0);
+  assert.ok(purchase < financing);
+  assert.ok(financing < rental);
+  assert.match(report.slice(financing, rental), /Pankkilaina[\s\S]*Oma pääoma[\s\S]*Korko[\s\S]*Laina-aika/);
+  assert.match(report.slice(rental), /Kuukausivuokra[\s\S]*Hoitovastike[\s\S]*Rahoitusvastike[\s\S]*Muut kuukausikulut[\s\S]*Tyhjäkäynti/);
+});
+
 test("raportti erottaa markkina-arvion oletuksen, käyttäjävalinnan ja todellisen lähteen", async () => {
   const report = await read("../src/components/property/investment-analysis-print-report.tsx");
   assert.match(report, /choice\.source === "default" \? "Oletus"/);

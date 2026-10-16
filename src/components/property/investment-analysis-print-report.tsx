@@ -237,7 +237,7 @@ export function InvestmentAnalysisPrintReport({
       <section className="print-report-page">
         <header className="print-section-heading"><p className="print-eyebrow">02</p><h2>Tuotto ja rahoitus</h2></header>
         <div className="print-financial-grid">
-          <FinancialGroup title="Hankinta" rows={[
+          <FinancialGroup title="A. Hinta ja hankinta" rows={[
             ["Velaton hinta", money(purchase.debtFreePrice)],
             ["Myyntihinta", money(purchase.salePrice)],
             ["Yhtiölainaosuus", companyLoanKnown ? money(purchase.companyLoanShare) : "Ei tiedossa"],
@@ -246,16 +246,7 @@ export function InvestmentAnalysisPrintReport({
             ["Muut hankintakulut", money(assumptions.transactionCosts)],
             ["Oikaistu hankintahinta", money(analysis.adjustedAcquisitionPrice)],
           ]} />
-          <FinancialGroup title="Tuotto" rows={[
-            ["Kuukausivuokra", money(rentEstimate.effectiveMonthlyRent, "€/kk")],
-            ["Hoitovastike", money(assumptions.maintenanceFeeMonthly, "€/kk")],
-            ["Rahoitusvastike", money(effectiveFinancingFee, "€/kk")],
-            ["Muut kuukausikulut", money(assumptions.otherCostsMonthly, "€/kk")],
-            ["Tyhjäkäynti", `${formatFinnishNumber(assumptions.vacancyMonths, 1)} kk/v`],
-            ["Bruttovuokratuotto", percent(analysis.grossRentalYield)],
-            ["Nettovuokratuotto", percent(analysis.netRentalYield, 2)],
-          ]} />
-          <FinancialGroup title="Rahoitus" rows={[
+          <FinancialGroup title="B. Pankkirahoitus" rows={[
             ["Pankkilaina", money(analysis.bankLoanAmount)],
             ["Oma pääoma", money(assumptions.equity)],
             ["Korko", percent(assumptions.annualInterestRate)],
@@ -263,6 +254,15 @@ export function InvestmentAnalysisPrintReport({
             ["Lyhennystapa", repaymentLabels[assumptions.repaymentType]],
             ["Kuukausierä", money(analysis.monthlyBankLoanPayment, "€/kk")],
             ["Lainan lyhennys", money(analysis.monthlyBankLoanPrincipal, "€/kk")],
+          ]} />
+          <FinancialGroup title="C. Vuokraus ja tuotot" rows={[
+            ["Kuukausivuokra", money(rentEstimate.effectiveMonthlyRent, "€/kk")],
+            ["Hoitovastike", money(assumptions.maintenanceFeeMonthly, "€/kk")],
+            ["Rahoitusvastike", money(effectiveFinancingFee, "€/kk")],
+            ["Muut kuukausikulut", money(assumptions.otherCostsMonthly, "€/kk")],
+            ["Tyhjäkäynti", `${formatFinnishNumber(assumptions.vacancyMonths, 1)} kk/v`],
+            ["Bruttovuokratuotto", percent(analysis.grossRentalYield)],
+            ["Nettovuokratuotto", percent(analysis.netRentalYield, 2)],
           ]} />
           <FinancialGroup title="Vakuudet" rows={[
             ["Vakuusarvoprosentti", `${assumptions.collateralPercentage} %`],
