@@ -29,23 +29,17 @@ try {
     const page = await browser.newPage({ viewport });
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.stack ?? error.message));
-    let optedIn = false;
     await page.route("**/api/listing-identify", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ preview: { address: "Kivikkokuja 4 A 2, 65100 Vaasa", roomDescription: "2h + k", areaSqm: 50, debtFreePrice: 120000, buildingType: "apartment" } }) }));
-    await page.route("**/api/access/session", (route) => route.fulfill({ status: optedIn ? 200 : 401, contentType: "application/json", body: JSON.stringify({ accessGranted: optedIn }) }));
-    await page.route("**/api/leads/opt-in", (route) => { optedIn = true; return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, accessGranted: true }) }); });
     await page.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(listingResult) }));
     await page.route("**/api/report", (route) => route.fulfill({ status: 204 }));
 
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.getByLabel("Etuovi- tai Oikotie-linkki").fill("https://www.etuovi.com/kohde/12345678");
     await page.getByRole("button", { name: "Hae tiedot", exact: true }).click();
-    await page.getByRole("heading", { name: "Analyysisi on pian valmis!" }).waitFor().catch(async (error) => {
-      throw new Error(`${error.message}\nNäkyvä sisältö:\n${(await page.locator("body").innerText()).slice(0, 3_000)}`);
-    });
-    await page.getByLabel("Etunimi").fill("Maija");
-    await page.getByLabel("Sähköpostiosoite").fill("maija@example.fi");
-    await page.getByRole("button", { name: "Katso maksuton analyysi" }).click();
     await page.locator("#vacancy-months").waitFor({ state: "visible", timeout: 30_000 });
+    assert.equal(await page.getByText("Analyysisi on pian valmis!").count(), 0);
+    assert.equal(await page.getByLabel("Etunimi").count(), 0);
+    assert.equal(await page.getByLabel("Sähköpostiosoite").count(), 0);
     if (artifactDirectory) {
       await page.screenshot({
         path: path.join(artifactDirectory, `mobile-top-${viewport.width}x${viewport.height}.png`),

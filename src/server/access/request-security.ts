@@ -15,7 +15,7 @@ export function sameOriginMutation(request: Request): boolean {
 }
 
 export function requestFingerprint(request: Request, secret: string | undefined): string {
-  if (!secret || secret.length < 32) throw new Error("SESSION_SECRET_MISSING");
+  if (!secret || secret.length < 32) throw new Error("REQUEST_FINGERPRINT_SECRET_MISSING");
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const address = forwarded || request.headers.get("x-real-ip") || "unknown";
   return createHmac("sha256", secret).update(address).digest("hex");

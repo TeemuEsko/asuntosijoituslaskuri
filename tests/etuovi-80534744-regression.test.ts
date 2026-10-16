@@ -62,7 +62,7 @@ test("Etuovi 80534744: HTTP 200 -vastaus tunnistuu eikä hoitovastike estä kohd
   assert.equal(values.maintenanceFeeMonthly, 321.3);
 });
 
-test("tunnistus-API palauttaa kohteen, vaikka pysyvä rate limit ja funnel-tallennus eivät ole käytettävissä", async () => {
+test("tunnistus-API palauttaa kohteen, vaikka pysyvä rate limit ei ole käytettävissä", async () => {
   clearListingIdentifyFallbackRateLimit();
   const errors: unknown[] = [];
   const response = await handleListingIdentify(request(), {
@@ -74,7 +74,6 @@ test("tunnistus-API palauttaa kohteen, vaikka pysyvä rate limit ja funnel-talle
       now: 1_000,
       logger: { error: (...args: unknown[]) => errors.push(args) },
     }),
-    async recordFunnelEvent() { throw new Error("FUNNEL_UNAVAILABLE"); },
     logger: { error: (...args: unknown[]) => errors.push(args) },
   });
   const payload = await response.json() as { preview?: { address?: string; areaSqm?: number; debtFreePrice?: number } };
@@ -83,19 +82,6 @@ test("tunnistus-API palauttaa kohteen, vaikka pysyvä rate limit ja funnel-talle
   assert.equal(payload.preview?.areaSqm, 94.5);
   assert.equal(payload.preview?.debtFreePrice, 199_000);
   assert.equal(errors.length, 1);
-});
-
-test("onnistunutta parseritulosta ei hylätä funnel-tapahtuman tallennusvirheen vuoksi", async () => {
-  const errors: unknown[] = [];
-  const response = await handleListingIdentify(request(), {
-    acquireListing: () => fixtureAcquisition(),
-    async allowAttempt() { return { allowed: true, persistent: true }; },
-    async recordFunnelEvent() { throw new Error("FUNNEL_UNAVAILABLE"); },
-    logger: { error: (...args: unknown[]) => errors.push(args) },
-  });
-  assert.equal(response.status, 200);
-  assert.equal(errors.length, 1);
-  assert.match(JSON.stringify(errors[0]), /funnel_event/);
 });
 
 test("yksittäisen hoitovastikekentän puuttuminen ei estä tunnistamista", async () => {

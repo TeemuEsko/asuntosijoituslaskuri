@@ -1,7 +1,8 @@
-# Vanhan liidikeräyksen ylläpito
+# Vanhan liididatan ylläpito
 
 > Nykyinen julkinen laskuri ei käytä omaa opt-in-lomaketta eikä tarvitse tätä
-> infrastruktuuria analyysin tai PDF-raportin avaamiseen. Sähköpostiliidit
+> infrastruktuuria analyysin tai PDF-raportin avaamiseen. Vanha lomake sekä sen
+> opt-in-, sessio-, funnel- ja peruutusrajapinnat on poistettu. Sähköpostiliidit
 > kerätään vapaaehtoisen Kajabi-linkin kautta. Älä poista vanhaa tietokantaa tai
 > sen tietoja ilman erillistä päätöstä ja dokumentoitua säilytys-/poistomenettelyä.
 
@@ -12,7 +13,6 @@ Vanha liidi- ja CSV-infrastruktuuri käyttää pysyvää PostgreSQL-tietokantaa.
 Vain vanhan liidi-infrastruktuurin ylläpidossa tarvittavat ympäristömuuttujat:
 
 - `DATABASE_URL`: PostgreSQL-palvelun antama yhteysosoite. Älä käytä selaimelle näkyvää `NEXT_PUBLIC_`-muuttujaa.
-- `SESSION_SECRET`: vähintään 32 merkin satunnainen salaisuus. Luo salaisuuksien hallintaan sopivalla työkalulla, esimerkiksi `openssl rand -base64 48`.
 - `LEAD_EXPORT_ADMIN_TOKEN`: erillinen vähintään 32 merkin satunnainen bearer-token CSV-vientiä varten.
 - `PRIVACY_CONTROLLER_NAME`: todellinen rekisterinpitäjä.
 - `PRIVACY_CONTACT`: rekisteröidyn pyyntöjen yhteydenottotapa.
@@ -41,7 +41,7 @@ CSV-reitti on `GET /api/admin/leads/export` ja se vaatii palvelinpuolella tarkis
 
 ## Peruuttaminen ja poistaminen
 
-Saman selaimen voimassa olevalla sessiolla käyttäjä voi peruuttaa markkinointiluvan tietosuojasivulta. Ylläpitäjä käsittelee vahvistetun pyynnön palvelinympäristössä:
+Julkista liidisessiota tai peruutusrajapintaa ei enää ole. Ylläpitäjä käsittelee vahvistetun pyynnön palvelinympäristössä:
 
 ```powershell
 npm run lead:admin -- revoke kayttaja@example.fi
@@ -52,4 +52,4 @@ Sähköpostia ei pidä käyttää yksin pyytäjän henkilöllisyyden vahvistamis
 
 ## Nykyinen käyttöraja
 
-Analyysi ja tulostus ovat tarkoituksella maksuttomia eivätkä vaadi palvelinsessiota. Vanhoja liidi-, suostumus- ja CSV-reittejä ei ole poistettu, mutta julkinen käyttöliittymä ei kutsu niitä. Tietokannan säilytysajat, vanhan liididatan käsittely ja mahdollinen myöhempi poistaminen vaativat erillisen omistajapäätöksen.
+Analyysi ja tulostus ovat tarkoituksella maksuttomia eivätkä vaadi palvelinsessiota. Uusia liidejä ei tallenneta sovelluksen omaan tietokantaan. Vanha PostgreSQL-data, suostumushistoria, suojattu ylläpitäjän CSV-vienti ja ylläpitokomento on säilytetty olemassa olevien tietojen hallintaa varten. Tietokannan säilytysajat, vanhan liididatan käsittely ja mahdollinen myöhempi poistaminen vaativat erillisen omistajapäätöksen.

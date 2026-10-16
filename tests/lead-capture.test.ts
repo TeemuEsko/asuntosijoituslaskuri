@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { validateOptIn, CONSENT_SOURCE, CONSENT_TEXT_VERSION } from "../src/core/leads/model.ts";
-import { createAccessSessionToken, verifyAccessSessionToken } from "../src/server/access/session.ts";
 import { marketingLeadsCsv } from "../src/server/leads/csv.ts";
 import { sameOriginMutation, secureTokenMatches } from "../src/server/access/request-security.ts";
 
@@ -24,20 +23,6 @@ test("tyhjä nimi, virheellinen sähköposti ja liian pitkät syötteet estetä�
 test("suostumuksen versio ja lähde ovat eksplisiittiset", () => {
   assert.equal(CONSENT_TEXT_VERSION, "2026-10-16-v1");
   assert.equal(CONSENT_SOURCE, "analysis_optin");
-});
-
-test("palvelimen allekirjoittama sessio hyväksytään voimassaoloaikana", () => {
-  const now = Date.UTC(2026, 9, 16);
-  const token = createAccessSessionToken("lead-1", secret, now);
-  assert.equal(verifyAccessSessionToken(token, secret, now + 1_000)?.leadId, "lead-1");
-});
-
-test("vanhentunut, muokattu ja väärällä salaisuudella allekirjoitettu sessio hylätään", () => {
-  const now = Date.UTC(2026, 9, 16);
-  const token = createAccessSessionToken("lead-1", secret, now);
-  assert.equal(verifyAccessSessionToken(token, secret, now + 31 * 24 * 60 * 60 * 1_000), null);
-  assert.equal(verifyAccessSessionToken(`${token}x`, secret, now), null);
-  assert.equal(verifyAccessSessionToken(token, `${secret}-wrong`, now), null);
 });
 
 test("CSV muotoilee vain sille annetut suostumusrivit ja torjuu kaavainjektion", () => {
@@ -96,15 +81,6 @@ test("selainvaraston analyysiluonnos palautuu ilman henkilötietoja tai palvelin
   const source = await read("../src/components/property/property-application.tsx");
   assert.match(source, /sessionStorage\.getItem/);
   assert.doesNotMatch(source, /api\/access\/session|LeadOptIn|manual_optin|firstName|email/);
-});
-
-test("opt-in on mobiiliystävällinen, vapaaehtoinen ja estää tuplalähetyksen", async () => {
-  const source = await read("../src/components/property/lead-opt-in.tsx");
-  assert.match(source, /w-full max-w-xl/);
-  assert.match(source, /if \(submitting\) return/);
-  assert.match(source, /checked=\{marketingConsent\}/);
-  assert.match(source, /vapaaehtoinen/);
-  assert.match(source, /AbortSignal\.timeout/);
 });
 
 test("raportin tulostus toimii suoraan ilman palvelimen käyttöoikeustarkistusta", async () => {

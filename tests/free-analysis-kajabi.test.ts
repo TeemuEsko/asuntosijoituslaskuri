@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { GET as reportAccess } from "../src/app/api/report/route.ts";
@@ -23,6 +23,30 @@ test("URL-, teksti- ja manuaalipolku eivät renderöi pakollista opt-inia", asyn
     listingImport,
     /if \(!response\.ok \|\| !payload\.preview\)[\s\S]*await loadAnalysis\(forceRefresh\)/,
   );
+});
+
+test("vanha lead gate ja sen julkiset reitit on poistettu kokonaan", async () => {
+  const removedPaths = [
+    "../src/components/property/lead-opt-in.tsx",
+    "../src/app/api/leads/opt-in/route.ts",
+    "../src/app/api/access/session/route.ts",
+    "../src/app/api/funnel/route.ts",
+    "../src/app/api/consent/revoke/route.ts",
+  ];
+
+  for (const path of removedPaths) {
+    await assert.rejects(access(new URL(path, import.meta.url)));
+  }
+});
+
+test("Etuovi-tunnistuksen jälkeen analyysi ladataan suoraan ilman nimi- tai sähköpostivaihetta", async () => {
+  const listingImport = await read("../src/components/property/listing-import.tsx");
+  const identificationSuccess = listingImport.indexOf("if (!response.ok || !payload.preview)");
+  const analysisLoad = listingImport.indexOf("await loadAnalysis(forceRefresh)", identificationSuccess);
+
+  assert.ok(identificationSuccess >= 0, "tunnistuksen onnistuminen tarkistetaan");
+  assert.ok(analysisLoad > identificationSuccess, "analyysi avataan tunnistuksen jälkeen");
+  assert.doesNotMatch(listingImport, /firstName|email|marketingConsent|accessGranted/);
 });
 
 test("analyysi-, raportti-, dokumentti- ja kuvarajapinnat eivät vaadi liidisessiota", async () => {

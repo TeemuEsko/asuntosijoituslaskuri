@@ -3,7 +3,6 @@ import type { ListingPreview } from "../../core/leads/listing-preview.ts";
 import type { ListingAcquisitionResult } from "../../core/listing-acquisition/types.ts";
 import { sameOriginMutation } from "../access/request-security.ts";
 import { safeServerErrorCode, type ListingIdentifyRateLimitResult } from "../access/listing-identify-rate-limit.ts";
-import { funnelCookieHeader, funnelIdForRequest } from "../leads/funnel.ts";
 
 export function previewFromFindings(findings: ListingFinding[]): ListingPreview {
   const preview: ListingPreview = {};
@@ -21,7 +20,6 @@ export function previewFromFindings(findings: ListingFinding[]): ListingPreview 
 export type ListingIdentifyDependencies = {
   acquireListing: (value: string) => Promise<ListingAcquisitionResult>;
   allowAttempt: (request: Request) => Promise<ListingIdentifyRateLimitResult>;
-  recordFunnelEvent?: (funnelId: string) => Promise<void>;
   logger?: Pick<Console, "error">;
 };
 
@@ -65,18 +63,5 @@ export async function handleListingIdentify(
   }
 
   const preview = previewFromFindings(acquisition.result.findings);
-  const response = Response.json({ preview });
-  if (rateLimit.persistent && dependencies.recordFunnelEvent) {
-    const funnelId = funnelIdForRequest(request);
-    try {
-      await dependencies.recordFunnelEvent(funnelId);
-      response.headers.append("Set-Cookie", funnelCookieHeader(funnelId));
-    } catch (error) {
-      logger.error("[listing-identify] funnel event unavailable", {
-        stage: "funnel_event",
-        code: safeServerErrorCode(error),
-      });
-    }
-  }
-  return response;
+  return Response.json({ preview });
 }
