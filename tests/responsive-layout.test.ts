@@ -49,11 +49,13 @@ test("yläpalkki, otsikot ja toimintopainikkeet voivat rivittyä törmäämätt�
   assert.match(header, /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/);
 });
 
-test("oletuskenttien grid vaihtuu yhdestä kahteen ja pankkirahoituksessa kolmeen sarakkeeseen", async () => {
+test("oletuskenttien grid vaihtuu yhdestä kahteen ja pankkirahoitus säilyy kahdessa sarakkeessa", async () => {
   const assumptions = await source("assumptions-card.tsx");
   assert.match(assumptions, /grid-cols-1/);
   assert.match(assumptions, /sm:grid-cols-2/);
-  assert.match(assumptions, /min-\[1600px\]:grid-cols-3/);
+  const financing = assumptions.slice(assumptions.indexOf('data-input-group="bank-financing"'), assumptions.indexOf('data-input-group="market-assessments"'));
+  assert.match(financing, /sm:col-span-2/);
+  assert.doesNotMatch(financing, /grid-cols-3/);
 });
 
 test("label, lähdetunniste, input ja yksikkö on erotettu responsiivisesti", async () => {

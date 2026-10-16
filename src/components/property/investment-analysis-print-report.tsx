@@ -121,6 +121,8 @@ function MarketAssessment({
   const label = marketLabels[kind];
   const value = choice.effectiveValue;
   const explanation = choice.factors.find((factor) => factor.impact !== "neutral")?.description ?? choice.factors[0]?.description ?? choice.sourceName;
+  const evidence = choice.factors.find((factor) => factor.evidence)?.evidence;
+  const sourceLabel = choice.userOverridden ? "Käyttäjän valinta" : choice.source === "automatic" ? "Automaattinen arvio" : choice.source === "default" ? "Oletus" : "Ei tiedossa";
   return (
     <section className="print-market-card print-avoid-break">
       <p className="print-eyebrow">{label.title}</p>
@@ -129,7 +131,8 @@ function MarketAssessment({
         <span>{value === null ? "Ei tiedossa" : label.values[value]}</span>
       </div>
       <p>{explanation}</p>
-      <small>Luotettavuus: {confidenceLabels[choice.confidence]}</small>
+      <small>{sourceLabel}{choice.source === "automatic" || choice.source === "user" ? ` · Luotettavuus: ${confidenceLabels[choice.confidence]}` : ""}</small>
+      {evidence ? <small>Lähde: {evidence.publisher} / {evidence.datasetName} ({evidence.datasetId}) · {evidence.area}, {evidence.period}</small> : null}
     </section>
   );
 }

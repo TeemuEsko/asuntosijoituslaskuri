@@ -3,76 +3,72 @@ import test from "node:test";
 import { calculateInvestmentAnalysis } from "../src/core/calculations/investment-analysis.ts";
 import {
   assessmentConfidenceWeight,
+  MARKET_ASSESSMENT_DEFAULT_EXPLANATION,
   overrideEstimatedChoice,
   resolveLocationRisk,
   resolveMarketAssessments,
   resolveRentalDemand,
   resolveResaleLiquidity,
   restoreAutomaticChoice,
+  type AssessmentEvidence,
 } from "../src/core/market-assessment/model.ts";
 
-const generatedAt = "2026-07-31T10:00:00.000Z";
+const generatedAt = "2026-10-16T10:00:00.000Z";
+const evidence: AssessmentEvidence = { publisher: "Tilastokeskus / StatFin", datasetId: "11ra", datasetName: "Tunnuslukuja väestöstä", period: "2025", area: "Vaasa", areaLevel: "municipality", license: "CC BY 4.0" };
 
-test("vuokrakysyntä muodostaa automaattisen arvon ja säilyttää lähteen sekä luotettavuuden", () => {
-  const choice = resolveRentalDemand({ city: "Esimerkkikunta", postalCode: "00100", roomDescription: "2h+k", areaSqm: 48, statisticalRentAvailable: true, generatedAt });
-  assert.equal(choice.source, "automatic");
-  assert.equal(choice.userOverridden, false);
-  assert.ok(choice.automaticValue !== null);
-  assert.equal(choice.effectiveValue, choice.automaticValue);
-  assert.notEqual(choice.confidence, "unknown");
-  assert.match(choice.sourceName, /Tilastolliset kysyntätekijät/);
-  assert.ok(choice.factors.some((factor) => factor.source === "statistics"));
+test("dataa vailla oleva arvio on 3/5-oletus eikä automaattinen arvio", () => {
+  for (const choice of Object.values(resolveMarketAssessments({ city: "Vaasa", generatedAt }))) {
+    assert.equal(choice.effectiveValue, 3);
+    assert.equal(choice.automaticValue, 3);
+    assert.equal(choice.source, "default");
+    assert.equal(choice.confidence, "unknown");
+    assert.equal(choice.sourceName, MARKET_ASSESSMENT_DEFAULT_EXPLANATION);
+  }
 });
 
-test("käyttäjän valinta yliajaa arvon ja automaattinen arvio voidaan palauttaa", () => {
-  const automatic = resolveRentalDemand({ city: "Esimerkkikunta", roomDescription: "1h+kk", areaSqm: 31, generatedAt });
-  const overridden = overrideEstimatedChoice(automatic, 1);
-  assert.equal(overridden.automaticValue, automatic.automaticValue);
+test("vuokratilasto näkyy vain kontekstina eikä muutu kysyntäluokitukseksi", () => {
+  const choice = resolveRentalDemand({ city: "Vaasa", statisticalRentAvailable: true, rentEvidence: { ...evidence, datasetId: "15fa", datasetName: "Keskineliövuokrat", period: "2026Q2" }, generatedAt });
+  assert.equal(choice.source, "default");
+  assert.equal(choice.effectiveValue, 3);
+  assert.equal(choice.confidence, "unknown");
+  assert.ok(choice.factors.some((factor) => factor.evidence?.datasetId === "15fa"));
+});
+
+test("kuntatason väestömuutos ei yksin muuta sijaintiriskiä", () => {
+  const positive = resolveLocationRisk({ city: "Vaasa", official: { populationChangePercent: 2, populationEvidence: evidence }, generatedAt });
+  const negative = resolveLocationRisk({ city: "Vaasa", official: { populationChangePercent: -2, populationEvidence: evidence }, generatedAt });
+  assert.equal(positive.effectiveValue, 3);
+  assert.equal(negative.effectiveValue, 3);
+  assert.equal(positive.source, "default");
+  assert.match(positive.factors[0]!.description, /ei riitä/);
+});
+
+test("toteutunut kauppamäärä näytetään lähteineen mutta myyntiaikaa ei keksitä", () => {
+  const choice = resolveResaleLiquidity({ city: "Vaasa", official: { realisedTransactions: 150, transactionEvidence: { ...evidence, datasetId: "13mx", datasetName: "Vanhojen osakeasuntojen kauppojen lukumäärät" } }, generatedAt });
+  assert.equal(choice.effectiveValue, 3);
+  assert.equal(choice.source, "default");
+  assert.ok(choice.factors.some((factor) => factor.evidence?.datasetId === "13mx"));
+  assert.ok(choice.factors.some((factor) => factor.id === "sale-time-unavailable"));
+  assert.doesNotMatch(choice.factors.map((factor) => factor.description).join(" "), /\d+–\d+ päivää/);
+});
+
+test("käyttäjän valinta ohittaa oletuksen ja palautus palauttaa neutraalin oletuksen", () => {
+  const fallback = resolveRentalDemand({ city: "Vaasa", generatedAt });
+  const overridden = overrideEstimatedChoice(fallback, 1);
   assert.equal(overridden.effectiveValue, 1);
   assert.equal(overridden.source, "user");
-  assert.equal(overridden.userOverridden, true);
+  assert.equal(assessmentConfidenceWeight(overridden), 1);
   const restored = restoreAutomaticChoice(overridden);
-  assert.equal(restored.effectiveValue, automatic.automaticValue);
-  assert.equal(restored.source, "automatic");
-  assert.equal(restored.userOverridden, false);
-  assert.equal(assessmentConfidenceWeight({ ...overridden, confidence: "unknown" }), 1);
+  assert.equal(restored.effectiveValue, 3);
+  assert.equal(restored.source, "default");
+  assert.equal(assessmentConfidenceWeight(restored), 0);
 });
 
-test("väestö- ja työllisyystekijät muuttavat sijaintiriskiä", () => {
-  const strong = resolveLocationRisk({ city: "Esimerkkikunta", official: { populationChangePercent: 2, netMigrationRate: 1, employmentRate: 75, unemploymentRate: 6, employerConcentration: "low" }, generatedAt });
-  const weak = resolveLocationRisk({ city: "Esimerkkikunta", official: { populationChangePercent: -2, netMigrationRate: -1, employmentRate: 60, unemploymentRate: 15, employerConcentration: "high" }, generatedAt });
-  assert.ok(strong.effectiveValue! < weak.effectiveValue!);
-  assert.equal(strong.confidence, "medium");
-  assert.equal(weak.confidence, "medium");
-});
-
-test("puuttuva työnantajadata ei kaada arviota ja laskee luotettavuutta", () => {
-  const choice = resolveLocationRisk({ city: "Esimerkkikunta", generatedAt });
-  assert.equal(choice.effectiveValue, 3);
-  assert.equal(choice.confidence, "low");
-  assert.ok(choice.factors.some((factor) => factor.id === "employer-data-missing"));
-});
-
-test("toteutuneet kaupat vaikuttavat jälleenmyytävyyteen ja portaali pysyy ilmoitussignaalina", () => {
-  const statistical = resolveResaleLiquidity({ city: "Esimerkkikunta", roomDescription: "2h+k", areaSqm: 50, buildingType: "Kerrostalo", official: { realisedTransactions: 150, transactionVolumeTrendPercent: 4 }, generatedAt });
-  const portal = resolveResaleLiquidity({ city: "Esimerkkikunta", roomDescription: "2h+k", areaSqm: 50, portal: { sourceName: "Sallittu ilmoitusrajapinta", permitted: true, comparableSaleListings: 12, estimatedSaleListingDays: 35, housingCompanyListingHistoryCount: 4 }, generatedAt });
-  assert.ok(statistical.effectiveValue! >= 4);
-  assert.ok(statistical.factors.some((factor) => factor.id === "realised-transactions"));
-  assert.ok(portal.factors.some((factor) => factor.description.includes("ei toteutunutta kauppaa")));
-});
-
-test("puuttuva taloyhtiöhistoria ei estä jälleenmyytävyysarviota", () => {
-  const choice = resolveResaleLiquidity({ buildingType: "Rivitalo", roomDescription: "3h+k", areaSqm: 74, generatedAt });
-  assert.ok(choice.automaticValue !== null);
-  assert.ok(choice.factors.some((factor) => factor.id === "housing-company-history-missing"));
-});
-
-test("heikon luotettavuuden automaattiarvio vaikuttaa scoreen käyttäjän valintaa vähemmän", () => {
+test("oletus ei lisää markkina-arvioiden painoa sijoituspisteisiin", () => {
   const input = { debtFreePrice: 120_000, salePrice: 120_000, monthlyRent: 900, maintenanceFeeMonthly: 300, financingFeeMonthly: 0, vacancyMonths: 1, bankLoanAmount: 90_000, annualInterestRate: 4, loanTermYears: 20, repaymentType: "annuity" as const, repairHistoryKnown: true, repairRiskScore: 60 };
-  const base = resolveMarketAssessments({ city: "Esimerkkikunta", generatedAt });
-  const lowAutomatic = { ...base, rentalDemand: { ...base.rentalDemand, automaticValue: 5 as const, effectiveValue: 5 as const, confidence: "low" as const } };
-  const userConfirmed = { ...lowAutomatic, rentalDemand: overrideEstimatedChoice(lowAutomatic.rentalDemand, 5) };
-  const lowScore = calculateInvestmentAnalysis({ ...input, rentalDemand: 5, marketAssessments: lowAutomatic }).score;
-  const userScore = calculateInvestmentAnalysis({ ...input, rentalDemand: 5, marketAssessments: userConfirmed }).score;
-  assert.ok(userScore >= lowScore);
+  const defaults = resolveMarketAssessments({ city: "Vaasa", generatedAt });
+  const user = { ...defaults, locationRisk: overrideEstimatedChoice(defaults.locationRisk, 5) };
+  const defaultScore = calculateInvestmentAnalysis({ ...input, marketAssessments: defaults }).score;
+  const userScore = calculateInvestmentAnalysis({ ...input, marketAssessments: user }).score;
+  assert.ok(userScore <= defaultScore);
 });

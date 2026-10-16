@@ -277,6 +277,16 @@ function marketInput(data: ImportedPropertyData, rentEstimate: RentEstimate) {
       rentEstimate.source === "statistics_finland" ||
       rentEstimate.source === "fallback" ||
       Boolean(rentEstimate.benchmark),
+    rentEvidence: rentEstimate.benchmark && rentEstimate.referencePeriod && rentEstimate.sourceArea ? {
+      publisher: "Tilastokeskus / StatFin",
+      datasetId: rentEstimate.datasetId ?? "15fa",
+      datasetName: "Vuokraindeksi (2025=100) ja keskineliövuokrat, neljännesvuosittain",
+      period: rentEstimate.referencePeriod,
+      area: rentEstimate.sourceArea,
+      areaLevel: rentEstimate.sourceAreaLevel ?? "region",
+      license: "CC BY 4.0",
+      fetchedAt: rentEstimate.fetchedAt ?? undefined,
+    } : undefined,
   };
 }
 
@@ -992,16 +1002,24 @@ export function PropertyWorkspace({
       const recalculated = resolveMarketAssessments(
         marketInput(next, nextRentEstimate),
       );
+      const retainVerifiedEvidence = <T,>(
+        currentChoice: { factors: Array<{ evidence?: unknown }> } & T,
+        nextChoice: { factors: Array<{ evidence?: unknown }> } & T,
+      ) =>
+        currentChoice.factors.some((factor) => factor.evidence) &&
+        !nextChoice.factors.some((factor) => factor.evidence)
+          ? currentChoice
+          : nextChoice;
       setMarketAssessments((choices) => ({
         rentalDemand: choices.rentalDemand.userOverridden
           ? choices.rentalDemand
-          : recalculated.rentalDemand,
+          : retainVerifiedEvidence(choices.rentalDemand, recalculated.rentalDemand),
         locationRisk: choices.locationRisk.userOverridden
           ? choices.locationRisk
-          : recalculated.locationRisk,
+          : retainVerifiedEvidence(choices.locationRisk, recalculated.locationRisk),
         resaleLiquidity: choices.resaleLiquidity.userOverridden
           ? choices.resaleLiquidity
-          : recalculated.resaleLiquidity,
+          : retainVerifiedEvidence(choices.resaleLiquidity, recalculated.resaleLiquidity),
       }));
       return next;
     });

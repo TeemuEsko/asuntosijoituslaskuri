@@ -95,6 +95,15 @@ test("raportti käyttää suoraan työtilan canonical- ja analyysiarvoja", async
   assert.match(report, /Laskelma perustuu täyteen 12 kuukauden vuokrausasteeseen/);
 });
 
+test("raportti erottaa markkina-arvion oletuksen, käyttäjävalinnan ja todellisen lähteen", async () => {
+  const report = await read("../src/components/property/investment-analysis-print-report.tsx");
+  assert.match(report, /choice\.source === "default" \? "Oletus"/);
+  assert.match(report, /choice\.userOverridden \? "Käyttäjän valinta"/);
+  assert.match(report, /evidence\.publisher/);
+  assert.match(report, /evidence\.datasetName/);
+  assert.match(report, /evidence\.period/);
+});
+
 test("A4-tyylit hallitsevat värit ja sivukatkot", async () => {
   const css = await read("../src/app/globals.css");
   assert.match(css, /@page\s*{[\s\S]*size: A4 portrait/);

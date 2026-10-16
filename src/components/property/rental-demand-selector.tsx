@@ -16,11 +16,11 @@ const riskOptions = [
   [5, "Suuri", "Alueellisia kysyntä- tai työllisyysriskejä"],
 ] as const;
 const liquidityOptions = [
-  [1, "Hidas", "Suuntaa-antava markkinointiaika yli 180 päivää"],
-  [2, "Melko hidas", "Suuntaa-antava markkinointiaika 120–180 päivää"],
-  [3, "Normaali", "Suuntaa-antava markkinointiaika 70–120 päivää"],
-  [4, "Hyvä", "Suuntaa-antava markkinointiaika 30–70 päivää"],
-  [5, "Nopea", "Suuntaa-antava markkinointiaika alle 30 päivää"],
+  [1, "Hidas", "Markkinan likviditeetti on käyttäjän arvion mukaan heikko"],
+  [2, "Melko hidas", "Markkinan likviditeetti on käyttäjän arvion mukaan melko heikko"],
+  [3, "Normaali", "Neutraali oletus ilman riittävää myyntiaikadataa"],
+  [4, "Hyvä", "Markkinan likviditeetti on käyttäjän arvion mukaan hyvä"],
+  [5, "Nopea", "Markkinan likviditeetti on käyttäjän arvion mukaan erittäin hyvä"],
 ] as const;
 
 export type MarketAssessmentKind = "rentalDemand" | "locationRisk" | "resaleLiquidity";
@@ -38,6 +38,16 @@ const confidenceLabels = {
   unknown: "Luotettavuus ei tiedossa",
 } as const;
 
+const areaLevelLabels = {
+  postal_code: "postinumeroalue",
+  municipality: "kunta",
+  sub_region: "seutukunta",
+  region: "maakunta",
+  comparison_area: "vertailualue",
+  country: "koko maa",
+  unknown: "tarkkuus ei tiedossa",
+} as const;
+
 export function RentalDemandSelector({
   kind,
   choice,
@@ -52,7 +62,7 @@ export function RentalDemandSelector({
   const label = labels[kind];
   const options = kind === "locationRisk" ? riskOptions : kind === "resaleLiquidity" ? liquidityOptions : demandOptions;
   const selected = options.find(([score]) => score === choice.effectiveValue);
-  const sourceLabel = choice.userOverridden ? "Käyttäjän valinta" : choice.source === "automatic" ? "Automaattinen arvio" : "Ei tiedossa";
+  const sourceLabel = choice.userOverridden ? "Käyttäjän valinta" : choice.source === "automatic" ? "Automaattinen arvio" : choice.source === "default" ? "Oletus" : "Ei tiedossa";
 
   return (
     <fieldset data-market-assessment={kind} className="min-w-0 rounded-xl border p-4">
@@ -62,7 +72,7 @@ export function RentalDemandSelector({
           <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${choice.userOverridden ? "border-success/30 bg-success-soft text-success" : "border-blue-200 bg-blue-50 text-blue-700"}`}>
             {sourceLabel}
           </span>
-          <span className="text-xs font-medium text-muted-foreground">{confidenceLabels[choice.confidence]}</span>
+          {choice.source === "automatic" || choice.source === "user" ? <span className="text-xs font-medium text-muted-foreground">{confidenceLabels[choice.confidence]}</span> : null}
         </div>
         <div>
           <p className="text-sm font-medium">
@@ -77,6 +87,7 @@ export function RentalDemandSelector({
               {choice.factors.map((factor) => (
                 <li key={factor.id}>
                   <span className="font-medium text-foreground">{factor.label}:</span> {factor.description}
+                  {factor.evidence ? <span className="mt-1 block">Lähde: {factor.evidence.publisher} / {factor.evidence.datasetName} ({factor.evidence.datasetId}) · Alue: {factor.evidence.area} ({areaLevelLabels[factor.evidence.areaLevel]}) · Ajanjakso: {factor.evidence.period} · Lisenssi: {factor.evidence.license}</span> : null}
                 </li>
               ))}
             </ul>
@@ -102,7 +113,7 @@ export function RentalDemandSelector({
         </div>
         {choice.userOverridden && choice.automaticValue !== null ? (
           <Button type="button" variant="ghost" size="sm" className="h-auto px-0 text-xs" onClick={onRestore}>
-            Palauta automaattinen arvio
+            Palauta oletus
           </Button>
         ) : null}
       </div>

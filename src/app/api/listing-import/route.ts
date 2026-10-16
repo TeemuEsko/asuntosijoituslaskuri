@@ -15,6 +15,8 @@ import { sessionFromRequest } from "@/server/access/session";
 import { unauthorizedResponse } from "@/server/access/http";
 import { funnelIdForRequest } from "@/server/leads/funnel";
 import { leadRepository } from "@/server/leads/postgres";
+import { fetchStatisticsFinlandMarketEvidence } from "@/core/market-assessment/statistics-finland";
+import { resolveMarketAssessments } from "@/core/market-assessment/model";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -80,7 +82,8 @@ export async function POST(request: Request) {
         },
         { status: 422 },
       );
-    const result = clientSafeListingResult(await prepareListingAnalysis(parsed));
+    const prepared = await prepareListingAnalysis(parsed);
+    const result = { ...clientSafeListingResult(prepared), marketAssessments: resolveMarketAssessments({ statisticalRentAvailable: Boolean(prepared.rentEstimate?.benchmark) }) };
     await leadRepository.recordFunnelEvent("analysis_opened", funnelIdForRequest(request), session.leadId).catch(() => undefined);
     return NextResponse.json(result);
   }
@@ -120,6 +123,8 @@ export async function POST(request: Request) {
       ? Number(roomDescription.match(/^\s*(\d+)/)?.[1]) || undefined
       : undefined;
   const listingCondition = findingValue("condition");
+  const city = findingValue("city");
+  const buildingType = findingValue("buildingType");
   const imageFallback: ListingImageAnalysisStatus = {
     status: "failed",
     source: "listing",
@@ -149,14 +154,31 @@ export async function POST(request: Request) {
             errorCodes: ["LISTING_IMAGES_NOT_FOUND" as const],
           },
         });
-  const [prepared, listingImages] = await Promise.all([
+  const [prepared, listingImages, officialMarketEvidence] = await Promise.all([
     prepareListingAnalysis(acquisition.result),
     imagePromise,
+    fetchStatisticsFinlandMarketEvidence({ municipality: typeof city === "string" ? city : undefined, buildingType: typeof buildingType === "string" ? buildingType : undefined }).catch(() => ({})),
   ]);
   await leadRepository.recordFunnelEvent("analysis_opened", funnelIdForRequest(request), session.leadId).catch(() => undefined);
   return NextResponse.json({
     ...clientSafeListingResult(prepared),
     listingImageAnalysis: listingImages.status,
     visualCondition: listingImages.visualCondition,
+    marketAssessments: resolveMarketAssessments({
+      city: typeof city === "string" ? city : undefined,
+      buildingType: typeof buildingType === "string" ? buildingType : undefined,
+      statisticalRentAvailable: Boolean(prepared.rentEstimate?.benchmark),
+      rentEvidence: prepared.rentEstimate?.benchmark && prepared.rentEstimate.referencePeriod && prepared.rentEstimate.sourceArea ? {
+        publisher: "Tilastokeskus / StatFin",
+        datasetId: prepared.rentEstimate.datasetId ?? "15fa",
+        datasetName: "Vuokraindeksi (2025=100) ja keskineliövuokrat, neljännesvuosittain",
+        period: prepared.rentEstimate.referencePeriod,
+        area: prepared.rentEstimate.sourceArea,
+        areaLevel: prepared.rentEstimate.sourceAreaLevel ?? "region",
+        license: "CC BY 4.0",
+        fetchedAt: prepared.rentEstimate.fetchedAt ?? undefined,
+      } : undefined,
+      official: officialMarketEvidence,
+    }),
   });
 }

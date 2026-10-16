@@ -53,10 +53,22 @@ test("viisi lyhennystapaa ja niiden suomenkieliset selitteet ovat käyttöliitty
   for (const label of ["Annuiteetti", "Kiinteä tasaerä", "Tasalyhennys", "Vain korko", "Kertalyhennys / bullet"]) assert.match(assumptions, new RegExp(label.replace("/", "\\/")));
 });
 
-test("markkinakortit näyttävät automaattisen ja käyttäjän valinnan sekä palautuksen", async () => {
+test("oma pääoma on rahoitusosion ensimmäinen koko leveä kenttä ja laina heti sen alla", async () => {
+  const assumptions = await source("assumptions-card.tsx");
+  const financing = assumptions.slice(assumptions.indexOf('data-input-group="bank-financing"'), assumptions.indexOf('data-input-group="market-assessments"'));
+  assert.ok(financing.indexOf("Sijoitettu oma pääoma") < financing.indexOf("Pankkilainan määrä"));
+  assert.ok(financing.indexOf("Pankkilainan määrä") < financing.indexOf("Pankkilainan kokonaiskorko"));
+  assert.match(financing, /sm:col-span-2/);
+  assert.match(financing, /grid-cols-1[\s\S]*sm:grid-cols-2/);
+  assert.match(financing, /Lasketaan automaattisesti hankinnan rahoitustarpeesta vähentämällä sijoitettu oma pääoma/);
+  assert.doesNotMatch(financing, /min-\[1600px\]:grid-cols-3/);
+});
+
+test("markkinakortit erottavat oletuksen, automaattisen arvion ja käyttäjän valinnan", async () => {
   const selector = await source("rental-demand-selector.tsx");
-  for (const text of ["Automaattinen arvio", "Käyttäjän valinta", "Palauta automaattinen arvio", "Tarkemmat perusteet", "luotettavuus"]) assert.match(selector, new RegExp(text, "i"));
+  for (const text of ["Oletus", "Automaattinen arvio", "Käyttäjän valinta", "Palauta oletus", "Tarkemmat perusteet", "luotettavuus"]) assert.match(selector, new RegExp(text, "i"));
   assert.match(selector, /aria-pressed/);
   assert.match(selector, /grid-cols-1/);
+  assert.doesNotMatch(selector, /70–120 päivää|120–180 päivää|yli 180 päivää/);
   assert.doesNotMatch(selector, />automatic<|>user<|>unknown</);
 });

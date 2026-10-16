@@ -56,6 +56,7 @@ import type { DocumentFieldProvenance } from "@/core/documents/types";
 import { trackFunnelEvent } from "@/core/leads/client-analytics";
 import type { ListingPreview } from "@/core/leads/listing-preview";
 import { LeadOptIn } from "./lead-opt-in";
+import type { MarketAssessmentSet } from "@/core/market-assessment/model";
 
 type ImportMode = "url" | "text";
 type DecisionState = Record<
@@ -63,6 +64,7 @@ type DecisionState = Record<
   { decision: FindingDecision; correctedValue?: string }
 >;
 type ImportError = { code?: string; error: string };
+type ProtectedListingResult = ListingParseResult & { marketAssessments?: MarketAssessmentSet };
 
 function automaticValuesWithRent(result: ListingParseResult) {
   const values = automaticValues(result);
@@ -238,7 +240,7 @@ export function ListingImport({
 }) {
   const [mode, setMode] = useState<ImportMode>("url");
   const [value, setValue] = useState(initialUrl ?? "");
-  const [result, setResult] = useState<ListingParseResult | null>(null);
+  const [result, setResult] = useState<ProtectedListingResult | null>(null);
   const [decisions, setDecisions] = useState<DecisionState>({});
   const [loading, setLoading] = useState(false);
   const [preparationStatus, setPreparationStatus] = useState<AnalysisPreparationStatus | "idle">("idle");
@@ -273,7 +275,7 @@ export function ListingImport({
         }),
       });
       const payload = (await response.json()) as
-        | ListingParseResult
+        | ProtectedListingResult
         | ImportError;
       if (!response.ok || "error" in payload) throw payload;
       setShowOptIn(false);
@@ -285,7 +287,7 @@ export function ListingImport({
       const parsedValues = automaticValuesWithRent(payload);
       if (payload.preparation?.nextStep === "analysis") {
         setPreparationStatus("ready");
-        onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, housingCompanyRenovations: payload.housingCompanyRenovations, housingCompanyLoan: payload.housingCompanyLoan, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues), listingImageAnalysis: payload.listingImageAnalysis, visualCondition: payload.visualCondition });
+        onComplete({ ...parsedValues, rentEstimate: payload.rentEstimate, renovations: payload.renovations, housingCompanyRenovations: payload.housingCompanyRenovations, housingCompanyLoan: payload.housingCompanyLoan, documentKinds: ["listing"], importReview: payload, analysisReliability: rentAwareReliability(payload, parsedValues), listingImageAnalysis: payload.listingImageAnalysis, visualCondition: payload.visualCondition, marketAssessments: payload.marketAssessments });
       } else {
         setResult(payload);
         setPreparationStatus("needs_user_input");
@@ -394,6 +396,7 @@ export function ListingImport({
       importReview: result ?? undefined,
       listingImageAnalysis: result?.listingImageAnalysis,
       visualCondition: result?.visualCondition,
+      marketAssessments: result?.marketAssessments,
       documentProvenance: {},
     };
     for (const finding of result?.findings ?? []) {
@@ -455,7 +458,7 @@ export function ListingImport({
       if (debtChoice !== null) { userConfirmedFields.add("companyLoanShare"); userConfirmedFields.add("financingFeeMonthly"); }
       const documentProvenance: Partial<Record<NormalizedFieldKey, DocumentFieldProvenance>> = {};
       for (const field of userConfirmedFields) documentProvenance[field] = { source: { kind: "user", label: "Käyttäjän tieto" }, status: "user", sourceLabel: "Käyttäjän tieto", confidence: "high" };
-      const canonicalPayload: ImportedPropertyData = { ...combined, documentProvenance, rentEstimate: rentForValidation, renovations: result.renovations, housingCompanyRenovations: result.housingCompanyRenovations, housingCompanyLoan, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]), listingImageAnalysis: result.listingImageAnalysis, visualCondition: result.visualCondition };
+      const canonicalPayload: ImportedPropertyData = { ...combined, documentProvenance, rentEstimate: rentForValidation, renovations: result.renovations, housingCompanyRenovations: result.housingCompanyRenovations, housingCompanyLoan, documentKinds: ["listing"], importReview: result, analysisReliability: rentAwareReliability(result, combined, [...new Set([...missingAnalysisFields(parsedValues, result.rentEstimate), ...Object.keys(userValues) as NormalizedFieldKey[]])]), listingImageAnalysis: result.listingImageAnalysis, visualCondition: result.visualCondition, marketAssessments: result.marketAssessments };
       if (process.env.NODE_ENV === "development") console.info("[analysis-update]", { submittedMissingFields: userValues, parsedNumericValues: Object.fromEntries(Object.entries(userValues).filter(([, value]) => typeof value === "number")), hasDebtShare: detectedDebt === "unknown" ? debtChoice : detectedDebt, debtShare: combined.companyLoanShare, financingFee: combined.financingFeeMonthly, canonicalPayload, validationErrors, analysisResult: validationErrors.length ? "invalid" : "ready", navigationTarget: "workspace" });
       if (validationErrors.length) throw new Error(validationErrors.join(", "));
       onComplete(canonicalPayload);

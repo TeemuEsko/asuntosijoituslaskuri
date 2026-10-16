@@ -47,7 +47,7 @@ Kaavoissa `P` on pankkilainan määrä, `r` kuukausikorko ja `n` maksuerien mä�
 
 ## D. Markkina-arviot
 
-Vuokrakysyntä, sijaintiriski ja jälleenmyytävyys saavat automaattisen esivalinnan. Arvio näyttää lähteen, tärkeimmät perusteet ja luotettavuuden. Käyttäjä voi vaihtaa 1–5-valinnan ja palauttaa automaattisen arvion.
+Vuokrakysyntä, sijaintiriski ja jälleenmyytävyys saavat neutraalin 3/5-oletuksen, jos validoitua luokittelumallia varten ei ole riittävää ajantasaista dataa. Oikea tilastoevidenssi näytetään lähteineen taustatietona, mutta sitä ei väitetä automaattiseksi luokitukseksi. Käyttäjä voi vaihtaa kaikki 1–5-valinnat ja palauttaa oletuksen.
 
 ## Lähdebadget
 

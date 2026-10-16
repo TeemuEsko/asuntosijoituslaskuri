@@ -195,8 +195,12 @@ export function AssumptionsCard({
 
       <Card data-input-group="bank-financing">
         <CardHeader className="border-b"><CardTitle>C. Pankkirahoitus</CardTitle><CardDescription>Rahoitusoletukset määrittävät lainan maksuerän, kassavirran ja vakuustilanteen.</CardDescription></CardHeader>
-        <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 min-[1600px]:grid-cols-3">
-          <LocalizedNumberField id="bank-loan-amount" label="Pankkilainan määrä" status="inferred" suffix="€" maximumFractionDigits={1} value={bankLoanAmount} disabled description="Myyntihinnan ja kertaluonteisten hankintakulujen rahoitustarve vähennettynä sijoitetulla omalla pääomalla." help="Laskettu myyntihinnasta, remonttivarasta, varainsiirtoverosta, muista kaupantekokuluista ja omasta pääomasta." />
+        <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
+          <div className="min-w-0 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:col-span-2">
+            <LocalizedNumberField id="equity" numericInputKey="equity" label="Sijoitettu oma pääoma" status={values.equityUserOverridden ? "user" : "default"} suffix="€" maximumFractionDigits={1} value={values.equity} onValueChange={(value) => onChange("equity", value)} description="Kaupantekoon käytettävä oma raha. Oletusarvo on 0 €." help="Oma pääoma pienentää laskennallista pankkilainan tarvetta. Oletus ei ole pankin hyväksymä rahoitusratkaisu." />
+            {values.equityUserOverridden ? <Button type="button" variant="ghost" size="sm" className="h-auto px-0 text-xs" onClick={onResetEquity}>Palauta 0 € oletus</Button> : null}
+          </div>
+          <LocalizedNumberField id="bank-loan-amount" label="Pankkilainan määrä" status="inferred" suffix="€" maximumFractionDigits={1} value={bankLoanAmount} disabled description="Lasketaan automaattisesti hankinnan rahoitustarpeesta vähentämällä sijoitettu oma pääoma." help="Laskettu myyntihinnasta, remonttivarasta, varainsiirtoverosta, muista kaupantekokuluista ja omasta pääomasta." />
           <LocalizedNumberField id="interest" numericInputKey="annualInterestRate" label="Pankkilainan kokonaiskorko" status={status("annualInterestRate")} suffix="%" maximumFractionDigits={1} value={values.annualInterestRate} onValueChange={(value) => onChange("annualInterestRate", value)} description="Viitekorko ja pankin marginaali yhteensä." help="Syötä pankkilainan vuotuinen kokonaiskorko prosentteina." />
           <LocalizedNumberField id="loan-term" numericInputKey="loanTermYears" label="Laina-aika" status={status("loanTermYears")} suffix="vuotta" maximumFractionDigits={1} value={values.loanTermYears} onValueChange={(value) => onChange("loanTermYears", value)} description="Pankkilainan takaisinmaksuaika vuosina." help="Laina-aika vaikuttaa kuukausierään ja lyhennyksen määrään." />
           <div className="min-w-0 space-y-2">
@@ -207,10 +211,6 @@ export function AssumptionsCard({
               <SelectContent>{repaymentOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
             </Select>
             <p className="text-xs leading-relaxed text-muted-foreground">{repayment.description}</p>
-          </div>
-          <div className="min-w-0 space-y-2">
-            <LocalizedNumberField id="equity" numericInputKey="equity" label="Sijoitettu oma pääoma" status={values.equityUserOverridden ? "user" : "default"} suffix="€" maximumFractionDigits={1} value={values.equity} onValueChange={(value) => onChange("equity", value)} description="Kaupantekoon käytettävä oma raha. Oletusarvo on 0 €." help="Oma pääoma pienentää laskennallista pankkilainan tarvetta. Oletus ei ole pankin hyväksymä rahoitusratkaisu." />
-            {values.equityUserOverridden ? <Button type="button" variant="ghost" size="sm" className="h-auto px-0 text-xs" onClick={onResetEquity}>Palauta 0 € oletus</Button> : null}
           </div>
           <div className="min-w-0 space-y-2">
             <div className="flex min-h-10 flex-wrap items-start justify-between gap-3"><Label>Vakuusarvoprosentti</Label><SourceBadge status={status("collateralPercentage")} /></div>
