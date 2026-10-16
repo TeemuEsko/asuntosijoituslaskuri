@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { POST } from "../src/app/api/document-analysis/route.ts";
+import { ACCESS_COOKIE_NAME, createAccessSessionToken } from "../src/server/access/session.ts";
 import { SCANNED_DOCUMENT_MESSAGE } from "../src/core/documents/messages.ts";
 import { minimalTextPdf } from "./helpers/minimal-pdf.ts";
 
 process.env.ENABLE_DOCUMENT_ANALYSIS = "true";
+process.env.SESSION_SECRET = "document-test-session-secret-at-least-32-characters";
+const accessCookie = `${ACCESS_COOKIE_NAME}=${createAccessSessionToken("document-test-lead", process.env.SESSION_SECRET)}`;
 
 function requestFor(
   bytes: Uint8Array,
@@ -19,6 +22,7 @@ function requestFor(
   return new Request("http://localhost/api/document-analysis", {
     method: "POST",
     body: form,
+    headers: { cookie: accessCookie },
   });
 }
 
@@ -150,6 +154,7 @@ test("dokumenttireitti hylkää puuttuvan tiedoston ennen analyysiä", async () 
     new Request("http://localhost/api/document-analysis", {
       method: "POST",
       body: new FormData(),
+      headers: { cookie: accessCookie },
     }),
   );
   const result = (await response.json()) as { code?: string };

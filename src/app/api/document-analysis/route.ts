@@ -7,6 +7,7 @@ import {
   extractLocalDocumentText,
   LocalDocumentError,
 } from "../../../server/documents/local-document-text.ts";
+import { sessionFromRequest } from "../../../server/access/session.ts";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,12 @@ export async function POST(request: Request) {
         message: "Asiakirja-analyysi ei ole käytettävissä.",
       },
       { status: 404 },
+    );
+  }
+  if (!sessionFromRequest(request)) {
+    return Response.json(
+      { code: "ACCESS_REQUIRED", message: "Istunto vaaditaan." },
+      { status: 401 },
     );
   }
 

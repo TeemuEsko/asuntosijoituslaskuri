@@ -3,10 +3,12 @@ import { randomUUID } from "node:crypto";
 import { validateVisualImage } from "@/core/visual-condition/validation";
 import { OpenAiVisualConditionProvider, VisualConditionProviderError } from "@/server/visual-condition/openai-vision-provider";
 import { mapVisualImageResult } from "@/server/visual-condition/map-result";
+import { sessionFromRequest } from "@/server/access/session";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  if (!sessionFromRequest(request)) return NextResponse.json({ code: "ACCESS_REQUIRED", message: "Istunto vaaditaan." }, { status: 401 });
   let form: FormData;
   try { form = await request.formData(); } catch { return NextResponse.json({ code: "IMAGE_ACCESS_DENIED", message: "Kuvatiedostoa ei voitu lukea." }, { status: 400 }); }
   const file = form.get("image");

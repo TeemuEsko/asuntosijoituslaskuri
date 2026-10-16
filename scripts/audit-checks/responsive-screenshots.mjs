@@ -19,11 +19,19 @@ async function waitForServer() {
   throw new Error("Next.js-palvelin ei käynnistynyt auditointia varten");
 }
 
+async function mockProtectedFlow(page) {
+  await page.route("**/api/listing-identify", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ preview: { address: "Kivikkokuja 4 A 2, 65100 Vaasa", roomDescription: "2h + k", areaSqm: 32, debtFreePrice: 89000, buildingType: "apartment" } }) }));
+  await page.route("**/api/access/session", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ accessGranted: true }) }));
+  await page.route("**/api/report", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/api/funnel", (route) => route.fulfill({ status: 204 }));
+}
+
 const viewports = [[1280, 720], [1366, 768], [1440, 900], [1536, 864], [1920, 1080]];
 let browser;
 try {
   await waitForServer(); browser = await chromium.launch({ headless: true });
   const startPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await mockProtectedFlow(startPage);
   await startPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
   const urlInput = startPage.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki");
   const searchButton = startPage.getByRole("button", { name: "Hae tiedot", exact: true });
@@ -47,6 +55,7 @@ try {
   });
   await startPage.close();
   const pendingRentPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await mockProtectedFlow(pendingRentPage);
   await pendingRentPage.route("**/api/listing-import", async (route) => { await new Promise((resolve) => setTimeout(resolve, 2_000)); await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings, housingCompanyLoan, rentEstimate: listingRentEstimate, preparation: readyPreparation, renovations: [], missingCriticalFields: [], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length, acceptedFields: findings.length, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [] } }) }); });
   await pendingRentPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
   await pendingRentPage.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki").fill("https://www.etuovi.com/kohde/odotus");
@@ -56,6 +65,7 @@ try {
   await pendingRentPage.getByText("Analyysi valmis", { exact: true }).waitFor();
   await pendingRentPage.close();
   const automaticRentPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await mockProtectedFlow(automaticRentPage);
   const rentEstimate = { effectiveMonthlyRent: 795, exactEstimatedMonthlyRent: 793.4, rentPerSquareMeter: 15.9, source: "statistics_finland", sourceName: "Tilastokeskus, asuntojen vuokrat", sourceArea: "Vaasa", sourceAreaLevel: "municipality", roomCategory: "TWO_ROOMS", referencePeriod: "2026Q2", metricType: "average", housingFinanceType: "non_subsidised", confidence: "medium", sampleSize: 120, rawSourceValue: 15.9, userOverridden: false, fetchedAt: "2026-07-16T05:00:00Z", datasetId: "15fa", resolutionStatus: "resolved" };
   await automaticRentPage.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings: findings.filter((finding) => finding.field !== "currentRentMonthly"), housingCompanyLoan, rentEstimate, preparation: readyPreparation, renovations: [], missingCriticalFields: [], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length - 1, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length - 1, acceptedFields: findings.length - 1, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [] } }) }));
   await automaticRentPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
@@ -77,6 +87,7 @@ try {
   await automaticRentPage.getByText("Tilastokeskuksen arvio", { exact: true }).first().waitFor();
   await automaticRentPage.close();
   const missingPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await mockProtectedFlow(missingPage);
   const missingRentEstimate = { effectiveMonthlyRent: null, source: "unknown", confidence: "unknown", userOverridden: false, resolutionStatus: "unavailable" };
   const needsRentPreparation = { status: "needs_user_input", allAutomaticEnrichmentsCompleted: true, completedStages, missingCriticalFields: ["currentRentMonthly"], nextStep: "missing_data" };
   await missingPage.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings: findings.filter((finding) => finding.field !== "currentRentMonthly"), housingCompanyLoan, rentEstimate: missingRentEstimate, preparation: needsRentPreparation, renovations: [], missingCriticalFields: ["Nykyinen vuokra"], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length - 1, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length - 1, acceptedFields: findings.length - 1, rejectedFields: 0, conflicts: [], missingEssentialFields: ["Nykyinen vuokra"], warnings: [], errors: [] } }) }));
@@ -97,6 +108,7 @@ try {
   await missingPage.close();
   for (const [width, height] of viewports) {
     const page = await browser.newPage({ viewport: { width, height } });
+    await mockProtectedFlow(page);
     await page.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ source: "etuovi", findings, housingCompanyLoan, rentEstimate: listingRentEstimate, preparation: readyPreparation, renovations: [], missingCriticalFields: [], warnings: [], diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length, acceptedFields: findings.length, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [] } }) }));
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
     await page.getByPlaceholder("Liitä Etuovi- tai Oikotie-linkki").fill("https://www.etuovi.com/kohde/responsiivisuus");
@@ -142,6 +154,7 @@ try {
     await page.close();
   }
   const logoPage = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  await mockProtectedFlow(logoPage);
   await logoPage.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
   await logoPage.getByRole("button", { name: "Aloita tyhjästä" }).click();
   const homeLink = logoPage.getByRole("link", { name: "Siirry etusivulle" }).first();

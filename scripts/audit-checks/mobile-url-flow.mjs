@@ -11,20 +11,17 @@ const viewports = [
   { width: 390, height: 844 },
   { width: 430, height: 932 },
 ];
-const listingFixture = `
-Osoite: Kivikkokuja 4 A 2, 65100 Vaasa
-2h + k
-Velaton hinta: 120 000 €
-Myyntihinta: 100 000 €
-Yhtiölainaosuus: 20 000 €
-Hoitovastike: 250 €/kk
-Rahoitusvastike: 100 €/kk
-Pinta-ala: 50 m²
-Rakennusvuosi: 2010
-Kuukausivuokra: 800 €/kk
-Talotyyppi: Kerrostalo
-Lämmitysmuoto: Kaukolämpö
-`;
+const fixtureValues = [
+  ["address", "Osoite", "Kivikkokuja 4 A 2, 65100 Vaasa"],
+  ["roomDescription", "Huonejako", "2h + k"],
+  ["debtFreePrice", "Velaton hinta", 120000], ["salePrice", "Myyntihinta", 100000],
+  ["companyLoanShare", "Yhtiölainaosuus", 20000], ["maintenanceFeeMonthly", "Hoitovastike", 250],
+  ["financingFeeMonthly", "Rahoitusvastike", 100], ["areaSqm", "Pinta-ala", 50],
+  ["constructionYear", "Rakennusvuosi", 2010], ["currentRentMonthly", "Kuukausivuokra", 800],
+  ["buildingType", "Talotyyppi", "apartment"], ["heatingType", "Lämmitysmuoto", "district"],
+];
+const findings = fixtureValues.map(([field, fieldName, value], index) => ({ id: `${field}-${index}`, field, fieldName, originalLabel: fieldName, originalValue: String(value), normalizedValue: value, source: "etuovi", sourceExcerpt: `${fieldName}: ${value}`, supportingSources: [{ semanticSource: "named_field", section: "basic", excerpt: `${fieldName}: ${value}`, originalValue: String(value) }], section: "basic", confidence: "high", confidenceScore: 95, confidenceReasons: ["Tarkka kenttäosuma"], sourceConfidence: 95, fieldMatchConfidence: 95, validationConfidence: 100, validationResult: "accepted", conflicts: [], autoAccepted: true }));
+const listingResult = { source: "etuovi", findings, renovations: [], missingCriticalFields: [], warnings: [], housingCompanyLoan: { debtShare: 20000, hasDebtShare: true, source: "direct", sourceDescription: "Ilmoituksessa annettu yhtiölainaosuus", confidence: "high", userOverridden: false, conflicts: [] }, rentEstimate: { effectiveMonthlyRent: 800, exactEstimatedMonthlyRent: 800, source: "listing", sourceName: "Myynti-ilmoitus", confidence: "high", userOverridden: false, resolutionStatus: "resolved" }, preparation: { status: "ready", allAutomaticEnrichmentsCompleted: true, completedStages: ["parsing_listing", "normalizing_data", "resolving_location", "estimating_rent", "analysing_listing_images", "running_enrichments", "validating_inputs"], missingCriticalFields: [], nextStep: "analysis" }, diagnostics: { parserVersion: "test", site: "etuovi", sections: [], rawCandidateCount: findings.length, rejectedCandidates: [], fieldDiagnostics: [], mergedFindingCount: findings.length, acceptedFields: findings.length, rejectedFields: 0, conflicts: [], missingEssentialFields: [], warnings: [], errors: [] } };
 
 const browser = await chromium.launch({ headless: true });
 try {
@@ -32,17 +29,22 @@ try {
     const page = await browser.newPage({ viewport });
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.stack ?? error.message));
-    await page.route("**/api/listing-import", async (route) => {
-      const request = route.request();
-      await route.continue({
-        headers: { ...request.headers(), "content-type": "application/json" },
-        postData: JSON.stringify({ kind: "text", value: listingFixture }),
-      });
-    });
+    let optedIn = false;
+    await page.route("**/api/listing-identify", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ preview: { address: "Kivikkokuja 4 A 2, 65100 Vaasa", roomDescription: "2h + k", areaSqm: 50, debtFreePrice: 120000, buildingType: "apartment" } }) }));
+    await page.route("**/api/access/session", (route) => route.fulfill({ status: optedIn ? 200 : 401, contentType: "application/json", body: JSON.stringify({ accessGranted: optedIn }) }));
+    await page.route("**/api/leads/opt-in", (route) => { optedIn = true; return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, accessGranted: true }) }); });
+    await page.route("**/api/listing-import", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(listingResult) }));
+    await page.route("**/api/report", (route) => route.fulfill({ status: 204 }));
 
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.getByLabel("Etuovi- tai Oikotie-linkki").fill("https://www.etuovi.com/kohde/12345678");
     await page.getByRole("button", { name: "Hae tiedot", exact: true }).click();
+    await page.getByRole("heading", { name: "Analyysisi on pian valmis!" }).waitFor().catch(async (error) => {
+      throw new Error(`${error.message}\nNäkyvä sisältö:\n${(await page.locator("body").innerText()).slice(0, 3_000)}`);
+    });
+    await page.getByLabel("Etunimi").fill("Maija");
+    await page.getByLabel("Sähköpostiosoite").fill("maija@example.fi");
+    await page.getByRole("button", { name: "Katso maksuton analyysi" }).click();
     await page.locator("#vacancy-months").waitFor({ state: "visible", timeout: 30_000 });
     if (artifactDirectory) {
       await page.screenshot({
@@ -87,6 +89,7 @@ try {
       };
     });
     await printAction.click();
+    await page.waitForFunction(() => typeof window.__capturedPrintTitle === "string");
     const printTitle = await page.evaluate(() => window.__capturedPrintTitle);
     assert.equal(printTitle, "Sijoitusanalyysi – Kivikkokuja 4 A 2, 65100 Vaasa");
     const expertAction = page.getByRole("button", { name: "Pyydä ammattilaisen arvio" });

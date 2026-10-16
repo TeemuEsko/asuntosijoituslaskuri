@@ -53,6 +53,9 @@ import { ImportSourceReview } from "./import-source-review";
 import { normalizeHeatingType } from "@/core/domain/heating";
 import { resolveEffectiveRent } from "@/core/rent-data/rent-estimation";
 import type { DocumentFieldProvenance } from "@/core/documents/types";
+import { trackFunnelEvent } from "@/core/leads/client-analytics";
+import type { ListingPreview } from "@/core/leads/listing-preview";
+import { LeadOptIn } from "./lead-opt-in";
 
 type ImportMode = "url" | "text";
 type DecisionState = Record<
@@ -243,10 +246,12 @@ export function ListingImport({
   const [userValues, setUserValues] = useState<Partial<Record<NormalizedFieldKey, number | string>>>({});
   const [debtChoice, setDebtChoice] = useState<"yes" | "no" | null>(null);
   const [analysisUpdateError, setAnalysisUpdateError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ListingPreview | null>(null);
+  const [showOptIn, setShowOptIn] = useState(false);
   const initialSearchStarted = useRef(false);
   const searchListingRef = useRef<() => Promise<void>>(async () => undefined);
 
-  async function searchListing(forceRefresh: boolean | unknown = false) {
+  async function loadProtectedAnalysis(forceRefresh: boolean | unknown = false) {
     setLoading(true);
     setPreparationStatus("parsing_listing");
     setError(null);
@@ -271,6 +276,7 @@ export function ListingImport({
         | ListingParseResult
         | ImportError;
       if (!response.ok || "error" in payload) throw payload;
+      setShowOptIn(false);
       setPreparationStatus("validating_inputs");
       if (!canDeterminePreparationNextStep(payload.preparation)) throw new Error("Automaattinen tietojen rikastus ei valmistunut hallitusti.");
       setUserValues({});
@@ -296,6 +302,41 @@ export function ListingImport({
       );
     } finally {
       for (const timer of phaseTimers) window.clearTimeout(timer);
+      setLoading(false);
+    }
+  }
+
+  async function searchListing(forceRefresh: boolean | unknown = false) {
+    if (mode !== "url") {
+      const session = await fetch("/api/access/session", { credentials: "same-origin", cache: "no-store" }).catch(() => null);
+      if (!session?.ok) { setPreview({}); setShowOptIn(true); return; }
+      await loadProtectedAnalysis(forceRefresh);
+      return;
+    }
+    setLoading(true);
+    setPreparationStatus("parsing_listing");
+    setError(null);
+    setResult(null);
+    setShowOptIn(false);
+    trackFunnelEvent("listing_url_submitted");
+    try {
+      const response = await fetch("/api/listing-identify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ value }),
+        signal: AbortSignal.timeout(65_000),
+      });
+      const payload = await response.json() as { preview?: ListingPreview; error?: string };
+      if (!response.ok || !payload.preview) throw new Error(payload.error ?? "Kohdetta ei voitu tunnistaa.");
+      setPreview(payload.preview);
+      const session = await fetch("/api/access/session", { credentials: "same-origin", cache: "no-store" }).catch(() => null);
+      if (session?.ok) await loadProtectedAnalysis(forceRefresh);
+      else { setShowOptIn(true); setPreparationStatus("needs_user_input"); }
+    } catch (caught) {
+      setPreparationStatus("failed");
+      setError({ error: caught instanceof Error && caught.name === "TimeoutError" ? "Kohteen tunnistaminen aikakatkaistiin. Yritä uudelleen." : caught instanceof Error ? caught.message : "Kohteen tunnistaminen epäonnistui." });
+    } finally {
       setLoading(false);
     }
   }
@@ -783,6 +824,18 @@ export function ListingImport({
               jatkamista.
             </p>
           ) : null}
+        </section>
+      ) : null}
+      {showOptIn && preview ? (
+        <section className="mx-auto mt-8 max-w-xl space-y-5">
+          {Object.keys(preview).length ? <Card><CardHeader><CardTitle>Tunnistettu kohde</CardTitle><CardDescription>Tarkista, että ilmoitus koskee oikeaa kohdetta.</CardDescription></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2">
+            {preview.address ? <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">Osoite</p><p className="font-semibold">{preview.address}</p></div> : null}
+            {preview.roomDescription ? <div><p className="text-xs text-muted-foreground">Huoneistotyyppi</p><p className="font-medium">{preview.roomDescription}</p></div> : null}
+            {typeof preview.areaSqm === "number" ? <div><p className="text-xs text-muted-foreground">Pinta-ala</p><p className="font-medium">{formatArea(preview.areaSqm)}</p></div> : null}
+            {typeof preview.debtFreePrice === "number" ? <div><p className="text-xs text-muted-foreground">Velaton hinta</p><p className="font-medium">{formatEuro(preview.debtFreePrice)}</p></div> : null}
+            {preview.buildingType ? <div><p className="text-xs text-muted-foreground">Talotyyppi</p><p className="font-medium">{displayListingStringValue("buildingType", preview.buildingType)}</p></div> : null}
+          </CardContent></Card> : null}
+          <LeadOptIn onComplete={() => loadProtectedAnalysis(true)} />
         </section>
       ) : null}
     </main>

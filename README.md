@@ -12,7 +12,9 @@ npm.cmd run dev
 
 Avaa selaimessa [http://localhost:3000](http://localhost:3000).
 
-Valokuvien perusteella arvioitu kunto edellyttää, että asetat `.env.local`-tiedostoon palvelinpuolen `OPENAI_API_KEY`-avaimen. Muut analyysitoiminnot toimivat ilman avainta. Sovellus ei hae myynti-ilmoitusten kuvia automaattisesti.
+Liidinkeräys ja analyysiin pääsy edellyttävät PostgreSQL-tietokantaa sekä `DATABASE_URL`- ja `SESSION_SECRET`-asetuksia. Suorita ennen käynnistystä `npm.cmd run db:migrate`. Valokuvien perusteella arvioitu kunto edellyttää lisäksi palvelinpuolen `OPENAI_API_KEY`-avainta.
+
+Tarkka Vercel-käyttöönotto, CSV-vienti, suostumuksen peruuttaminen ja tietojen poistomenettely on kuvattu tiedostossa `docs/15_LEAD_CAPTURE_DEPLOYMENT.md`.
 
 ## Tarkistukset
 
@@ -28,9 +30,11 @@ Koko tarkistusketju yhdellä komennolla:
 npm.cmd run check
 ```
 
-## RC:n rajaus
+## Nykyinen rajaus
 
-- ei tietokantaa tai autentikointia
+- analyysiin pääsy perustuu kevyeen, allekirjoitettuun 30 päivän selaimistuntoon; sähköpostia ei varmenneta eikä ratkaisu ole käyttäjätili
+- liidit, suostumushistoria, funnel-tapahtumat ja palvelinpuolinen rate limit tallennetaan PostgreSQL:ään
+- talouslaskennan JavaScript jää osittain client bundleen; katso dokumentoitu suojausraja ennen tuotantojulkaisua
 - ilmoitusparseri toimii paikallisesti; vain käyttäjän erikseen lisäämien valokuvien tulkinta käyttää valinnaista palvelinpuolen kuvantulkintarajapintaa
 - ristiriitaisia dokumenttiarvoja ei ylikirjoiteta automaattisesti
 - laskentakatalogi: `docs/11_CALCULATION_CATALOG.md`
