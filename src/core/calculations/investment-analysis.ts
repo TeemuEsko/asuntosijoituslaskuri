@@ -4,9 +4,7 @@ import {
 } from "./occupancy.ts";
 import {
   clampInvestmentScore,
-  getInvestmentRating,
   type InvestmentOverallScoreData,
-  type RatingSubScore,
 } from "../analysis/investment-overall-score.ts";
 import { METRIC_THRESHOLDS } from "../analysis/metric-card-status.ts";
 import {
@@ -26,7 +24,6 @@ import {
 import {
   calculateOpportunityScoreV2,
   type CollateralValueSource,
-  type ValueEstimateSource,
 } from "../scoring/opportunity-score-v2.ts";
 
 export type RepaymentType =
@@ -76,21 +73,11 @@ export type InvestmentAnalysisInput = {
     | "poor"
     | "very_poor"
     | "unknown";
-  futureRepairCost?: number;
   technicalConditionScore?: number;
-  companyLoanAnnualInterestRate?: number;
-  companyLoanRemainingTermYears?: number;
-  companyLoanInterestOnlyEndYear?: number;
-  projectedFinancingFeeMonthly?: number;
-  housingCompanyLiquidityMonths?: number;
   apartmentCount?: number;
   landOwnership?: string;
   landLeaseEndDate?: string;
   plotShareRedeemed?: boolean;
-  currentMarketValue?: number;
-  currentMarketValueSource?: ValueEstimateSource;
-  postRenovationMarketValue?: number;
-  postRenovationMarketValueSource?: ValueEstimateSource;
   collateralValueSource?: CollateralValueSource;
   verifiedLongTermRentalProhibition?: boolean;
   verifiedLandLeaseNonRenewal?: boolean;
@@ -132,9 +119,6 @@ export type InvestmentAnalysisResult = InvestmentOverallScoreData & {
   riskAdjustedNetRentalYield?: number;
   requiredNetRentalYieldFor80?: number;
   currentFreeCollateral?: number;
-  purchaseDiscount?: number;
-  renovationNetValue?: number;
-  totalValueCreation?: number;
   observations: InvestmentObservation[];
 };
 
@@ -261,11 +245,6 @@ function confidenceAdjustedValue(
       ? 0
       : 1;
   return 3 + (value - 3) * weight;
-}
-
-function sub(score: number, summary: string): RatingSubScore {
-  const rounded = Math.round(clampInvestmentScore(score));
-  return { score: rounded, grade: getInvestmentRating(rounded).grade, summary };
 }
 
 export function calculateInvestmentAnalysis(
@@ -534,23 +513,13 @@ export function calculateInvestmentAnalysis(
     financingFeeMonthly: financing,
     otherCostsMonthly: input.otherCostsMonthly,
     repairHistoryScore: input.repairRiskScore,
-    futureRepairCost: input.futureRepairCost,
     technicalConditionScore: input.technicalConditionScore,
-    companyLoanAnnualInterestRate: input.companyLoanAnnualInterestRate,
-    companyLoanRemainingTermYears: input.companyLoanRemainingTermYears,
-    companyLoanInterestOnlyEndYear: input.companyLoanInterestOnlyEndYear,
-    projectedFinancingFeeMonthly: input.projectedFinancingFeeMonthly,
-    housingCompanyLiquidityMonths: input.housingCompanyLiquidityMonths,
     apartmentCount: input.apartmentCount,
     landOwnership: input.landOwnership,
     landLeaseEndDate: input.landLeaseEndDate,
     plotShareRedeemed: input.plotShareRedeemed,
     collateralValue: input.collateralValue,
     collateralValueSource: input.collateralValueSource,
-    currentMarketValue: input.currentMarketValue,
-    currentMarketValueSource: input.currentMarketValueSource,
-    postRenovationMarketValue: input.postRenovationMarketValue,
-    postRenovationMarketValueSource: input.postRenovationMarketValueSource,
     rentalDemand: weightedRentalDemand,
     locationRisk: weightedLocationRisk,
     resaleLiquidity: weightedResaleLiquidity,
@@ -597,41 +566,10 @@ export function calculateInvestmentAnalysis(
     riskAdjustedNetRentalYield: opportunity.riskAdjustedNetYield,
     requiredNetRentalYieldFor80: opportunity.requiredNetYieldFor80,
     currentFreeCollateral: opportunity.currentFreeCollateral,
-    purchaseDiscount: opportunity.purchaseDiscount,
-    renovationNetValue: opportunity.renovationNetValue,
-    totalValueCreation: opportunity.totalValueCreation,
     observations,
     positiveFactors,
     warningFactors,
     missingFactors,
     reliability: opportunity.reliability,
-    severeRisks: opportunity.severeRisks,
-    appliedScoreCap: opportunity.appliedCap,
-    subScores: {
-      yield: sub(
-        opportunity.subScores.riskAdjustedYield,
-        "Riskikorjattu nettovuokratuotto suhteutetaan kokonaisinvestointiin.",
-      ),
-      cashFlow: sub(
-        opportunity.subScores.cashFlow,
-        "Kassavirta huomioidaan sekä euroina että suhteessa kokonaisinvestointiin.",
-      ),
-      housingCompanyRisk: sub(
-        opportunity.subScores.housingCompanyRisk,
-        "Arvio yhdistää remontit, teknisen kunnon, talouden, koon ja tontin.",
-      ),
-      valueCreation: sub(
-        opportunity.subScores.valueCreation,
-        "Arvio huomioi vakuusaseman ja lähteistetyn arvonluontipotentiaalin.",
-      ),
-      financing: sub(
-        opportunity.subScores.financing,
-        "Arvio huomioi korkostressin, velkavivun, lyhennykset ja jälleenrahoitusriskin.",
-      ),
-      market: sub(
-        opportunity.subScores.market,
-        "Arvio huomioi kysynnän, jälleenmyytävyyden, sijaintiriskin ja tyhjäkäynnin.",
-      ),
-    },
   };
 }

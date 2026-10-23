@@ -8,11 +8,11 @@ import { visualConditionReportDisclaimer, visualConditionUiDisclaimer } from "..
 import { baseInvestment } from "./fixtures/parity-fixtures.ts";
 import { visualConditionScenarios } from "./fixtures/visual-condition-fixtures.ts";
 
-test("vahvistettu visuaalinen arvio vaikuttaa pisteeseen rajatusti mutta ei taloyhtiöriskin osapisteeseen", () => {
+test("vahvistettu visuaalinen arvio vaikuttaa kokonaispisteeseen rajatusti", () => {
   const visual = confirmVisualCondition(aggregateVisualCondition({ ...visualConditionScenarios.bathroomRisk, images: [...visualConditionScenarios.bathroomRisk.images], observations: [...visualConditionScenarios.bathroomRisk.observations], imageCount: 1, areaSqm: 60, expectedRooms: 1, sourceDisclaimerAccepted: true }));
   const baseline = calculateInvestmentAnalysis(baseInvestment);
   const withVisual = calculateInvestmentAnalysis({ ...baseInvestment, renovationReserve: visual.estimatedRenovationCostRange?.recommendedReserve, visualConditionScoreImpact: visualConditionScoreImpact(visual), visualConditionConfirmed: true, visualConditionConfidence: visual.overallConfidence, visualConditionRating: visual.overallRating });
-  assert.ok(Math.abs(withVisual.score - baseline.score) <= 4); assert.ok(withVisual.subScores?.housingCompanyRisk && baseline.subScores?.housingCompanyRisk); assert.equal(withVisual.subScores!.housingCompanyRisk!.score, baseline.subScores!.housingCompanyRisk!.score); assert.ok(withVisual.observations.some((item) => item.category === "apartmentCondition"));
+  assert.ok(Math.abs(withVisual.score - baseline.score) <= 4); assert.equal("subScores" in withVisual, false); assert.ok(withVisual.observations.some((item) => item.category === "apartmentCondition"));
 });
 
 test("raportti sisältää vahvistetut kuvahavainnot, lähdehistorian ja raportin vastuuvapautuksen ilman kuvatiedostoja", () => {

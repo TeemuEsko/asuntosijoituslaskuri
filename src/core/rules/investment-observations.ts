@@ -21,7 +21,6 @@ export type InvestmentObservation = {
   description: string;
   value?: number;
   unit?: string;
-  scoreImpact: number;
 };
 
 export type ObservationInput = {
@@ -62,7 +61,6 @@ export function evaluateInvestmentObservations(
       title: "Pankkilainan tiedot puuttuvat",
       description:
         "Kassavirtaa pankkilainan jälkeen ei voida laskea ja arvio on alustava.",
-      scoreImpact: 0,
     });
   if (!input.repairHistoryKnown)
     add({
@@ -73,7 +71,6 @@ export function evaluateInvestmentObservations(
       title: "Korjaushistoria tarkistettava",
       description:
         "Taloyhtiön korjaushistoria kannattaa varmistaa taloyhtiöltä tai isännöitsijältä.",
-      scoreImpact: 0,
     });
   if (input.cashFlowAfterLoan !== undefined && input.cashFlowAfterLoan < 0)
     add({
@@ -86,7 +83,6 @@ export function evaluateInvestmentObservations(
         "Kohde jää pankkilainan jälkeen negatiiviselle kassavirralle.",
       value: input.cashFlowAfterLoan,
       unit: "€/kk",
-      scoreImpact: -12,
     });
   else if (
     input.cashFlowAfterLoan !== undefined &&
@@ -104,7 +100,6 @@ export function evaluateInvestmentObservations(
           : "Kassavirta jää pankkilainan jälkeen nollaan.",
       value: input.cashFlowAfterLoan,
       unit: "€/kk",
-      scoreImpact: -4,
     });
   else if (input.cashFlowAfterLoan !== undefined)
     add({
@@ -117,7 +112,6 @@ export function evaluateInvestmentObservations(
         "Kaikkien kuukausikulujen ja pankkilainan jälkeen jää vähintään 100 euroa kassavirtaa.",
       value: input.cashFlowAfterLoan,
       unit: "€/kk",
-      scoreImpact: 8,
     });
   const netYieldClassification =
     input.netYield === undefined
@@ -133,7 +127,6 @@ export function evaluateInvestmentObservations(
       description: `Heikko nettovuokratuotto: tuotto jää alle ${NET_RENTAL_YIELD_THRESHOLDS.poor} prosentin.`,
       value: input.netYield,
       unit: "%",
-      scoreImpact: 0,
     });
   else if (netYieldClassification === "Erittäin hyvä")
     add({
@@ -145,7 +138,6 @@ export function evaluateInvestmentObservations(
       description: `Erittäin hyvä nettovuokratuotto: tuotto on vähintään ${NET_RENTAL_YIELD_THRESHOLDS.excellent} prosenttia.`,
       value: input.netYield,
       unit: "%",
-      scoreImpact: 0,
     });
   else if (netYieldClassification === "Hyvä")
     add({
@@ -157,7 +149,6 @@ export function evaluateInvestmentObservations(
       description: `Hyvä nettovuokratuotto: tuotto on vähintään ${NET_RENTAL_YIELD_THRESHOLDS.good} prosenttia.`,
       value: input.netYield,
       unit: "%",
-      scoreImpact: 0,
     });
   if (input.leverageRatio !== undefined && input.leverageRatio > 0.8)
     add({
@@ -170,7 +161,6 @@ export function evaluateInvestmentObservations(
         "Pankki- ja yhtiölainat ylittävät 80 prosenttia kohteen oikaistusta hankintahinnasta.",
       value: input.leverageRatio * 100,
       unit: "%",
-      scoreImpact: -10,
     });
   if (input.collateralShortfall !== undefined && input.collateralShortfall > 0)
     add({
@@ -178,12 +168,11 @@ export function evaluateInvestmentObservations(
       category: "financing",
       type: "risk",
       severity: "medium",
-      title: "Vakuusvaje",
+      title: "Vakuuksien tai oman rahan osuus",
       description:
-        "Pankkilaina ylittää kohteelle annetun vakuusarvon. Erotus vaatii omaa rahaa tai lisävakuutta.",
+        "Summa, joka jää katettavaksi muilla vakuuksilla tai omalla rahalla, kun pankin hyväksymä vakuusarvo ei yksin riitä suunniteltuun rahoitukseen.",
       value: input.collateralShortfall,
       unit: "€",
-      scoreImpact: -6,
     });
   if ((input.annualInterestRate ?? 0) >= 6)
     add({
@@ -195,7 +184,6 @@ export function evaluateInvestmentObservations(
       description: "Kokonaiskorko on vähintään 6 prosenttia.",
       value: input.annualInterestRate,
       unit: "%",
-      scoreImpact: -5,
     });
   if ((input.rentalDemand ?? 3) <= 2)
     add({
@@ -208,7 +196,6 @@ export function evaluateInvestmentObservations(
         "Käyttäjän arvioima vuokrakysyntä voi kasvattaa tyhjäkäyntiriskiä.",
       value: input.rentalDemand,
       unit: "/5",
-      scoreImpact: -7,
     });
   if (input.vacancyMonths >= 3)
     add({
@@ -221,7 +208,6 @@ export function evaluateInvestmentObservations(
         "Vähintään kolmen kuukauden vuotuinen tyhjäkäynti heikentää toteutuvaa vuokratuottoa.",
       value: input.vacancyMonths,
       unit: "kk/v",
-      scoreImpact: -6,
     });
   if ((input.locationRisk ?? 3) >= 4)
     add({
@@ -234,7 +220,6 @@ export function evaluateInvestmentObservations(
         "Käyttäjän sijaintiarvio voi heikentää vuokrattavuutta ja jälleenmyyntiä.",
       value: input.locationRisk,
       unit: "/5",
-      scoreImpact: -8,
     });
   if ((input.resaleLiquidity ?? 3) <= 2)
     add({
@@ -246,7 +231,6 @@ export function evaluateInvestmentObservations(
       description: "Kohteen arvioitu jälleenmyyntiaika on tavallista pidempi.",
       value: input.resaleLiquidity,
       unit: "/5",
-      scoreImpact: -6,
     });
   const visualUsable =
     input.visualConditionConfirmed &&
@@ -265,7 +249,6 @@ export function evaluateInvestmentObservations(
       title: "Valokuvissa näkyvä korjaustarve",
       description:
         "Kuvahavainnoissa näkyy huoneiston pintoihin liittyvää korjaustarvetta. Arvio ei koske rakenteiden sisäistä kuntoa.",
-      scoreImpact: 0,
     });
   else if (visualUsable && input.visualConditionRating === "fair")
     add({
@@ -276,7 +259,6 @@ export function evaluateInvestmentObservations(
       title: "Kuvissa näkyviä kuntohuomioita",
       description:
         "Kuvahavainnoissa on pintojen kuntoon liittyviä huomioita, jotka on hyvä tarkistaa paikan päällä.",
-      scoreImpact: 0,
     });
   else if (
     visualUsable &&
@@ -291,7 +273,6 @@ export function evaluateInvestmentObservations(
       title: "Kuvissa siisti yleisilme",
       description:
         "Kuvissa näkyvät pinnat vaikuttavat pääosin siisteiltä. Havainto ei sulje pois kuvien ulkopuolisia tai piileviä vaurioita.",
-      scoreImpact: 0,
     });
   return findings;
 }

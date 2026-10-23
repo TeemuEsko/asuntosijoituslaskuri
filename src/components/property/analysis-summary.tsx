@@ -30,9 +30,9 @@ const statusIcons: Record<MetricStatusIcon, LucideIcon> = {
 export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult }) {
   const collateralKnown = analysis.collateralShortfall !== undefined && analysis.collateralBuffer !== undefined;
   const collateralPosition = !collateralKnown ? undefined : analysis.collateralShortfall! > 0 ? -analysis.collateralShortfall! : analysis.collateralBuffer!;
-  const collateralLabel = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Vakuusvaje" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
+  const collateralLabel = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Vakuuksien tai oman rahan osuus" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
   const collateralDescription = analysis.collateralShortfall! > 0
-    ? "Lisävakuuden tai oman rahan tarve kohteen vakuusarvon lisäksi."
+    ? "Summa, joka jää katettavaksi muilla vakuuksilla tai omalla rahalla, kun pankin hyväksymä vakuusarvo ei yksin riitä suunniteltuun rahoitukseen."
     : analysis.collateralBuffer! > 0
       ? "Kohteen vakuusarvo ylittää pankkilainan määrän."
       : "Kohteen vakuusarvo ja pankkilainan määrä ovat samalla tasolla.";

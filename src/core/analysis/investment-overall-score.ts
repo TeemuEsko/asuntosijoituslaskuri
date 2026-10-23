@@ -9,34 +9,16 @@ export type RatingLevel = {
 
 const ratingColors: Record<InvestmentGrade, string> = { "A+": "#166534", A: "#27845f", B: "#73a66a", C: "#a48f24", D: "#c9672f", E: "#b33f4b" };
 
-export type RatingSubScore = {
-  score: number;
-  grade?: InvestmentGrade;
-  summary?: string;
-};
-
-export type InvestmentSubScores = {
-  yield?: RatingSubScore;
-  cashFlow?: RatingSubScore;
-  housingCompanyRisk?: RatingSubScore;
-  valueCreation?: RatingSubScore;
-  financing?: RatingSubScore;
-  market?: RatingSubScore;
-};
-
 export type InvestmentOverallScoreData = {
   score: number;
   preliminary?: boolean;
   grade?: InvestmentGrade;
   label?: string;
   summary?: string;
-  subScores?: InvestmentSubScores;
   positiveFactors?: string[];
   warningFactors?: string[];
   missingFactors?: string[];
   reliability?: "preliminary" | "moderate" | "good";
-  severeRisks?: Array<{ id: string; label: string; cap: number }>;
-  appliedScoreCap?: number;
 };
 
 const summaries: Record<InvestmentGrade, string> = {

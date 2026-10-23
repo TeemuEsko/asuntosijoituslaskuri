@@ -102,9 +102,26 @@ export type ImportedPropertyData = Partial<
   marketAssessments?: MarketAssessmentSet;
   visualCondition?: VisualConditionAnalysis;
   listingImageAnalysis?: ListingImageAnalysisStatus;
-  opportunityScoreInputs?: Partial<OpportunityScoreV2Input>;
+  opportunityScoreInputs?: Pick<
+    OpportunityScoreV2Input,
+    | "collateralValueSource"
+    | "plotShareRedeemed"
+    | "verifiedLongTermRentalProhibition"
+    | "verifiedLandLeaseNonRenewal"
+  >;
 };
 const ANALYSIS_DRAFT_KEY = "asuntosijoituslaskuri:analysis-draft:v1";
+function storedOpportunityInputs(
+  input: ImportedPropertyData["opportunityScoreInputs"],
+): ImportedPropertyData["opportunityScoreInputs"] {
+  if (!input) return undefined;
+  return {
+    collateralValueSource: input.collateralValueSource,
+    plotShareRedeemed: input.plotShareRedeemed,
+    verifiedLongTermRentalProhibition: input.verifiedLongTermRentalProhibition,
+    verifiedLandLeaseNonRenewal: input.verifiedLandLeaseNonRenewal,
+  };
+}
 type ImportedPurchaseField = Exclude<PurchaseFieldKey, "renovationReserve">;
 
 function purchaseFromImport(
@@ -395,20 +412,6 @@ export function PropertyWorkspace({
     locationRisk: initialMarketAssessments.locationRisk.effectiveValue ?? 3,
     resaleLiquidity:
       initialMarketAssessments.resaleLiquidity.effectiveValue ?? 3,
-    currentMarketValue: initialOpportunityInputs.currentMarketValue,
-    postRenovationMarketValue:
-      initialOpportunityInputs.postRenovationMarketValue,
-    futureRepairCost: initialOpportunityInputs.futureRepairCost,
-    housingCompanyLiquidityMonths:
-      initialOpportunityInputs.housingCompanyLiquidityMonths,
-    companyLoanAnnualInterestRate:
-      initialOpportunityInputs.companyLoanAnnualInterestRate,
-    companyLoanRemainingTermYears:
-      initialOpportunityInputs.companyLoanRemainingTermYears,
-    companyLoanInterestOnlyEndYear:
-      initialOpportunityInputs.companyLoanInterestOnlyEndYear,
-    projectedFinancingFeeMonthly:
-      initialOpportunityInputs.projectedFinancingFeeMonthly,
     collateralValueSource:
       initialOpportunityInputs.collateralValueSource ?? "calculated",
   }));
@@ -444,36 +447,6 @@ export function PropertyWorkspace({
       transactionCosts: "default",
       locationRisk: "automatic",
       resaleLiquidity: "automatic",
-      currentMarketValue: initialOpportunityInputs.currentMarketValue
-        ? "user"
-        : "unknown",
-      postRenovationMarketValue:
-        initialOpportunityInputs.postRenovationMarketValue
-          ? "user"
-          : "unknown",
-      futureRepairCost: initialOpportunityInputs.futureRepairCost
-        ? "user"
-        : "unknown",
-      housingCompanyLiquidityMonths:
-        initialOpportunityInputs.housingCompanyLiquidityMonths
-          ? "user"
-          : "unknown",
-      companyLoanAnnualInterestRate:
-        initialOpportunityInputs.companyLoanAnnualInterestRate
-          ? "user"
-          : "unknown",
-      companyLoanRemainingTermYears:
-        initialOpportunityInputs.companyLoanRemainingTermYears
-          ? "user"
-          : "unknown",
-      companyLoanInterestOnlyEndYear:
-        initialOpportunityInputs.companyLoanInterestOnlyEndYear
-          ? "user"
-          : "unknown",
-      projectedFinancingFeeMonthly:
-        initialOpportunityInputs.projectedFinancingFeeMonthly
-          ? "user"
-          : "unknown",
       collateralValueSource:
         initialOpportunityInputs.collateralValueSource === "bank"
           ? "document"
@@ -568,16 +541,6 @@ export function PropertyWorkspace({
     ),
     visualConditionConfidence: data.visualCondition?.overallConfidence,
     visualConditionRating: data.visualCondition?.overallRating,
-    futureRepairCost: assumptions.futureRepairCost,
-    housingCompanyLiquidityMonths: assumptions.housingCompanyLiquidityMonths,
-    companyLoanAnnualInterestRate:
-      assumptions.companyLoanAnnualInterestRate,
-    companyLoanRemainingTermYears:
-      assumptions.companyLoanRemainingTermYears,
-    companyLoanInterestOnlyEndYear:
-      assumptions.companyLoanInterestOnlyEndYear,
-    projectedFinancingFeeMonthly:
-      assumptions.projectedFinancingFeeMonthly,
     apartmentCount:
       typeof data.apartmentCount === "number" ? data.apartmentCount : undefined,
     landOwnership:
@@ -587,14 +550,6 @@ export function PropertyWorkspace({
         ? data.landLeaseEndDate
         : undefined,
     plotShareRedeemed: data.opportunityScoreInputs?.plotShareRedeemed,
-    currentMarketValue: assumptions.currentMarketValue,
-    currentMarketValueSource:
-      data.opportunityScoreInputs?.currentMarketValueSource ??
-      (assumptions.currentMarketValue ? "user" : "unknown"),
-    postRenovationMarketValue: assumptions.postRenovationMarketValue,
-    postRenovationMarketValueSource:
-      data.opportunityScoreInputs?.postRenovationMarketValueSource ??
-      (assumptions.postRenovationMarketValue ? "user" : "unknown"),
     collateralValueSource: assumptions.collateralValueSource,
     verifiedLongTermRentalProhibition:
       data.opportunityScoreInputs?.verifiedLongTermRentalProhibition,
@@ -655,6 +610,9 @@ export function PropertyWorkspace({
         ANALYSIS_DRAFT_KEY,
         JSON.stringify({
           ...data,
+          opportunityScoreInputs: storedOpportunityInputs(
+            data.opportunityScoreInputs,
+          ),
           currentRentMonthly: rentEstimate.effectiveMonthlyRent ?? undefined,
           rentEstimate,
           marketAssessments,
@@ -814,31 +772,17 @@ export function PropertyWorkspace({
       }));
     const opportunityKeys: AssumptionFieldKey[] = [
       "collateralValue",
-      "currentMarketValue",
-      "postRenovationMarketValue",
-      "futureRepairCost",
-      "housingCompanyLiquidityMonths",
-      "companyLoanAnnualInterestRate",
-      "companyLoanRemainingTermYears",
-      "companyLoanInterestOnlyEndYear",
-      "projectedFinancingFeeMonthly",
       "collateralValueSource",
     ];
     if (opportunityKeys.includes(key))
       setData((current) => ({
         ...current,
         opportunityScoreInputs: {
-          ...(current.opportunityScoreInputs ?? {}),
-          [key]: value,
-          ...(key === "collateralValue"
-            ? { collateralValueSource: "user" as const }
-            : {}),
-          ...(key === "currentMarketValue"
-            ? { currentMarketValueSource: "user" as const }
-            : {}),
-          ...(key === "postRenovationMarketValue"
-            ? { postRenovationMarketValueSource: "user" as const }
-            : {}),
+          ...storedOpportunityInputs(current.opportunityScoreInputs),
+          collateralValueSource:
+            key === "collateralValue"
+              ? "user"
+              : (value as AssumptionValues["collateralValueSource"]),
         },
       }));
   }
@@ -863,7 +807,7 @@ export function PropertyWorkspace({
     setData((current) => ({
       ...current,
       opportunityScoreInputs: {
-        ...(current.opportunityScoreInputs ?? {}),
+        ...storedOpportunityInputs(current.opportunityScoreInputs),
         collateralValueSource: "calculated",
       },
     }));

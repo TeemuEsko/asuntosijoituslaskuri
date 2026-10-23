@@ -37,14 +37,6 @@ export type AssumptionValues = {
   transactionCosts: number;
   locationRisk: number;
   resaleLiquidity: number;
-  currentMarketValue?: number;
-  postRenovationMarketValue?: number;
-  futureRepairCost?: number;
-  housingCompanyLiquidityMonths?: number;
-  companyLoanAnnualInterestRate?: number;
-  companyLoanRemainingTermYears?: number;
-  companyLoanInterestOnlyEndYear?: number;
-  projectedFinancingFeeMonthly?: number;
   collateralValueSource: CollateralValueSource;
 };
 export type AssumptionFieldKey = Exclude<keyof AssumptionValues, "equitySource" | "equityUserOverridden">;
@@ -245,22 +237,8 @@ export function AssumptionsCard({
         </CardContent>
       </Card>
 
-      <Card data-input-group="value-creation-and-company-finance">
-        <CardHeader className="border-b"><CardTitle>D. Arvonluonti ja taloyhtiön talous</CardTitle><CardDescription>Vapaaehtoiset tiedot tarkentavat arvonluontia, vakuuspotentiaalia ja taloyhtiöriskiä. Puuttuva tieto ei heikennä pisteitä automaattisesti.</CardDescription></CardHeader>
-        <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
-          <LocalizedNumberField id="current-market-value" numericInputKey="currentMarketValue" label="Arvioitu nykyinen käypä markkina-arvo" status={status("currentMarketValue")} suffix="€" maximumFractionDigits={0} value={values.currentMarketValue} allowUnknown onValueChange={(value) => onChange("currentMarketValue", value)} description="Käyttäjän arvio ennen mahdollista remonttia. Arviota ei käsitellä pankin hyväksymänä vakuusarvona." help="Vapaaehtoinen. Käyttäjän vahvistamatonta arviota painotetaan Opportunity Scoressa kertoimella 0,40." />
-          <LocalizedNumberField id="post-renovation-market-value" numericInputKey="postRenovationMarketValue" label="Arvioitu remontin jälkeinen käypä markkina-arvo" status={status("postRenovationMarketValue")} suffix="€" maximumFractionDigits={0} value={values.postRenovationMarketValue} allowUnknown onValueChange={(value) => onChange("postRenovationMarketValue", value)} description="Arvio kohteen käyvästä arvosta remontin valmistuttua." help="Vapaaehtoinen. Jos nykyistä markkina-arvoa ei tunneta, kokonaisarvonluonti lasketaan hankinnan ja remontin kokonaiskustannukseen nähden." />
-          <LocalizedNumberField id="future-repair-cost" numericInputKey="futureRepairCost" label="Tulevien remonttien arvioitu huoneistokohtainen kustannus" status={status("futureRepairCost")} suffix="€" maximumFractionDigits={0} value={values.futureRepairCost} allowUnknown onValueChange={(value) => onChange("futureRepairCost", value)} description="Vain asiakirjasta tai muusta perustellusta lähteestä saatu kustannusarvio." help="Älä arvioi kustannusta pelkän remontin nimen perusteella." />
-          <LocalizedNumberField id="company-liquidity" numericInputKey="housingCompanyLiquidityMonths" label="Taloyhtiön maksuvalmius" status={status("housingCompanyLiquidityMonths")} suffix="kk" maximumFractionDigits={1} value={values.housingCompanyLiquidityMonths} allowUnknown onValueChange={(value) => onChange("housingCompanyLiquidityMonths", value)} description="Likvidien varojen kattamat keskimääräiset toimintakuukaudet." help="Vapaaehtoinen tilinpäätöstieto. Puuttuva arvo käsitellään neutraalina." />
-          <LocalizedNumberField id="company-loan-interest" numericInputKey="companyLoanAnnualInterestRate" label="Yhtiölainan kokonaiskorko" status={status("companyLoanAnnualInterestRate")} suffix="%" maximumFractionDigits={2} value={values.companyLoanAnnualInterestRate} allowUnknown onValueChange={(value) => onChange("companyLoanAnnualInterestRate", value)} description="Huoneistoon kohdistuvan yhtiölainan vuotuinen kokonaiskorko." help="Vapaaehtoinen. Suuri yhtiölaina ei yksin ratkaise taloyhtiön talouspistettä." />
-          <LocalizedNumberField id="company-loan-term" numericInputKey="companyLoanRemainingTermYears" label="Yhtiölainan jäljellä oleva laina-aika" status={status("companyLoanRemainingTermYears")} suffix="vuotta" maximumFractionDigits={1} value={values.companyLoanRemainingTermYears} allowUnknown onValueChange={(value) => onChange("companyLoanRemainingTermYears", value)} description="Arvio tai asiakirjasta löytyvä jäljellä oleva laina-aika." help="Lyhyt jäljellä oleva laina-aika voi kasvattaa rahoitusvastiketta." />
-          <LocalizedNumberField id="company-interest-only-end" numericInputKey="companyLoanInterestOnlyEndYear" label="Yhtiölainan lyhennysvapaa päättyy" status={status("companyLoanInterestOnlyEndYear")} suffix="vuosi" maximumFractionDigits={0} value={values.companyLoanInterestOnlyEndYear} allowUnknown onValueChange={(value) => onChange("companyLoanInterestOnlyEndYear", value)} description="Vuosi, jolloin mahdollinen lyhennysvapaa päättyy." help="Vapaaehtoinen tieto. Pelkkä puuttuva tieto ei aiheuta riskivähennystä." />
-          <LocalizedNumberField id="projected-financing-fee" numericInputKey="projectedFinancingFeeMonthly" label="Arvioitu tuleva rahoitusvastike" status={status("projectedFinancingFeeMonthly")} suffix="€/kk" maximumFractionDigits={2} value={values.projectedFinancingFeeMonthly} allowUnknown onValueChange={(value) => onChange("projectedFinancingFeeMonthly", value)} description="Dokumentoitu arvio lyhennysvapaan tai korkomuutoksen jälkeisestä rahoitusvastikkeesta." help="Vapaaehtoinen. Nykyiseen vastikkeeseen verrattu nousu vaikuttaa taloyhtiön talousriskiin." />
-        </CardContent>
-      </Card>
-
       <Card data-input-group="market-assessments">
-        <CardHeader className="border-b"><CardTitle>E. Markkina-arviot</CardTitle><CardDescription>Järjestelmä muodostaa esiarviot käytettävissä olevista tilasto- ja kohdetiedoista. Arviot eivät ole faktoja, ja voit aina vaihtaa ne.</CardDescription></CardHeader>
+        <CardHeader className="border-b"><CardTitle>D. Markkina-arviot</CardTitle><CardDescription>Järjestelmä muodostaa esiarviot käytettävissä olevista tilasto- ja kohdetiedoista. Arviot eivät ole faktoja, ja voit aina vaihtaa ne.</CardDescription></CardHeader>
         <CardContent><div className="grid gap-6 lg:grid-cols-3">
           <RentalDemandSelector kind="rentalDemand" choice={marketAssessments.rentalDemand} onChange={(value) => onMarketChange("rentalDemand", value)} onRestore={() => onMarketRestore("rentalDemand")} />
           <RentalDemandSelector kind="locationRisk" choice={marketAssessments.locationRisk} onChange={(value) => onMarketChange("locationRisk", value)} onRestore={() => onMarketRestore("locationRisk")} />

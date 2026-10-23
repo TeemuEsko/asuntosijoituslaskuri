@@ -10,15 +10,6 @@ export type InvestmentOverallScoreProps = Omit<InvestmentOverallScoreData, "scor
   score?: number | null;
 };
 
-const scoreLabels = {
-  cashFlow: "Kassavirta",
-  yield: "Riskikorjattu nettovuokratuotto",
-  housingCompanyRisk: "Taloyhtiöriski",
-  valueCreation: "Arvonluonti ja vakuuspotentiaali",
-  financing: "Rahoitus",
-  market: "Markkina ja kysyntä",
-} as const;
-
 const reliabilityLabels = {
   preliminary: "Alustava",
   moderate: "Kohtalainen",
@@ -30,11 +21,10 @@ export function InvestmentOpportunityScore({
   label,
   summary,
   preliminary,
-  subScores,
   reliability,
-  severeRisks = [],
+  positiveFactors = [],
+  warningFactors = [],
   missingFactors = [],
-  appliedScoreCap,
 }: InvestmentOverallScoreProps) {
   const scoreMissing = rawScore === null || rawScore === undefined || !Number.isFinite(rawScore);
   const score = Math.round(clampInvestmentScore(rawScore));
@@ -43,11 +33,7 @@ export function InvestmentOpportunityScore({
   const ariaLabel = scoreMissing
     ? "Sijoitusmahdollisuuden arvio ei ole vielä valmis."
     : `Sijoitusmahdollisuus ${score} pistettä sadasta. ${resolvedLabel}.`;
-  const displayedSubScores = subScores
-    ? (Object.keys(scoreLabels) as Array<keyof typeof scoreLabels>).flatMap((key) =>
-        subScores[key] ? [[key, subScores[key]!] as const] : [],
-      )
-    : [];
+  const uncertainty = reliabilityLabels[reliability ?? (preliminary ? "preliminary" : "moderate")];
 
   return (
     <Card id="sijoitusmahdollisuus" className="min-w-0 scroll-mt-24">
@@ -70,35 +56,21 @@ export function InvestmentOpportunityScore({
           {!scoreMissing ? (
             <>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">{preliminary ? "Arvio tarkentuu, kun pankkilainan ja taloyhtiön tiedot täydennetään." : summary ?? rating.summary}</p>
-              <p className="mt-3 text-xs text-muted-foreground">Opportunity Score 2.0 arvioi kassavirtaa, riskikorjattua tuottoa, taloyhtiötä, arvonluontia, rahoitusta sekä markkinaa. Käyttäjän vahvistamatonta markkina-arviota painotetaan rajatusti eikä sitä käsitellä pankin hyväksymänä vakuusarvona.</p>
+              <p className="mt-3 text-xs text-muted-foreground">Arvion luotettavuus: {uncertainty}. Arvio perustuu käytettävissä oleviin lähtötietoihin ja tarkentuu, jos tietoja täydennetään.</p>
             </>
           ) : null}
 
-          {displayedSubScores.length ? (
-            <section className="mt-6" aria-labelledby="score-breakdown-heading">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 id="score-breakdown-heading" className="font-semibold">Pisteiden muodostuminen</h3>
-                <span className="rounded-full border px-2.5 py-1 text-xs font-medium">Analyysin luotettavuus: {reliabilityLabels[reliability ?? (preliminary ? "preliminary" : "moderate")]}</span>
-              </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {displayedSubScores.map(([key, item]) => (
-                  <div key={key} className="rounded-lg border bg-muted/20 p-3">
-                    <div className="flex items-baseline justify-between gap-3"><p className="text-sm font-medium">{scoreLabels[key]}</p><strong className="tabular-nums">{item.score} / 100</strong></div>
-                    {item.summary ? <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.summary}</p> : null}
-                  </div>
-                ))}
-              </div>
+          {!scoreMissing ? (
+            <section className="mt-6 grid gap-4 sm:grid-cols-2" aria-label="Arvion vahvuudet ja riskit">
+              <div className="rounded-lg border bg-muted/20 p-4"><h3 className="font-semibold">Vahvuudet</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{(positiveFactors.length ? positiveFactors.slice(0, 3) : ["Nykyisillä tiedoilla ei tunnistettu erityisiä vahvuuksia."]).map((item) => <li key={item}>{item}</li>)}</ul></div>
+              <div className="rounded-lg border bg-muted/20 p-4"><h3 className="font-semibold">Riskit</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{(warningFactors.length ? warningFactors.slice(0, 3) : ["Nykyisillä tiedoilla ei tunnistettu erityisiä riskejä."]).map((item) => <li key={item}>{item}</li>)}</ul></div>
             </section>
           ) : null}
 
-          {severeRisks.length ? (
-            <section className="mt-5 rounded-lg border border-danger/30 bg-danger-soft/60 p-4" aria-labelledby="severe-risks-heading">
-              <h3 id="severe-risks-heading" className="font-semibold text-danger">Todennetut vakavat riskit</h3>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{severeRisks.map((risk) => <li key={risk.id}>{risk.label}{appliedScoreCap ? ` Pistemäärän enimmäisraja on ${appliedScoreCap}.` : ""}</li>)}</ul>
-            </section>
-          ) : null}
           {missingFactors.length ? (
-            <details className="mt-5 rounded-lg border p-4"><summary className="cursor-pointer font-medium">Puuttuvat tai tarkistettavat tiedot ({missingFactors.length})</summary><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{missingFactors.map((item) => <li key={item}>{item}</li>)}</ul></details>
+            <p className="mt-5 rounded-lg border p-4 text-sm text-muted-foreground">
+              Arvioon liittyy epävarmuutta, koska kaikkia tarvittavia tietoja ei ole voitu vahvistaa.
+            </p>
           ) : null}
         </div>
       </CardContent>

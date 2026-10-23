@@ -1,4 +1,3 @@
-export type ValueEstimateSource = "bank" | "validated" | "user" | "unknown";
 export type CollateralValueSource = "bank" | "calculated" | "user" | "unknown";
 
 export type OpportunityScoreSubScores = {
@@ -22,9 +21,6 @@ export type OpportunityScoreResult = {
   riskAdjustedNetYield?: number;
   requiredNetYieldFor80?: number;
   currentFreeCollateral?: number;
-  purchaseDiscount?: number;
-  renovationNetValue?: number;
-  totalValueCreation?: number;
 };
 
 export type OpportunityScoreV2Input = {
@@ -46,23 +42,13 @@ export type OpportunityScoreV2Input = {
   financingFeeMonthly?: number;
   otherCostsMonthly?: number;
   repairHistoryScore?: number;
-  futureRepairCost?: number;
   technicalConditionScore?: number;
-  companyLoanAnnualInterestRate?: number;
-  companyLoanRemainingTermYears?: number;
-  companyLoanInterestOnlyEndYear?: number;
-  projectedFinancingFeeMonthly?: number;
-  housingCompanyLiquidityMonths?: number;
   apartmentCount?: number;
   landOwnership?: string;
   landLeaseEndDate?: string;
   plotShareRedeemed?: boolean;
   collateralValue?: number;
   collateralValueSource?: CollateralValueSource;
-  currentMarketValue?: number;
-  currentMarketValueSource?: ValueEstimateSource;
-  postRenovationMarketValue?: number;
-  postRenovationMarketValueSource?: ValueEstimateSource;
   rentalDemand?: number;
   resaleLiquidity?: number;
   locationRisk?: number;
@@ -95,15 +81,14 @@ function known(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function confidenceWeight(source: ValueEstimateSource | CollateralValueSource | undefined): number {
+function confidenceWeight(source: CollateralValueSource | undefined): number {
   if (source === "bank") return 1;
-  if (source === "validated") return 0.7;
   if (source === "calculated") return 0.6;
   if (source === "user") return 0.4;
   return 0;
 }
 
-function confidenceAdjusted(score: number, source: ValueEstimateSource | CollateralValueSource | undefined): number {
+function confidenceAdjusted(score: number, source: CollateralValueSource | undefined): number {
   return 50 + (score - 50) * confidenceWeight(source);
 }
 
@@ -117,46 +102,9 @@ function paymentAtRate(input: OpportunityScoreV2Input, annualRate: number): numb
   return monthlyRate === 0 ? amount / months : (amount * monthlyRate) / (1 - (1 + monthlyRate) ** -months);
 }
 
-function repairCostScore(input: OpportunityScoreV2Input): number {
-  if (!known(input.futureRepairCost) || !known(input.debtFreePrice) || input.debtFreePrice <= 0) return 50;
-  return interpolateScore(input.futureRepairCost / input.debtFreePrice, [[0, 100], [0.05, 80], [0.1, 60], [0.2, 30], [0.3, 0]]);
-}
-
 function companyDebtScore(input: OpportunityScoreV2Input): number {
   if (!known(input.companyLoanShare) || !known(input.debtFreePrice) || input.debtFreePrice <= 0) return 50;
   return interpolateScore(input.companyLoanShare / input.debtFreePrice, [[0, 90], [0.1, 80], [0.25, 60], [0.4, 35], [0.6, 0]]);
-}
-
-function companyLoanTermsScore(input: OpportunityScoreV2Input): number {
-  if (!known(input.companyLoanShare)) return 50;
-  if (input.companyLoanShare <= 0) return 70;
-  const interest = known(input.companyLoanAnnualInterestRate)
-    ? interpolateScore(input.companyLoanAnnualInterestRate, [[0, 100], [3, 85], [5, 65], [7, 35], [10, 0]])
-    : 50;
-  const term = known(input.companyLoanRemainingTermYears)
-    ? interpolateScore(input.companyLoanRemainingTermYears, [[0, 20], [3, 30], [5, 45], [10, 70], [20, 90], [30, 100]])
-    : 50;
-  return (interest + term) / 2;
-}
-
-function companyLoanShockScore(input: OpportunityScoreV2Input, asOfYear: number): number {
-  if (!known(input.companyLoanShare)) return 50;
-  if (input.companyLoanShare <= 0) return 70;
-  const current = input.financingFeeMonthly;
-  const projected = input.projectedFinancingFeeMonthly;
-  const feeScore = known(current) && known(projected) && current > 0
-    ? interpolateScore(Math.max(0, projected / current - 1), [[0, 80], [0.25, 65], [0.5, 45], [1, 20], [2, 0]])
-    : undefined;
-  const timingScore = known(input.companyLoanInterestOnlyEndYear)
-    ? interpolateScore(input.companyLoanInterestOnlyEndYear - asOfYear, [[0, 25], [1, 35], [3, 50], [5, 65], [10, 80]])
-    : undefined;
-  if (known(feeScore) && known(timingScore)) return (feeScore + timingScore) / 2;
-  return feeScore ?? timingScore ?? 50;
-}
-
-function liquidityScore(input: OpportunityScoreV2Input): number {
-  if (!known(input.housingCompanyLiquidityMonths)) return 50;
-  return interpolateScore(input.housingCompanyLiquidityMonths, [[0, 20], [1, 40], [3, 60], [6, 80], [12, 100]]);
 }
 
 function housingCompanySizeScore(count: number | undefined): number {
@@ -183,13 +131,9 @@ function landScore(input: OpportunityScoreV2Input, asOfYear: number): number {
 
 function housingCompanyScore(input: OpportunityScoreV2Input, asOfYear: number): number {
   const history = known(input.repairHistoryScore) ? clamp(input.repairHistoryScore) : 50;
-  const repairs = history * 0.6 + repairCostScore(input) * 0.4;
+  const repairs = history * 0.6 + 50 * 0.4;
   const technical = known(input.technicalConditionScore) ? clamp(input.technicalConditionScore) : 50;
-  const finances =
-    companyDebtScore(input) * 0.25 +
-    companyLoanTermsScore(input) * 0.25 +
-    companyLoanShockScore(input, asOfYear) * 0.25 +
-    liquidityScore(input) * 0.25;
+  const finances = companyDebtScore(input) * 0.25 + 50 * 0.75;
   return clamp(
     repairs * 0.4 +
       technical * 0.2 +
@@ -200,9 +144,7 @@ function housingCompanyScore(input: OpportunityScoreV2Input, asOfYear: number): 
 }
 
 function valueCreationScore(input: OpportunityScoreV2Input, totalInvestment: number | undefined) {
-  if (!totalInvestment || !known(input.debtFreePrice)) return { score: 50 };
-  const acquisitionBasis = input.debtFreePrice + Math.max(0, input.transferTax ?? 0) + Math.max(0, input.transactionCosts ?? 0);
-  const renovationCost = Math.max(0, input.renovationCost ?? 0);
+  if (!totalInvestment) return { score: 50 };
   const freeCollateral = known(input.collateralValue) && known(input.bankLoanAmount)
     ? input.collateralValue - input.bankLoanAmount
     : undefined;
@@ -212,37 +154,9 @@ function valueCreationScore(input: OpportunityScoreV2Input, totalInvestment: num
   const collateral = known(freeCollateral)
     ? confidenceAdjusted(collateralRaw, input.collateralValueSource)
     : 50;
-  const purchaseDiscount = known(input.currentMarketValue)
-    ? input.currentMarketValue - acquisitionBasis
-    : undefined;
-  const discountRaw = known(purchaseDiscount)
-    ? interpolateScore(purchaseDiscount / acquisitionBasis, [[-0.2, 0], [-0.1, 25], [0, 50], [0.05, 65], [0.1, 80], [0.2, 100]])
-    : 50;
-  const discount = known(purchaseDiscount)
-    ? confidenceAdjusted(discountRaw, input.currentMarketValueSource)
-    : 50;
-
-  if (!known(input.currentMarketValue) && known(input.postRenovationMarketValue)) {
-    const totalValueCreation = input.postRenovationMarketValue - totalInvestment;
-    const totalRaw = interpolateScore(totalValueCreation / totalInvestment, [[-0.1, 20], [0, 50], [0.05, 65], [0.1, 80], [0.2, 100]]);
-    const total = confidenceAdjusted(totalRaw, input.postRenovationMarketValueSource);
-    return { score: clamp(collateral * 0.35 + total * 0.65), freeCollateral, totalValueCreation };
-  }
-
-  const renovationNetValue = known(input.currentMarketValue) && known(input.postRenovationMarketValue)
-    ? input.postRenovationMarketValue - Math.max(input.currentMarketValue, acquisitionBasis) - renovationCost
-    : undefined;
-  const renovationRaw = known(renovationNetValue)
-    ? interpolateScore(renovationNetValue / totalInvestment, [[-0.1, 20], [0, 50], [0.05, 65], [0.1, 80], [0.2, 100]])
-    : 50;
-  const renovation = known(renovationNetValue)
-    ? confidenceAdjusted(renovationRaw, input.postRenovationMarketValueSource)
-    : 50;
   return {
-    score: clamp(collateral * 0.35 + discount * 0.3 + renovation * 0.35),
+    score: clamp(collateral * 0.35 + 50 * 0.65),
     freeCollateral,
-    purchaseDiscount,
-    renovationNetValue,
   };
 }
 
@@ -350,8 +264,5 @@ export function calculateOpportunityScoreV2(input: OpportunityScoreV2Input): Opp
     riskAdjustedNetYield,
     requiredNetYieldFor80,
     currentFreeCollateral: value.freeCollateral,
-    purchaseDiscount: value.purchaseDiscount,
-    renovationNetValue: value.renovationNetValue,
-    totalValueCreation: value.totalValueCreation,
   };
 }

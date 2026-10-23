@@ -28,14 +28,6 @@ test("numeeristen analyysikenttien askeleet ja rajat ovat keskitetysti määrite
     renovationReserve: { step: 1_000, min: 0, precision: 0, fallback: 0 },
     transactionCosts: { step: 100, min: 0, precision: 0, fallback: 0 },
     transferTaxRate: { step: 0.1, min: 0, precision: 1, fallback: 0 },
-    currentMarketValue: { step: 1_000, min: 0, precision: 0, fallback: 0 },
-    postRenovationMarketValue: { step: 1_000, min: 0, precision: 0, fallback: 0 },
-    futureRepairCost: { step: 1_000, min: 0, precision: 0, fallback: 0 },
-    housingCompanyLiquidityMonths: { step: 0.5, min: 0, precision: 1, fallback: 0 },
-    companyLoanAnnualInterestRate: { step: 0.1, min: 0, precision: 1, fallback: 0 },
-    companyLoanRemainingTermYears: { step: 1, min: 0, precision: 0, fallback: 0 },
-    companyLoanInterestOnlyEndYear: { step: 1, min: 2000, precision: 0, fallback: 2026 },
-    projectedFinancingFeeMonthly: { step: 10, min: 0, precision: 0, fallback: 0 },
   });
 });
 

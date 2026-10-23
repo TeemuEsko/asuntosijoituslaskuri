@@ -231,20 +231,6 @@ export function InvestmentAnalysisPrintReport({
           </div>
           <p>{rating.summary}</p>
           <p>Analyysin luotettavuus: {analysis.reliability === "good" ? "Hyvä" : analysis.reliability === "moderate" ? "Kohtalainen" : "Alustava"}</p>
-          {analysis.appliedScoreCap ? <p>Todennettu vakava riski rajaa pistemäärän enintään tasolle {analysis.appliedScoreCap}.</p> : null}
-        </section>
-
-        <section className="print-report-panel print-avoid-break">
-          <h2>Opportunity Score 2.0 – osa-alueet</h2>
-          <ReportRows rows={[
-            ["Kassavirta", `${analysis.subScores?.cashFlow?.score ?? "–"} / 100`],
-            ["Riskikorjattu nettovuokratuotto", `${analysis.subScores?.yield?.score ?? "–"} / 100`],
-            ["Taloyhtiöriski", `${analysis.subScores?.housingCompanyRisk?.score ?? "–"} / 100`],
-            ["Arvonluonti ja vakuuspotentiaali", `${analysis.subScores?.valueCreation?.score ?? "–"} / 100`],
-            ["Rahoitus", `${analysis.subScores?.financing?.score ?? "–"} / 100`],
-            ["Markkina ja kysyntä", `${analysis.subScores?.market?.score ?? "–"} / 100`],
-          ]} />
-          {analysis.severeRisks?.length ? <ul>{analysis.severeRisks.map((risk) => <li key={risk.id}>{risk.label}</li>)}</ul> : null}
         </section>
 
         <div className="print-kpi-grid">
@@ -252,7 +238,7 @@ export function InvestmentAnalysisPrintReport({
             ["Nettovuokratuotto", percent(analysis.netRentalYield, 2)],
             ["Kassavirta", money(analysis.cashFlowAfterBankLoan, "€/kk")],
             ["Arvioitu kuukausivuokra", money(rentEstimate.effectiveMonthlyRent, "€/kk")],
-            [collateralIsGap ? "Vakuusvaje" : collateralKnown ? "Vakuuspuskuri" : "Vakuustilanne", money(collateralValue)],
+            [collateralIsGap ? "Vakuuksien tai oman rahan osuus" : collateralKnown ? "Vakuuspuskuri" : "Vakuustilanne", money(collateralValue)],
           ].map(([label, value]) => (
             <section key={label} className="print-kpi-card print-avoid-break"><p>{label}</p><strong>{value}</strong></section>
           ))}
@@ -298,24 +284,8 @@ export function InvestmentAnalysisPrintReport({
             ["Arvioitu vakuusarvo", money(assumptions.collateralValue)],
             ["Vakuusarvon lähde", assumptions.collateralValueSource === "bank" ? "Pankin vahvistama" : assumptions.collateralValueSource === "user" ? "Käyttäjän arvio" : "Laskennallinen arvio"],
             ["Pankkilaina", money(analysis.bankLoanAmount)],
-            [collateralIsGap ? "Vakuusvaje" : "Vakuuspuskuri", money(collateralValue)],
+            [collateralIsGap ? "Vakuuksien tai oman rahan osuus" : "Vakuuspuskuri", money(collateralValue)],
             ["Velkavipu", percent(typeof analysis.leverageRatio === "number" ? analysis.leverageRatio * 100 : undefined)],
-          ]} />
-          <FinancialGroup title="Arvonluonti" rows={[
-            ["Nykyinen käypä markkina-arvo", money(assumptions.currentMarketValue)],
-            ["Remontin jälkeinen käypä markkina-arvo", money(assumptions.postRenovationMarketValue)],
-            ["Vapaa vakuusarvo", money(analysis.currentFreeCollateral)],
-            ["Alihinta hankintapohjaan nähden", money(analysis.purchaseDiscount)],
-            ["Remontin nettolisäarvo", money(analysis.renovationNetValue)],
-            ["Kokonaisarvonluonti", money(analysis.totalValueCreation)],
-          ]} />
-          <FinancialGroup title="Taloyhtiön talous" rows={[
-            ["Tulevien remonttien kustannusarvio", money(assumptions.futureRepairCost)],
-            ["Maksuvalmius", typeof assumptions.housingCompanyLiquidityMonths === "number" ? `${formatFinnishNumber(assumptions.housingCompanyLiquidityMonths, 1)} kk` : "Ei tiedossa"],
-            ["Yhtiölainan korko", percent(assumptions.companyLoanAnnualInterestRate)],
-            ["Yhtiölainan jäljellä oleva laina-aika", typeof assumptions.companyLoanRemainingTermYears === "number" ? `${formatFinnishNumber(assumptions.companyLoanRemainingTermYears, 1)} vuotta` : "Ei tiedossa"],
-            ["Lyhennysvapaan päättymisvuosi", typeof assumptions.companyLoanInterestOnlyEndYear === "number" ? formatFinnishNumber(assumptions.companyLoanInterestOnlyEndYear, 0) : "Ei tiedossa"],
-            ["Arvioitu tuleva rahoitusvastike", money(assumptions.projectedFinancingFeeMonthly, "€/kk")],
           ]} />
         </div>
         {assumptions.vacancyMonths === 0 ? (

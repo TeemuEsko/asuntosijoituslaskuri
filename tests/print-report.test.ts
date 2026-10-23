@@ -64,7 +64,7 @@ test("raportti näyttää score-heron, neljä KPI:tä ja vain valitut markkina-a
     "Nettovuokratuotto",
     "Kassavirta",
     "Arvioitu kuukausivuokra",
-    "Vakuusvaje",
+    "Vakuuksien tai oman rahan osuus",
     "Vuokrakysyntä",
     "Sijaintiriski",
     "Jälleenmyytävyys",

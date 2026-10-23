@@ -26,5 +26,5 @@ test("oman pääoman käyttöliittymä näyttää oletuslähteen ja tarjoaa pala
 
 test("korttien vakuustekstit ja nollan oman pääoman ohje ovat käyttäjälle yksiselitteisiä", async () => {
   const source = await readFile(new URL("../src/components/property/analysis-summary.tsx", import.meta.url), "utf8");
-  for (const text of ["Vakuusvaje", "Vakuuspuskuri", "Vakuustilanne", "Lisää sijoitettava oma pääoma.", "Ei laskettavissa"]) assert.match(source, new RegExp(text));
+  for (const text of ["Vakuuksien tai oman rahan osuus", "Vakuuspuskuri", "Vakuustilanne", "Lisää sijoitettava oma pääoma.", "Ei laskettavissa"]) assert.match(source, new RegExp(text));
 });

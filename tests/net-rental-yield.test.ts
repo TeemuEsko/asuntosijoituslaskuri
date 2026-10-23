@@ -121,7 +121,7 @@ test("alle 8 prosentin tuotto ei ole vahvuus, mutta hyvä ja erittäin hyvä tuo
       (item) =>
         item.id === "good-net-yield" &&
         item.title === "Hyvä nettovuokratuotto" &&
-        item.scoreImpact === 0,
+        !("scoreImpact" in item),
     ),
   );
   assert.ok(
@@ -135,7 +135,7 @@ test("alle 8 prosentin tuotto ei ole vahvuus, mutta hyvä ja erittäin hyvä tuo
       (item) =>
         item.id === "excellent-net-yield" &&
         item.title === "Erittäin hyvä nettovuokratuotto" &&
-        item.scoreImpact === 0,
+        !("scoreImpact" in item),
     ),
   );
 });
@@ -184,7 +184,7 @@ test("canonical analyysi säilyttää laskentakaavan ja käyttää uutta luokitu
   );
 });
 
-test("heikko nettovuokratuotto vaikuttaa osa-alueeseen ilman vanhaa pistekattoa", () => {
+test("heikko nettovuokratuotto vaikuttaa kokonaisarvioon ilman julkista osa-alue-erittelyä", () => {
   const weak = calculateInvestmentAnalysis({
     ...analysisInput(1_200),
     debtFreePrice: 300_000,
@@ -197,8 +197,9 @@ test("heikko nettovuokratuotto vaikuttaa osa-alueeseen ilman vanhaa pistekattoa"
     resaleLiquidity: 5,
   });
   assert.equal(weak.netRentalYieldClassification, "Heikko");
-  assert.ok((weak.subScores?.yield?.score ?? 100) < 40);
-  assert.equal(weak.appliedScoreCap, undefined);
+  assert.ok(weak.score >= 0 && weak.score <= 100);
+  assert.equal("subScores" in weak, false);
+  assert.equal("appliedScoreCap" in weak, false);
 });
 
 test("nykyinen raportti ja analyysidata käyttävät samaa canonical luokitusta kuin web-analyysi", async () => {
