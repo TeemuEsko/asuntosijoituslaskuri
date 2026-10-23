@@ -13,6 +13,8 @@ import type {
 } from "@/core/listing-images/types";
 import { fetchStatisticsFinlandMarketEvidence } from "@/core/market-assessment/statistics-finland";
 import { resolveMarketAssessments } from "@/core/market-assessment/model";
+import { allowPublicApiAttempt } from "@/server/access/public-api-rate-limit";
+import { sameOriginMutation } from "@/server/access/request-security";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -24,7 +26,7 @@ type ImportRequest = {
 };
 const MAX_INPUT_LENGTH = 100_000;
 
-export function clientSafeListingResult(result: ListingParseResult) {
+function clientSafeListingResult(result: ListingParseResult) {
   if (process.env.NODE_ENV === "development") return result;
   const publicResult: Partial<ListingParseResult> = { ...result };
   delete publicResult.diagnostics;
@@ -35,6 +37,24 @@ export function clientSafeListingResult(result: ListingParseResult) {
 }
 
 export async function POST(request: Request) {
+  if (!sameOriginMutation(request))
+    return NextResponse.json(
+      { error: "Pyyntö estettiin turvallisuussyistä." },
+      { status: 403 },
+    );
+  if (
+    !allowPublicApiAttempt({
+      request,
+      scope: "listing_import",
+      limit: 20,
+      windowMs: 15 * 60_000,
+    })
+  )
+    return NextResponse.json(
+      { error: "Liian monta analyysipyyntöä. Odota hetki ja yritä uudelleen." },
+      { status: 429 },
+    );
+
   let body: ImportRequest;
   try {
     body = (await request.json()) as ImportRequest;
@@ -120,8 +140,11 @@ export async function POST(request: Request) {
     errorCodes: ["IMAGE_ANALYSIS_FAILED"],
     processedAt: new Date().toISOString(),
   };
+  const automaticListingImageAnalysisEnabled =
+    process.env.ENABLE_LISTING_IMAGE_ANALYSIS === "true" &&
+    Boolean(process.env.OPENAI_API_KEY);
   const imagePromise: Promise<ListingImagePipelineResult> =
-    acquisition.sourceDocument
+    acquisition.sourceDocument && automaticListingImageAnalysisEnabled
       ? analyseListingImages({
           html: acquisition.sourceDocument.html,
           pageUrl: acquisition.sourceDocument.finalUrl,
@@ -136,7 +159,11 @@ export async function POST(request: Request) {
           status: {
             ...imageFallback,
             status: "unavailable" as const,
-            errorCodes: ["LISTING_IMAGES_NOT_FOUND" as const],
+            errorCodes: [
+              automaticListingImageAnalysisEnabled
+                ? ("LISTING_IMAGES_NOT_FOUND" as const)
+                : ("IMAGE_ANALYSIS_FAILED" as const),
+            ],
           },
         });
   const [prepared, listingImages, officialMarketEvidence] = await Promise.all([

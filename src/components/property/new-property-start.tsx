@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AlertCircle, Keyboard, Search } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -144,7 +145,11 @@ export function NewPropertyStart({
           </Card>
         </section>
         <p className="mt-7 text-center text-xs text-muted-foreground">
-          Tietoja ei tallenneta ilman valintaasi.
+          Analyysiluonnos säilytetään vain tämän selaimen istunnossa. Katso{" "}
+          <Link href="/tietosuoja" className="underline underline-offset-4">
+            tietosuojaseloste
+          </Link>
+          .
         </p>
       </div>
     </main>

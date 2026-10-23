@@ -7,6 +7,8 @@ import {
   extractLocalDocumentText,
   LocalDocumentError,
 } from "../../../server/documents/local-document-text.ts";
+import { allowPublicApiAttempt } from "../../../server/access/public-api-rate-limit.ts";
+import { sameOriginMutation } from "../../../server/access/request-security.ts";
 
 export const runtime = "nodejs";
 
@@ -39,6 +41,16 @@ export async function POST(request: Request) {
       { status: 404 },
     );
   }
+  if (!sameOriginMutation(request))
+    return Response.json(
+      { code: "DOCUMENT_ACCESS_DENIED", message: "Pyyntö estettiin turvallisuussyistä." },
+      { status: 403 },
+    );
+  if (!allowPublicApiAttempt({ request, scope: "document_analysis", limit: 10, windowMs: 15 * 60_000 }))
+    return Response.json(
+      { code: "DOCUMENT_RATE_LIMITED", message: "Liian monta asiakirjapyyntöä. Odota hetki ja yritä uudelleen." },
+      { status: 429 },
+    );
   let form: FormData;
   try {
     form = await request.formData();

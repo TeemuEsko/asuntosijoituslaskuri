@@ -3,10 +3,22 @@ import { randomUUID } from "node:crypto";
 import { validateVisualImage } from "@/core/visual-condition/validation";
 import { OpenAiVisualConditionProvider, VisualConditionProviderError } from "@/server/visual-condition/openai-vision-provider";
 import { mapVisualImageResult } from "@/server/visual-condition/map-result";
+import { allowPublicApiAttempt } from "@/server/access/public-api-rate-limit";
+import { sameOriginMutation } from "@/server/access/request-security";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  if (!sameOriginMutation(request))
+    return NextResponse.json(
+      { code: "IMAGE_ACCESS_DENIED", message: "Pyyntö estettiin turvallisuussyistä." },
+      { status: 403 },
+    );
+  if (!allowPublicApiAttempt({ request, scope: "visual_condition", limit: 10, windowMs: 15 * 60_000 }))
+    return NextResponse.json(
+      { code: "IMAGE_ACCESS_DENIED", message: "Liian monta kuvapyyntöä. Odota hetki ja yritä uudelleen." },
+      { status: 429 },
+    );
   let form: FormData;
   try { form = await request.formData(); } catch { return NextResponse.json({ code: "IMAGE_ACCESS_DENIED", message: "Kuvatiedostoa ei voitu lukea." }, { status: 400 }); }
   const file = form.get("image");
@@ -26,6 +38,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ image, observations, warningCode: noAnalysableContent ? "NO_ANALYSABLE_CONTENT" : result.imageQuality === "low" ? "LOW_IMAGE_QUALITY" : null });
   } catch (error) {
     const code = error instanceof VisualConditionProviderError ? error.code : "IMAGE_ANALYSIS_FAILED";
-    return NextResponse.json({ code, message: error instanceof Error ? error.message : "Kuvan analysointi epäonnistui." }, { status: code === "TIMEOUT" ? 504 : 502 });
+    return NextResponse.json(
+      {
+        code,
+        message:
+          code === "TIMEOUT"
+            ? "Kuvan analysointi aikakatkaistiin. Yritä uudelleen."
+            : "Kuvan analysointi epäonnistui. Yritä uudelleen.",
+      },
+      { status: code === "TIMEOUT" ? 504 : 502 },
+    );
   }
 }

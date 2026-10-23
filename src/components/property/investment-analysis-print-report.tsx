@@ -174,12 +174,26 @@ export function InvestmentAnalysisPrintReport({
   const collateralValue = collateralIsGap ? analysis.collateralShortfall : analysis.collateralBuffer;
   const completedRenovations = (data.renovations ?? []).filter((item) => ["completed", "ongoing"].includes(item.status));
   const plannedRenovations = (data.renovations ?? []).filter((item) => !["completed", "ongoing"].includes(item.status));
-  const reviewItems = [...new Set([
+  const reviewCandidates = [
     ...(analysis.missingFactors ?? []),
     ...(data.documentWarnings ?? []),
     ...(repairHistory.sourceLimitation ? [repairHistory.sourceLimitation] : []),
     ...repairHistory.relevantSystems.slice(0, 4).map((item) => `${item.label}: ${item.reason}`),
-  ])];
+  ];
+  const reviewItems = reviewCandidates.filter((item, index) => {
+    const identity = item
+      .toLocaleLowerCase("fi")
+      .replace(/[.!?]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return reviewCandidates.findIndex((candidate) =>
+      candidate
+        .toLocaleLowerCase("fi")
+        .replace(/[.!?]+$/g, "")
+        .replace(/\s+/g, " ")
+        .trim() === identity,
+    ) === index;
+  });
   const rentAreaNotice = rentEstimate.sourceAreaLevel && !["postal_code", "municipality"].includes(rentEstimate.sourceAreaLevel)
     ? "Vuokra-arvio perustuu kuntaa laajempaan vertailualueeseen."
     : undefined;

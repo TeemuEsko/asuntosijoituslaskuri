@@ -102,3 +102,22 @@ test("positiivinen oma pääoma laskee suhteelliset tuotot eikä vaikuta pisteis
   assert.equal(withEquity.collateralShortfall, 0);
   assert.equal(withEquity.collateralBuffer, 4_000);
 });
+
+test("ääriarvot eivät tuota NaN- tai Infinity-arvoja", () => {
+  const cases = [
+    { ...complete, debtFreePrice: 0, salePrice: 0, monthlyRent: 0, bankLoanAmount: 0, equity: 0 },
+    { ...complete, monthlyRent: 100_000, maintenanceFeeMonthly: 99_999, bankLoanAmount: 0, equity: 120_000 },
+    { ...complete, annualInterestRate: 0, loanTermYears: 1, vacancyMonths: 12 },
+  ];
+  for (const input of cases) {
+    const result = calculateInvestmentAnalysis(input);
+    assert.doesNotMatch(JSON.stringify(result), /NaN|Infinity/);
+  }
+});
+
+test("negatiivinen vuokra ja yli 12 kuukauden tyhjäkäynti eivät kasvata vuosivuokraa", () => {
+  const negativeRent = calculateInvestmentAnalysis({ ...complete, monthlyRent: -100 });
+  const excessiveVacancy = calculateInvestmentAnalysis({ ...complete, vacancyMonths: 24 });
+  assert.ok((negativeRent.effectiveAnnualRent ?? 0) <= 0);
+  assert.equal(excessiveVacancy.effectiveAnnualRent, 0);
+});

@@ -7,7 +7,7 @@ import type { LeadRepository } from "@/server/leads/repository";
 export const runtime = "nodejs";
 type Dependencies = { repository: LeadRepository; adminToken?: string };
 
-export async function handleCsvExport(request: Request, dependencies: Dependencies): Promise<Response> {
+async function handleCsvExport(request: Request, dependencies: Dependencies): Promise<Response> {
   const authorization = request.headers.get("authorization");
   const provided = authorization?.startsWith("Bearer ") ? authorization.slice(7) : undefined;
   if (!secureTokenMatches(provided, dependencies.adminToken)) return NextResponse.json({ error: "Pääsy estetty." }, { status: 401 });

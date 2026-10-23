@@ -125,3 +125,12 @@ test("A4-tyylit hallitsevat värit ja sivukatkot", async () => {
   assert.match(css, /\.print-avoid-break[\s\S]*break-inside: avoid/);
   assert.match(css, /print-color-adjust: exact/);
 });
+
+test("raportin tarkistettavat tiedot poistavat myös välimerkistä johtuvat kaksoiskappaleet", async () => {
+  const report = await read(
+    "../src/components/property/investment-analysis-print-report.tsx",
+  );
+  assert.match(report, /const reviewCandidates =/);
+  assert.match(report, /replace\(\/\[\.!\?\]\+\$\/g, ""\)/);
+  assert.match(report, /findIndex/);
+});

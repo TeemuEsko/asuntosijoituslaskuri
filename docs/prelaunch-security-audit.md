@@ -1,42 +1,72 @@
-# Pre-launch client/server- ja API-turvallisuusauditointi
+# Pre-launch security- ja tietosuojatarkastus
 
-Auditointi on tehty julkaisua edeltävälle buildille 3.10.2026. Tämä dokumentti kuvaa nykytilan, ei lupaa täydellistä IP-suojausta.
+Päivitetty 23.10.2026. Tämä on tekninen tarkastus, ei juridinen lausunto eikä väite GDPR-vaatimustenmukaisuudesta.
 
-## Luokittelu
+## Tiivistelmä
 
-### A. Vain palvelimella
+Julkinen analyysipolku ei pyydä nimeä tai sähköpostia, ei luo käyttäjätiliä eikä käytä liidisessiota tai tietokantaa. Analyysiluonnos säilyy saman selainistunnon `sessionStorage`-tallennuksessa. Vapaaehtoiset koulutuslinkit avaavat Kajabin ulkoisen sivun.
 
-- Myynti-ilmoituksen URL-haku, selaimen käyttö, SSRF-suojaukset ja sivustoadapterit (`src/core/listing-acquisition`, API-reitti).
-- Varsinainen ilmoitustekstin parseri suoritetaan API-reitillä. Julkinen vastaus ei sisällä tuotannossa parserin diagnostiikkaa.
-- Dokumentin paikallinen PDF-/TXT-tekstinpoiminta ja deterministinen dokumenttiparseri (`src/server/documents`).
-- Valokuvien haku ja OpenAI-kuvantulkintapalvelun avain sekä provider (`src/server/listing-images`, `src/server/visual-condition`).
+Koodissa korjatut korkean riskin havainnot:
 
-### B. Asiakkaan JavaScript-paketissa
+- Next.js päivitettiin versiosta 16.3.8 versioon 16.4.2 kolmen tuotantoriippuvuutta koskevan haavoittuvuuden vuoksi. `npm audit --omit=dev` ei tämän jälkeen löytänyt haavoittuvuuksia.
+- Julkiset analyysi-, kuva- ja valinnaiset asiakirjareitit tarkistavat same-origin-pyynnön ja käyttävät instanssikohtaista kutsurajoitusta.
+- Kuvantulkinnan sisäisiä palvelinvirheitä ei palauteta käyttäjälle.
+- Automaattinen ilmoituskuvien lähetys kuvantulkintaan vaatii API-avaimen lisäksi nimenomaisen `ENABLE_LISTING_IMAGE_ANALYSIS=true` -asetuksen.
+- Sovellus lähettää CSP-, clickjacking-, MIME-sniffing-, referrer- ja permissions-otsakkeet.
 
-- Interaktiivinen talouslaskenta, pankkilainan laskenta ja vakuusvaje.
-- Sijoituspisteiden adapteri, painot, luokittelurajat sekä osa vahvuus- ja riskisäännöistä.
-- Markkina-arvioiden muodostus ja valintojen perustelut.
-- Vakuusarvon kaava ja hintojen synkronointi.
-- Käyttäjälle näytettävät esityssäännöt, numeeristen kenttien käsittely ja raportin selainpohjainen esitys.
+## Client/server-raja
 
-### C. Jaettu
+### Vain palvelimella
 
-- Canonical-kenttätyypit, provenance- ja merge-rakenteet sekä normalisoinnin apufunktiot.
-- Vuokra-, markkina- ja analyysitulosten tyypit.
-- Käyttäjälle palautettavat vahvuudet, riskit, selitteet ja lähdetiedot.
+- Myynti-ilmoituksen URL-haku, selainautomaatio, uudelleenohjaukset ja SSRF-tarkistukset.
+- Varsinainen ilmoitustekstin parseri ja tuotantovastauksesta poistettavat diagnostiikat.
+- Paikallinen PDF-/TXT-tekstinpoiminta ja deterministinen dokumenttiparseri. Julkinen dokumenttireitti on oletuksena pois käytöstä.
+- Valokuvien haku, kuvien turvallisuustarkistukset sekä kuvantulkintapalvelun avain.
+- Vanhan liididatan CSV-vienti. Reitti vaatii vähintään 32 merkin palvelinpuolisen bearer-tokenin.
 
-## Jäljellä oleva IP-altistus
+### Asiakkaan JavaScript-paketissa
 
-Suurin jäljellä oleva altistus on selaimessa tehtävä interaktiivinen pisteytys: painot, raja-arvot sekä riskien ja suositusten muodostus voidaan päätellä tuotantopaketista. Näiden siirto palvelimelle vaatii laskennan API-sopimuksen, throttlauksen, virhetilojen ja jokaisen kenttämuutoksen optimistisen käyttöliittymän suunnittelun. Sitä ei tehty tässä buildissa regression-riskin vuoksi. Tavalliset talouskaavat jätettiin tietoisesti selaimeen.
+- Interaktiivinen talouslaskenta, pankkilainan laskenta, vakuusvaje ja sijoituspisteiden painot.
+- Markkina-arvioiden esitysmalli, hintasynkronointi ja raportin selainpohjainen tulostus.
+- Tämä on tietoinen IP-altistus. Selainkoodia ei pidä pitää salaisena.
 
-## API-havainnot
+## API-rajat ja väärinkäytön esto
 
-- `POST /api/listing-import` on julkinen. Se rajaa tekstisyötteen 100 000 merkkiin, validoi syötteen tyypin ja käyttää URL-haussa domain-, protokolla-, uudelleenohjaus- ja SSRF-suojauksia. Tuotantovastauksesta poistetaan diagnostiikka ja vuokra-arvion sisäinen resoluutioloki.
-- `POST /api/visual-condition` on julkinen, jos palvelimelle on määritetty kuvantulkinta-avain. Tiedoston tyyppi ja koko validoidaan, mutta endpointilla ei ole käyttäjäkohtaista access controlia.
-- `POST /api/document-analysis` säilyy koodissa, mutta palauttaa oletuksena 404-vastauksen ennen request bodyn lukemista. Se avautuu vain `ENABLE_DOCUMENT_ANALYSIS=true` -asetuksella. Avattuna endpointilla ei ole käyttäjäkohtaista access controlia.
-- Reitit hyväksyvät vain toteutetun `POST`-metodin; muille metodeille Next.js palauttaa reittitasolla hylkäyksen.
-- Rate limiting puuttuu. Julkaisuympäristöön tarvitaan myöhemmin opt-in/live access gate ja kustannuksia aiheuttaville reiteille rajoitus.
+- `POST /api/listing-identify`: same-origin, 2 048 merkin URL-raja ja instanssikohtainen 10 pyyntöä / 15 min -raja.
+- `POST /api/listing-import`: same-origin, 100 000 merkin syöteraja ja instanssikohtainen 20 pyyntöä / 15 min -raja.
+- `POST /api/visual-condition`: same-origin, 10 pyyntöä / 15 min, tiedostotyyppi- ja kokorajat sekä käyttäjän hyväksymä käsittelyrajaus.
+- `POST /api/document-analysis`: oletuksena 404 ennen request bodyn lukemista; käyttöön otettuna same-origin ja 10 pyyntöä / 15 min.
+- Instanssikohtainen muistirajoitus ei ole hajautettu tuotantorajoitus. Ennen suurempaa liikennettä Vercel Firewallissa tai vastaavassa pitää ottaa käyttöön jaettu rate limit, erityisesti kustannuksia aiheuttaville kuva- ja selainreiteille.
+- URL-haku sallii vain HTTPS Etuovi- ja Oikotie-ilmoitukset. DNS-tulos, jokainen uudelleenohjaus ja kuva-CDN tarkistetaan yksityisverkko- ja localhost-kohteiden estämiseksi.
 
-## Source maps ja vältetyt näennäissuojaukset
+## Selain- ja sisältöturva
 
-`productionBrowserSourceMaps` ei ole käytössä, eikä tarkistetussa tuotantobuildissa ollut `.map`-tiedostoja `.next/static`-hakemistossa. Buildiin ei lisätty oikean painikkeen estoa, DevTools-tunnistusta, näppäinestoja, valinnan estoa, anti-debug-koodia tai omaa obfuskointia.
+Tuotantobuild ei julkaise browser source mappeja. Sovellus ei käytä anti-debug- tai DevTools-estokikkoja. CSP sallii Next.js:n staattisen renderöinnin vuoksi inline-skriptit ja -tyylit; `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'` ja `form-action 'self'` pienentävät riskiä, mutta inline-poikkeus jää jatkokehityksen kohteeksi. Tiukempi nonce-CSP muuttaisi sivut dynaamisiksi ja vaatii erillisen suorituskyky- ja välimuistipäätöksen.
+
+## Henkilötiedot ja palveluntarjoajat
+
+- Julkinen laskuri ei kerää nimeä, sähköpostia tai markkinointisuostumusta.
+- Vercel voi käsitellä IP- ja teknisiä lokitietoja hostingin yhteydessä. Vercelin nykyinen DPA koskee sen ehtojen mukaan Pro- ja Enterprise-asiakkaita, käsittely voi tapahtua Yhdysvalloissa ja siirtomekanismina käytetään muun muassa SCC-lausekkeita. Omistajan pitää varmistaa oman Vercel-tilauksensa sopimusasema ja asetukset: <https://vercel.com/legal/dpa>.
+- Neon/PostgreSQL ei kuulu julkiseen analyysipolkuun. Vanha liididata on silti henkilötietoa, jos tietokanta on olemassa. Neon on siirtänyt julkisen alikäsittelijälistansa Databricksin listaan; omistajan pitää varmistaa todellinen tietokantatoimittaja, alue, DPA, säilytys ja poisto: <https://neon.com/security> ja <https://www.databricks.com/legal/databricks-subprocessors>.
+- Kajabi käsittelee vapaaehtoisella ulkoisella sivulla annettuja yhteystietoja. Kajabin DPA tulee sen ehtojen mukaan osaksi palvelusopimusta, Kajabi toimii asiakasdatan käsittelijänä ja käsittelyä voi tapahtua Yhdysvalloissa. Omistajan pitää tarkistaa Kajabi-lomakkeen suostumusteksti, double opt-in, peruutuspolku ja alikäsittelijät: <https://www.kajabi.com/policies/dpa> ja <https://help.kajabi.com/en/articles/17175126-comply-with-privacy-regulations-using-kajabi>.
+- OpenAI-kuvantulkinta on valinnainen. Automaattinen ilmoituskuvien käsittely on oletuksena pois päältä. Jos se otetaan käyttöön, omistajan pitää hyväksyä oikeusperuste, palveluntarjoajakuvaus, siirtomekanismi ja käyttäjäinformointi ennen deploymentia.
+
+## Julkaisun juridiset ja organisatoriset estot
+
+Seuraavia ei voi ratkaista koodista eikä niitä saa täyttää esimerkkitiedoilla:
+
+1. `PRIVACY_CONTROLLER_NAME`: todellinen rekisterinpitäjä.
+2. `PRIVACY_CONTACT`: rekisteröidyn pyyntöjen oikea yhteydenottokanava.
+3. `PRIVACY_RETENTION_PERIOD`: hyväksytyt säilytys- ja poistokäytännöt, myös Vercel-lokeille ja vanhalle liididatalle.
+4. `PRIVACY_INTERNATIONAL_TRANSFERS`: tosiasialliset siirrot ja suojatoimet käytössä olevilla sopimuksilla.
+5. Vercel-, mahdollisen Neon/Databricks-, Kajabi- ja mahdollisen OpenAI-sopimuksen sekä alikäsittelijöiden omistajakohtainen tarkistus.
+6. Vanhan liididatan säilytys- tai poistopäätös ja rekisteröidyn pyyntöjen varmennusmenettely.
+
+Tietosuojasivu näyttää näiden puuttumisen suoraan eikä väitä palvelua julkaisuvalmiiksi.
+
+## Avoimet tekniset riskit
+
+- Instanssikohtainen rate limit nollautuu kylmäkäynnistyksessä eikä jaa tilaa Vercel-instanssien välillä.
+- Talous- ja pisteytyslogiikka on osittain julkisessa client bundlessa.
+- CSP sisältää `unsafe-inline`-poikkeuksen.
+- Kehitysriippuvuuksissa on `braces`-paketin kautta yhdeksän high-luokan audit-havaintoa. Ne eivät kuulu tuotantoriippuvuuksiin; automaattinen korjaus alentaisi `shadcn`-paketin rikkovasti versioon 1.0.0, joten sitä ei tehty tässä rajatussa korjauksessa.
