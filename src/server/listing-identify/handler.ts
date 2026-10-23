@@ -1,5 +1,5 @@
 import type { ListingFinding } from "../../core/parser/listing-parser.ts";
-import type { ListingPreview } from "../../core/leads/listing-preview.ts";
+import type { ListingPreview } from "../../core/listing-acquisition/listing-preview.ts";
 import type { ListingAcquisitionResult } from "../../core/listing-acquisition/types.ts";
 import { sameOriginMutation } from "../access/request-security.ts";
 import { safeServerErrorCode, type ListingIdentifyRateLimitResult } from "../access/listing-identify-rate-limit.ts";

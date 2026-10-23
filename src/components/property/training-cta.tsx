@@ -1,8 +1,11 @@
+"use client";
+
 import { ArrowRight, GraduationCap } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { kajabiTrainingUrl } from "@/config/marketing";
+import { trackProductEvent } from "@/core/analytics/product-events";
 
 type TrainingCtaProps = {
   placement: "analysis" | "footer";
@@ -55,6 +58,12 @@ export function TrainingCta({ placement }: TrainingCtaProps) {
           href={kajabiTrainingUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() =>
+            trackProductEvent("kajabi_redirect_clicked", {
+              destination: "training",
+              placement,
+            })
+          }
           className={buttonVariants({
             size: "lg",
             className:

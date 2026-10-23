@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { trackProductEvent } from "@/core/analytics/product-events";
 import { ListingImport } from "./listing-import";
 import { NewPropertyStart } from "./new-property-start";
 import {
@@ -15,6 +16,13 @@ export function PropertyApplication() {
   const [view, setView] = useState<View>("start");
   const [importedData, setImportedData] = useState<ImportedPropertyData>({});
   const [listingUrl, setListingUrl] = useState("");
+  const calculatorUseRecorded = useRef(false);
+
+  useEffect(() => {
+    if (view !== "workspace" || calculatorUseRecorded.current) return;
+    calculatorUseRecorded.current = true;
+    trackProductEvent("calculator_used");
+  }, [view]);
 
   useEffect(() => {
     let restoreTimer: number | undefined;
@@ -31,6 +39,7 @@ export function PropertyApplication() {
       /* Istuntotallennus ei ole välttämättä käytettävissä yksityisessä selaustilassa. */
     }
     const returnHome = () => {
+      calculatorUseRecorded.current = false;
       try {
         window.sessionStorage.removeItem(ANALYSIS_DRAFT_KEY);
       } catch {

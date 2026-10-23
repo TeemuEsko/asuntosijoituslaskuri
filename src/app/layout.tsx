@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { PrivacySafeAnalytics } from "@/components/analytics/privacy-safe-analytics";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.asuntosijoituslaskuri.fi"),
+  metadataBase: new URL("https://asuntosijoituslaskuri.fi"),
   title: "Asuntosijoituslaskuri.fi – analysoi sijoitusasunto maksutta",
   description:
     "Laske sijoitusasunnon vuokratuotto, kassavirta, rahoitus ja keskeiset riskit maksutta Etuovi- tai Oikotie-ilmoituksesta.",
@@ -26,7 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fi" className="h-full antialiased">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <PrivacySafeAnalytics />
+      </body>
     </html>
   );
 }

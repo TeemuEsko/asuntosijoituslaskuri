@@ -1,8 +1,11 @@
+"use client";
+
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { professionalEvaluationUrl } from "@/config/marketing";
+import { trackProductEvent } from "@/core/analytics/product-events";
 
 const evaluationTopics = [
   "Onko hintapyyntö markkinatasolla?",
@@ -50,6 +53,12 @@ export function ProfessionalEvaluationCard() {
             href={professionalEvaluationUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              trackProductEvent("analysis_order_clicked");
+              trackProductEvent("kajabi_redirect_clicked", {
+                destination: "professional_evaluation",
+              });
+            }}
             className={buttonVariants({
               size: "lg",
               className:

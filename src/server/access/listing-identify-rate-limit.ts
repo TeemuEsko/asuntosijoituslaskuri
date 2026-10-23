@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
 
 import { requestFingerprint } from "./request-security.ts";
-import type { LeadRepository } from "../leads/repository.ts";
 
 const fallbackSecret = randomBytes(32).toString("hex");
 const fallbackAttempts = new Map<string, number[]>();
@@ -40,32 +39,15 @@ export function safeServerErrorCode(error: unknown): string {
 
 export async function allowListingIdentifyAttempt({
   request,
-  repository,
   secret,
   now = Date.now(),
-  logger = console,
 }: {
   request: Request;
-  repository?: Pick<LeadRepository, "allowAttempt">;
   secret?: string;
   now?: number;
-  logger?: Pick<Console, "error">;
 }): Promise<ListingIdentifyRateLimitResult> {
   const identifierHash = requestFingerprint(request, secret && secret.length >= 32 ? secret : fallbackSecret);
-  if (!repository)
-    return { allowed: fallbackAllows(identifierHash, now), persistent: false };
-  try {
-    return {
-      allowed: await repository.allowAttempt("listing_identify", identifierHash, 20, 15 * 60),
-      persistent: true,
-    };
-  } catch (error) {
-    logger.error("[listing-identify] persistent rate limit unavailable", {
-      stage: "rate_limit",
-      code: safeServerErrorCode(error),
-    });
-    return { allowed: fallbackAllows(identifierHash, now), persistent: false };
-  }
+  return { allowed: fallbackAllows(identifierHash, now), persistent: false };
 }
 
 export function clearListingIdentifyFallbackRateLimit(): void {

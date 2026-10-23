@@ -11,6 +11,20 @@ const port = await new Promise((resolve, reject) => { const server = createServe
 const nextBin = path.join(root, "node_modules", "next", "dist", "bin", "next");
 const app = spawn(process.execPath, [nextBin, "start", "-H", "127.0.0.1", "-p", String(port)], { cwd: root, stdio: "ignore", windowsHide: true });
 
+async function saveScreenshot(page, target) {
+  let lastError;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await page.screenshot({ path: target, fullPage: true });
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
+
 async function waitForServer() {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try { const response = await fetch(`http://127.0.0.1:${port}`); if (response.ok) return; } catch { /* Palvelin käynnistyy. */ }
@@ -148,7 +162,7 @@ try {
     for (const internalValue of ["owned", "optional_leasehold", "unchecked", "annuity"]) {
       if (new RegExp(`(^|\\s)${internalValue}($|\\s)`, "m").test(visibleText)) throw new Error(`${width}x${height}: sisäinen arvo ${internalValue} näkyy käyttöliittymässä`);
     }
-    await page.screenshot({ path: path.join(screenshots, `workspace-${width}x${height}.png`), fullPage: true });
+    await saveScreenshot(page, path.join(screenshots, `workspace-${width}x${height}.png`));
     await page.close();
   }
   const logoPage = await browser.newPage({ viewport: { width: 1280, height: 720 } });

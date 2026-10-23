@@ -53,7 +53,7 @@ import { ImportSourceReview } from "./import-source-review";
 import { normalizeHeatingType } from "@/core/domain/heating";
 import { resolveEffectiveRent } from "@/core/rent-data/rent-estimation";
 import type { DocumentFieldProvenance } from "@/core/documents/types";
-import type { ListingPreview } from "@/core/leads/listing-preview";
+import type { ListingPreview } from "@/core/listing-acquisition/listing-preview";
 import type { MarketAssessmentSet } from "@/core/market-assessment/model";
 
 type ImportMode = "url" | "text";

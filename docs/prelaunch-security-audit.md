@@ -13,6 +13,9 @@ Koodissa korjatut korkean riskin havainnot:
 - Kuvantulkinnan sisäisiä palvelinvirheitä ei palauteta käyttäjälle.
 - Automaattinen ilmoituskuvien lähetys kuvantulkintaan vaatii API-avaimen lisäksi nimenomaisen `ENABLE_LISTING_IMAGE_ANALYSIS=true` -asetuksen.
 - Sovellus lähettää CSP-, clickjacking-, MIME-sniffing-, referrer- ja permissions-otsakkeet.
+- Tuotannon source mapit on kytketty nimenomaisesti pois ja HSTS-, COOP- sekä CORP-otsakkeet on lisätty.
+- Vercel Web Analytics poistaa URL:n hakuparametrit ja käyttää vain rajattuja, henkilötiedottomia tuote-eventtejä.
+- Vanha Postgres-liiditallennus, migraatio ja CSV-reitti on poistettu sovelluksesta.
 
 ## Client/server-raja
 
@@ -22,7 +25,7 @@ Koodissa korjatut korkean riskin havainnot:
 - Varsinainen ilmoitustekstin parseri ja tuotantovastauksesta poistettavat diagnostiikat.
 - Paikallinen PDF-/TXT-tekstinpoiminta ja deterministinen dokumenttiparseri. Julkinen dokumenttireitti on oletuksena pois käytöstä.
 - Valokuvien haku, kuvien turvallisuustarkistukset sekä kuvantulkintapalvelun avain.
-- Vanhan liididatan CSV-vienti. Reitti vaatii vähintään 32 merkin palvelinpuolisen bearer-tokenin.
+- Web Analyticsin same-origin-välityspiste; sovellus rajaa lähetettävät eventit eikä lisää laskentadataa.
 
 ### Asiakkaan JavaScript-paketissa
 
@@ -47,7 +50,7 @@ Tuotantobuild ei julkaise browser source mappeja. Sovellus ei käytä anti-debug
 
 - Julkinen laskuri ei kerää nimeä, sähköpostia tai markkinointisuostumusta.
 - Vercel voi käsitellä IP- ja teknisiä lokitietoja hostingin yhteydessä. Vercelin nykyinen DPA koskee sen ehtojen mukaan Pro- ja Enterprise-asiakkaita, käsittely voi tapahtua Yhdysvalloissa ja siirtomekanismina käytetään muun muassa SCC-lausekkeita. Omistajan pitää varmistaa oman Vercel-tilauksensa sopimusasema ja asetukset: <https://vercel.com/legal/dpa>.
-- Neon/PostgreSQL ei kuulu julkiseen analyysipolkuun. Vanha liididata on silti henkilötietoa, jos tietokanta on olemassa. Neon on siirtänyt julkisen alikäsittelijälistansa Databricksin listaan; omistajan pitää varmistaa todellinen tietokantatoimittaja, alue, DPA, säilytys ja poisto: <https://neon.com/security> ja <https://www.databricks.com/legal/databricks-subprocessors>.
+- Neon/PostgreSQL ei kuulu sovellukseen. Jos Vercelin ulkopuoliseen Neon-resurssiin on jäänyt vanhaa liididataa, se on edelleen henkilötietoa ja vaatii erillisen säilytys- tai poistopäätöksen. Resurssia ei ole poistettu tässä työssä.
 - Kajabi käsittelee vapaaehtoisella ulkoisella sivulla annettuja yhteystietoja. Kajabin DPA tulee sen ehtojen mukaan osaksi palvelusopimusta, Kajabi toimii asiakasdatan käsittelijänä ja käsittelyä voi tapahtua Yhdysvalloissa. Omistajan pitää tarkistaa Kajabi-lomakkeen suostumusteksti, double opt-in, peruutuspolku ja alikäsittelijät: <https://www.kajabi.com/policies/dpa> ja <https://help.kajabi.com/en/articles/17175126-comply-with-privacy-regulations-using-kajabi>.
 - OpenAI-kuvantulkinta on valinnainen. Automaattinen ilmoituskuvien käsittely on oletuksena pois päältä. Jos se otetaan käyttöön, omistajan pitää hyväksyä oikeusperuste, palveluntarjoajakuvaus, siirtomekanismi ja käyttäjäinformointi ennen deploymentia.
 
@@ -57,10 +60,12 @@ Seuraavia ei voi ratkaista koodista eikä niitä saa täyttää esimerkkitiedoil
 
 1. `PRIVACY_CONTROLLER_NAME`: todellinen rekisterinpitäjä.
 2. `PRIVACY_CONTACT`: rekisteröidyn pyyntöjen oikea yhteydenottokanava.
-3. `PRIVACY_RETENTION_PERIOD`: hyväksytyt säilytys- ja poistokäytännöt, myös Vercel-lokeille ja vanhalle liididatalle.
+3. `PRIVACY_RETENTION_PERIOD`: hyväksytyt säilytys- ja poistokäytännöt, myös Vercel-lokeille ja analytiikalle.
 4. `PRIVACY_INTERNATIONAL_TRANSFERS`: tosiasialliset siirrot ja suojatoimet käytössä olevilla sopimuksilla.
-5. Vercel-, mahdollisen Neon/Databricks-, Kajabi- ja mahdollisen OpenAI-sopimuksen sekä alikäsittelijöiden omistajakohtainen tarkistus.
-6. Vanhan liididatan säilytys- tai poistopäätös ja rekisteröidyn pyyntöjen varmennusmenettely.
+5. `PRIVACY_LEGAL_BASES`: hyväksytyt käsittelyn oikeusperusteet.
+6. `PRIVACY_SERVICE_PROVIDERS`: toteutusta vastaava palveluntarjoaja- ja käsittelijäkuvaus.
+7. Vercel-, Kajabi- ja mahdollisen OpenAI-sopimuksen sekä alikäsittelijöiden omistajakohtainen tarkistus.
+8. Mahdollisen Vercelin ulkopuolisen Neon-datan säilytys- tai poistopäätös ja rekisteröidyn pyyntöjen varmennusmenettely.
 
 Tietosuojasivu näyttää näiden puuttumisen suoraan eikä väitä palvelua julkaisuvalmiiksi.
 

@@ -26,5 +26,6 @@ test("ammattilaisarviokortti sisältää sovitun viestin ja turvallisen ulkoisen
   assert.match(source, /bg-blue-900/);
   assert.match(source, /min-h-14/);
   assert.match(source, /shadow-md/);
-  assert.doesNotMatch(source, /onRequestEvaluation|onClick=/);
+  assert.match(source, /trackProductEvent\("analysis_order_clicked"\)/);
+  assert.doesNotMatch(source, /onRequestEvaluation|<form|<dialog/);
 });

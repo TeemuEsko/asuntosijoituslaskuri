@@ -71,9 +71,11 @@ test("turvaotsakkeet, canonical, robots ja sitemap ovat määritelty", async () 
     "X-Content-Type-Options",
     "X-Frame-Options",
     "Permissions-Policy",
+    "Strict-Transport-Security",
+    "Cross-Origin-Opener-Policy",
   ])
     assert.match(config, new RegExp(header));
-  assert.match(layout, /metadataBase: new URL\("https:\/\/www\.asuntosijoituslaskuri\.fi"\)/);
+  assert.match(layout, /metadataBase: new URL\("https:\/\/asuntosijoituslaskuri\.fi"\)/);
   assert.match(layout, /alternates: \{ canonical: "\/" \}/);
   assert.match(robots, /disallow: "\/api\/"/);
   assert.match(sitemap, /\/tietosuoja/);

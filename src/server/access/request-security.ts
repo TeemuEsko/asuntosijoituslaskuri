@@ -20,14 +20,3 @@ export function requestFingerprint(request: Request, secret: string | undefined)
   const address = forwarded || request.headers.get("x-real-ip") || "unknown";
   return createHmac("sha256", secret).update(address).digest("hex");
 }
-
-export function secureTokenMatches(provided: string | undefined, expected: string | undefined): boolean {
-  if (!provided || !expected || expected.length < 32) return false;
-  const left = Buffer.from(provided);
-  const right = Buffer.from(expected);
-  return left.length === right.length && cryptoTimingSafe(left, right);
-}
-
-function cryptoTimingSafe(left: Buffer, right: Buffer): boolean {
-  return createHmac("sha256", "admin-token-comparison").update(left).digest().equals(createHmac("sha256", "admin-token-comparison").update(right).digest());
-}

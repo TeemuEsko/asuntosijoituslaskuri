@@ -62,17 +62,15 @@ test("Etuovi 80534744: HTTP 200 -vastaus tunnistuu eikä hoitovastike estä kohd
   assert.equal(values.maintenanceFeeMonthly, 321.3);
 });
 
-test("tunnistus-API palauttaa kohteen, vaikka pysyvä rate limit ei ole käytettävissä", async () => {
+test("tunnistus-API palauttaa kohteen tietokannattomalla kutsurajoituksella", async () => {
   clearListingIdentifyFallbackRateLimit();
   const errors: unknown[] = [];
   const response = await handleListingIdentify(request(), {
     acquireListing: () => fixtureAcquisition(),
     allowAttempt: (currentRequest) => allowListingIdentifyAttempt({
       request: currentRequest,
-      repository: { async allowAttempt() { throw new Error("DATABASE_URL_MISSING"); } },
       secret: undefined,
       now: 1_000,
-      logger: { error: (...args: unknown[]) => errors.push(args) },
     }),
     logger: { error: (...args: unknown[]) => errors.push(args) },
   });
@@ -81,7 +79,7 @@ test("tunnistus-API palauttaa kohteen, vaikka pysyvä rate limit ei ole käytett
   assert.equal(payload.preview?.address, "Korsholmanpuistikko 15 As");
   assert.equal(payload.preview?.areaSqm, 94.5);
   assert.equal(payload.preview?.debtFreePrice, 199_000);
-  assert.equal(errors.length, 1);
+  assert.equal(errors.length, 0);
 });
 
 test("yksittäisen hoitovastikekentän puuttuminen ei estä tunnistamista", async () => {

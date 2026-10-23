@@ -12,9 +12,9 @@ npm.cmd run dev
 
 Avaa selaimessa [http://localhost:3000](http://localhost:3000).
 
-Analyysi, lähtötietojen muokkaus ja PDF-tulostus toimivat ilman rekisteröitymistä tai PostgreSQL-tietokantaa. Valokuvien perusteella arvioitu kunto edellyttää palvelinpuolen `OPENAI_API_KEY`-avainta. Kajabin koulutuslinkin voi vaihtaa asetuksella `NEXT_PUBLIC_KAJABI_TRAINING_URL`.
+Analyysi, lähtötietojen muokkaus ja PDF-tulostus toimivat ilman rekisteröitymistä tai tietokantaa. Valokuvien perusteella arvioitu kunto edellyttää palvelinpuolen `OPENAI_API_KEY`-avainta. Kajabin koulutuslinkin voi vaihtaa asetuksella `NEXT_PUBLIC_KAJABI_TRAINING_URL`.
 
-Vanhan liididatan ylläpito, suojattu CSV-vienti ja poistomenettely on kuvattu tiedostossa `docs/15_LEAD_CAPTURE_DEPLOYMENT.md`. Ne eivät kuulu julkiseen analyysipolkuun.
+Julkaisun tietovirrat, ympäristöasetukset, domain-vaiheet ja palautusmenettely on kuvattu tiedostossa `docs/LAUNCH_OPERATIONS.md`.
 
 ## Tarkistukset
 
@@ -35,7 +35,8 @@ npm.cmd run check
 - analyysi ja PDF-tulostus toimivat ilman rekisteröitymistä, liidisessiota tai tietokantaa
 - analyysiluonnos säilytetään vain saman välilehden `sessionStorage`-tallennuksessa; se ei ole liidirekisteri
 - julkiset palvelinreitit käyttävät same-origin-tarkistusta ja instanssikohtaista kutsurajoitusta; tuotantotason hajautettu rajoitus on erillinen jatkotoimi
-- vanha PostgreSQL-liididata ja suojattu CSV-ylläpitoreitti säilyvät vain olemassa olevien tietojen hallintaa varten
+- sovellus ei käytä PostgreSQL/Neon-tietokantaa eikä sisällä liiditallennus- tai CSV-reittiä
+- Vercel Web Analytics kerää sivunäytöt ja rajatut tuote-eventit ilman osoite- tai laskentadataa; analytiikka pitää ottaa käyttöön myös Vercelin projektista
 - talouslaskennan JavaScript jää osittain client bundleen; katso dokumentoitu suojausraja ennen tuotantojulkaisua
 - ilmoitusparseri toimii ilman maksullista AI:ta; valokuvien tulkinta käyttää valinnaista palvelinpuolen kuvantulkintarajapintaa
 - ilmoituskuvien automaattinen tulkinta vaatii sekä `OPENAI_API_KEY`-avaimen että erillisen `ENABLE_LISTING_IMAGE_ANALYSIS=true` -asetuksen

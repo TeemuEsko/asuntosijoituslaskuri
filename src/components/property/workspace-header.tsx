@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { brandName } from "@/core/i18n/display-values";
 import { printCurrentReport } from "@/core/reports/print-current-report";
+import { trackProductEvent } from "@/core/analytics/product-events";
 
 export function WorkspaceHeader({
   title,
@@ -30,6 +31,7 @@ export function WorkspaceHeader({
         window.requestAnimationFrame(() => resolve());
       });
       printCurrentReport(reportAddress);
+      trackProductEvent("report_downloaded");
     } catch {
       setReportError(
         "PDF-raportin muodostaminen epäonnistui. Yritä uudelleen.",
