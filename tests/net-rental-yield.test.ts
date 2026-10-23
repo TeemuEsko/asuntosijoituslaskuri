@@ -221,7 +221,7 @@ test("nykyinen raportti ja analyysidata käyttävät samaa canonical luokitusta 
     );
   }
 
-  const [workspace, reports, offerPrice] = await Promise.all([
+  const [workspace, header, printAction, offerPrice] = await Promise.all([
     readFile(
       new URL(
         "../src/components/property/property-workspace.tsx",
@@ -229,10 +229,8 @@ test("nykyinen raportti ja analyysidata käyttävät samaa canonical luokitusta 
       ),
       "utf8",
     ),
-    readFile(
-      new URL("../src/components/property/reports-card.tsx", import.meta.url),
-      "utf8",
-    ),
+    readFile(new URL("../src/components/property/workspace-header.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/core/reports/print-current-report.ts", import.meta.url), "utf8"),
     readFile(
       new URL(
         "../src/components/property/offer-price-card.tsx",
@@ -242,12 +240,10 @@ test("nykyinen raportti ja analyysidata käyttävät samaa canonical luokitusta 
     ),
   ]);
   assert.match(workspace, /<KeyMetrics analysis=\{overallScore\}/);
-  assert.match(workspace, /<ReportsCard/);
-  assert.match(reports, /window\.print\(\)/);
-  assert.match(reports, /Tulosta tai tallenna PDF/);
-  assert.doesNotMatch(reports, /Lataa analyysidata/);
-  assert.equal(reports.match(/Tulosta tai tallenna PDF/g)?.length, 1);
-  assert.equal(reports.match(/Lataa analyysidata/g)?.length, undefined);
+  assert.doesNotMatch(workspace, /ReportsCard|reports-card/);
+  assert.match(header, /printCurrentReport\(reportAddress\)/);
+  assert.match(printAction, /window\.print\(\)/);
+  assert.doesNotMatch(header, /Tulosta tai tallenna PDF|Lataa analyysidata/);
   assert.match(
     offerPrice,
     /useState<number>\(NET_RENTAL_YIELD_THRESHOLDS\.good\)/,

@@ -75,7 +75,6 @@ import { InvestmentAnalysisPrintReport } from "./investment-analysis-print-repor
 import { ParserAnalysisSummary } from "./parser-analysis-summary";
 import { ProfessionalEvaluationCard } from "./professional-evaluation-card";
 import { PurchaseCard } from "./purchase-card";
-import { ReportsCard } from "./reports-card";
 import { TrainingCta } from "./training-cta";
 import { WorkspaceHeader } from "./workspace-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
@@ -294,11 +293,9 @@ function marketInput(data: ImportedPropertyData, rentEstimate: RentEstimate) {
 export function PropertyWorkspace({
   importedData = {},
   title,
-  onRequestEvaluation,
 }: {
   importedData?: ImportedPropertyData;
   title?: string;
-  onRequestEvaluation?: () => void;
 }) {
   const initialRentEstimate: RentEstimate =
     importedData.rentEstimate ??
@@ -1035,6 +1032,9 @@ export function PropertyWorkspace({
             title={pageTitle}
             location={typeof data.city === "string" ? data.city : ""}
             reportsAvailable={analysisReady}
+            reportAddress={
+              pageTitle === "Analysoitu sijoituskohde" ? undefined : pageTitle
+            }
           />
           <main className="mx-auto w-full max-w-[1500px] min-w-0 p-4 md:p-6 lg:p-8">
             <div className="min-w-0 space-y-8">
@@ -1171,16 +1171,7 @@ export function PropertyWorkspace({
                     <AnalysisHighlights rating={overallScore} />
                   </section>
                   <TrainingCta placement="analysis" />
-                  <ReportsCard
-                    reportAddress={
-                      pageTitle === "Analysoitu sijoituskohde"
-                        ? undefined
-                        : pageTitle
-                    }
-                  />
-                  <ProfessionalEvaluationCard
-                    onRequestEvaluation={onRequestEvaluation}
-                  />
+                  <ProfessionalEvaluationCard />
                   {data.visualCondition?.analyzedImageCount ||
                   data.listingImageAnalysis?.status === "completed" ||
                   data.listingImageAnalysis?.status === "partial" ? (

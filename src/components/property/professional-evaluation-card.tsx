@@ -1,14 +1,8 @@
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-
-export type ProfessionalEvaluationLead = {
-  firstName: string;
-  email: string;
-  phone?: string;
-};
-type ProfessionalEvaluationCardProps = { onRequestEvaluation?: () => void };
+import { professionalEvaluationUrl } from "@/config/marketing";
 
 const evaluationTopics = [
   "Onko hintapyyntö markkinatasolla?",
@@ -17,14 +11,12 @@ const evaluationTopics = [
   "Miten itse etenisin tämän kohteen kanssa?",
 ] as const;
 
-export function ProfessionalEvaluationCard({
-  onRequestEvaluation,
-}: ProfessionalEvaluationCardProps) {
+export function ProfessionalEvaluationCard() {
   return (
-    <Card className="border-success/35 bg-success-soft/70 shadow-sm ring-1 ring-success/15">
+    <Card className="border-blue-200 bg-blue-50/75 shadow-sm ring-1 ring-blue-100">
       <CardContent className="grid gap-7 py-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div>
-          <div className="flex items-center gap-2 text-success">
+          <div className="flex items-center gap-2 text-blue-900">
             <ShieldCheck className="size-5" />
             <p className="text-xs font-semibold uppercase tracking-[0.16em]">
               Henkilökohtainen asiantuntija-arvio
@@ -49,23 +41,27 @@ export function ProfessionalEvaluationCard({
               </li>
             ))}
           </ul>
-          <p className="mt-5 rounded-lg border border-success/20 bg-background/80 px-4 py-3 font-semibold text-success">
+          <p className="mt-5 rounded-lg border border-blue-200 bg-white/85 px-4 py-3 font-semibold text-blue-950">
             Yksi hyvä päätös voi säästää tai tuottaa kymmeniä tuhansia euroja.
           </p>
         </div>
         <div className="md:w-72">
-          <Button
-            type="button"
-            size="lg"
-            className="h-auto min-h-14 w-full whitespace-normal px-6 py-4 text-center text-base font-semibold shadow-md shadow-success/15"
-            onClick={onRequestEvaluation}
+          <a
+            href={professionalEvaluationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({
+              size: "lg",
+              className:
+                "h-auto min-h-14 w-full whitespace-normal bg-blue-900 px-6 py-4 text-center text-base font-semibold text-white shadow-md shadow-blue-950/15 hover:bg-blue-800 focus-visible:border-blue-800 focus-visible:ring-blue-800/35",
+            })}
             data-intent="request-professional-evaluation"
           >
             Pyydä ammattilaisen arvio
             <ArrowRight data-icon="inline-end" />
-          </Button>
+          </a>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Painike avaa yhteydenottolomakkeen tulevassa julkaisussa.
+            Henkilökohtaisen arvion sivu avautuu uuteen välilehteen.
           </p>
         </div>
       </CardContent>

@@ -29,7 +29,7 @@ test("cases 1–10: julkisessa komponenttipuussa ei ole dokumenttilatausta tai s
     "property-application.tsx",
     "property-workspace.tsx",
     "workspace-sidebar.tsx",
-    "reports-card.tsx",
+    "workspace-header.tsx",
   ];
   const publicSource = (
     await Promise.all(publicFiles.map(propertyComponent))
@@ -79,22 +79,21 @@ test("cases 11–15: dokumenttimoottori, normalisointi, provenance ja canonical 
 });
 
 test("cases 16–25: pää-CTA:t korostuvat, toimivat ennallaan eikä raakadata-CTA:ta renderöidä", async () => {
-  const [header, reports, expert, exportUtility] = await Promise.all([
+  const [header, printAction, expert, exportUtility] = await Promise.all([
     propertyComponent("workspace-header.tsx"),
-    propertyComponent("reports-card.tsx"),
+    readFile(path.join(root, "src/core/reports/print-current-report.ts"), "utf8"),
     propertyComponent("professional-evaluation-card.tsx"),
     readFile(path.join(root, "src/core/reports/analysis-report.ts"), "utf8"),
   ]);
   assert.match(header, /Luo raportti/);
-  assert.match(header, /scrollIntoView/);
+  assert.match(header, /printCurrentReport\(reportAddress\)/);
+  assert.match(header, /Muodostetaan PDF…/);
   assert.match(header, /min-h-12/);
-  assert.match(reports, /Tulosta tai tallenna PDF/);
-  assert.match(reports, /window\.print\(\)/);
-  assert.match(reports, /h-14/);
-  assert.doesNotMatch(reports, /Lataa analyysidata|downloadData|\.json/);
+  assert.match(printAction, /window\.print\(\)/);
+  assert.doesNotMatch(header, /scrollIntoView|Tulosta tai tallenna PDF/);
   assert.match(expert, /Pyydä ammattilaisen arvio/);
   assert.match(expert, /min-h-14/);
-  assert.match(expert, /onClick=\{onRequestEvaluation\}/);
+  assert.match(expert, /href=\{professionalEvaluationUrl\}/);
   assert.match(exportUtility, /export function buildAnalysisReportData/);
 });
 

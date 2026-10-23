@@ -20,13 +20,15 @@ test("tulostusotsikko perustuu osoitteeseen ja käyttää turvallista fallbackia
 });
 
 test("tulostuspainike asettaa osoiteotsikon ja palauttaa alkuperäisen otsikon", async () => {
-  const reportsCard = await read(
-    "../src/components/property/reports-card.tsx",
-  );
-  assert.match(reportsCard, /buildPrintReportTitle\(reportAddress\)/);
-  assert.match(reportsCard, /document\.title = previousTitle/);
-  assert.match(reportsCard, /addEventListener\("afterprint"/);
-  assert.match(reportsCard, /window\.print\(\)/);
+  const [printAction, header] = await Promise.all([
+    read("../src/core/reports/print-current-report.ts"),
+    read("../src/components/property/workspace-header.tsx"),
+  ]);
+  assert.match(printAction, /buildPrintReportTitle\(reportAddress\)/);
+  assert.match(printAction, /document\.title = previousTitle/);
+  assert.match(printAction, /addEventListener\("afterprint"/);
+  assert.match(printAction, /window\.print\(\)/);
+  assert.match(header, /printCurrentReport\(reportAddress\)/);
 });
 
 test("raportilla on erillinen print-only-esitysrakenne ilman interaktiivisia kontrolleja", async () => {

@@ -44,9 +44,10 @@ test("yläpalkki, otsikot ja toimintopainikkeet voivat rivittyä törmäämätt�
   assert.doesNotMatch(header, /Lisää dokumentteja|>\s*Tallenna\s*</);
   assert.match(header, /type="button"/);
   assert.match(header, /<FileText data-icon="inline-start" \/>/);
-  assert.match(header, /disabled=!\{reportsAvailable\}|disabled=\{!reportsAvailable\}/);
-  assert.match(header, /getElementById\("raportit"\)/);
-  assert.match(header, /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/);
+  assert.match(header, /disabled=\{!reportsAvailable \|\| reportLoading\}/);
+  assert.match(header, /printCurrentReport\(reportAddress\)/);
+  assert.match(header, /Muodostetaan PDF…/);
+  assert.doesNotMatch(header, /getElementById\("raportit"\)|scrollIntoView/);
 });
 
 test("oletuskenttien grid vaihtuu yhdestä kahteen ja pankkirahoitus säilyy kahdessa sarakkeessa", async () => {

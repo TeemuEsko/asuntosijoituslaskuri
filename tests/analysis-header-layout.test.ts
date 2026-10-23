@@ -103,7 +103,7 @@ test("analyysi etenee lähtötiedoista huomioihin, raportteihin ja yksityiskohti
   const calculations = workspace.indexOf("<KeyMetrics");
   const score = workspace.indexOf("<InvestmentOverallScore");
   const highlights = workspace.indexOf("<AnalysisHighlights");
-  const reports = workspace.indexOf("<ReportsCard");
+  const training = workspace.indexOf('<TrainingCta placement="analysis"');
   const evaluation = workspace.indexOf("<ProfessionalEvaluationCard");
   const details = workspace.indexOf("<VisualConditionCard");
   const sources = workspace.indexOf("<ImportSourceReview");
@@ -114,12 +114,12 @@ test("analyysi etenee lähtötiedoista huomioihin, raportteihin ja yksityiskohti
       calculations > assumptions &&
       score > calculations &&
       highlights > score &&
-      reports > highlights &&
-      evaluation > reports &&
+      training > highlights &&
+      evaluation > training &&
       details > evaluation &&
       sources > details,
   );
-  assert.equal(workspace.match(/<ReportsCard/g)?.length, 1);
+  assert.doesNotMatch(workspace, /ReportsCard|reports-card/);
   assert.equal(workspace.match(/<ProfessionalEvaluationCard/g)?.length, 1);
   assert.doesNotMatch(
     workspace,
@@ -153,20 +153,17 @@ test("tarjoushintasimulaattori ei näy työtilassa mutta komponentti ja laskenta
   assert.match(component, /export function OfferPriceCard/);
   assert.match(calculation, /export function simulateMaximumOfferPrice/);
 });
-test("raporttiosio on vakaa sticky-offsetin huomioiva vierityskohde ja tarjoaa vain ensisijaisen PDF-toiminnon", async () => {
-  const reports = await readFile(
-    new URL("../src/components/property/reports-card.tsx", import.meta.url),
-    "utf8",
-  );
-  assert.match(reports, /id="raportit"/);
-  assert.match(reports, /scroll-mt-40/);
-  assert.match(reports, /sm:scroll-mt-24/);
-  assert.match(reports, /Tulosta tai tallenna PDF/);
-  assert.match(reports, /h-14/);
-  assert.doesNotMatch(
-    reports,
-    /Lataa analyysidata|buildAnalysisReportData|\.json/,
-  );
+test("yläpalkki tarjoaa ainoan PDF-toiminnon ilman erillistä raporttiosiota", async () => {
+  const [header, workspace, printAction] = await Promise.all([
+    readFile(new URL("../src/components/property/workspace-header.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/property/property-workspace.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/core/reports/print-current-report.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(header, /printCurrentReport\(reportAddress\)/);
+  assert.match(header, /Muodostetaan PDF…/);
+  assert.match(header, /PDF-raportin muodostaminen epäonnistui/);
+  assert.match(printAction, /window\.print\(\)/);
+  assert.doesNotMatch(workspace, /ReportsCard|reports-card/);
 });
 test("työtilan brändit ovat saavutettavia etusivulinkkejä", async () => {
   for (const file of ["workspace-sidebar.tsx", "workspace-header.tsx"]) {

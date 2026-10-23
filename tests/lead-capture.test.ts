@@ -84,7 +84,7 @@ test("selainvaraston analyysiluonnos palautuu ilman henkilötietoja tai palvelin
 });
 
 test("raportin tulostus toimii suoraan ilman palvelimen käyttöoikeustarkistusta", async () => {
-  const source = await read("../src/components/property/reports-card.tsx");
+  const source = await read("../src/core/reports/print-current-report.ts");
   assert.match(source, /window\.print\(\)/);
   assert.doesNotMatch(source, /api\/report|accessError|checkingAccess|yhteystietosi|Istuntosi/);
 });

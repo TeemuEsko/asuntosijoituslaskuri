@@ -21,7 +21,7 @@ const content = {
     title: "Haluatko kehittyä asuntosijoittajana?",
     description:
       "Tutustu maksuttomaan koulutukseen ja opi, miten rakennat asuntosalkkua, jossa jokainen onnistunut sijoitus voi auttaa hankkimaan seuraavan.",
-    button: "Siirry maksuttomaan koulutukseen",
+    button: "Katso maksuton koulutus",
   },
 } as const;
 
@@ -58,7 +58,7 @@ export function TrainingCta({ placement }: TrainingCtaProps) {
           className={buttonVariants({
             size: "lg",
             className:
-              "min-h-12 w-full whitespace-normal px-5 py-3 text-center font-semibold sm:w-auto",
+              "min-h-12 w-full whitespace-normal bg-emerald-700 px-5 py-3 text-center font-semibold text-white shadow-sm hover:bg-emerald-800 focus-visible:border-emerald-600 focus-visible:ring-emerald-600/35 sm:w-auto",
           })}
         >
           {copy.button}

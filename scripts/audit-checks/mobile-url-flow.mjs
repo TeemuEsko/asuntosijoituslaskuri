@@ -79,21 +79,27 @@ try {
       });
     }
 
-    await page.getByRole("button", { name: "Luo raportti" }).click();
-    const printAction = page.getByRole("button", { name: "Tulosta tai tallenna PDF" });
-    await printAction.waitFor({ state: "visible" });
     await page.evaluate(() => {
       window.print = () => {
         window.__capturedPrintTitle = document.title;
       };
     });
-    await printAction.click();
+    await page.getByRole("button", { name: "Luo raportti" }).click();
     await page.waitForFunction(() => typeof window.__capturedPrintTitle === "string");
     const printTitle = await page.evaluate(() => window.__capturedPrintTitle);
     assert.equal(printTitle, "Sijoitusanalyysi – Kivikkokuja 4 A 2, 65100 Vaasa");
-    const expertAction = page.getByRole("button", { name: "Pyydä ammattilaisen arvio" });
+    assert.equal(await page.getByRole("button", { name: "Tulosta tai tallenna PDF" }).count(), 0);
+    const trainingActions = page.getByRole("link", { name: "Katso maksuton koulutus" });
+    assert.ok(await trainingActions.count() >= 2);
+    assert.equal(
+      await trainingActions.first().getAttribute("href"),
+      "https://www.teemuesko.fi/asuntosijoittajan-kasvuloikka-maksuton-koulutus",
+    );
+    const expertAction = page.getByRole("link", { name: "Pyydä ammattilaisen arvio" });
+    assert.equal(await expertAction.getAttribute("href"), "https://www.teemuesko.fi/offers/oQURChtb");
+    assert.equal(await expertAction.getAttribute("target"), "_blank");
+    assert.equal(await expertAction.getAttribute("rel"), "noopener noreferrer");
     await expertAction.scrollIntoViewIfNeeded();
-    await expertAction.click();
     if (artifactDirectory) {
       await page.screenshot({
         path: path.join(artifactDirectory, `mobile-${viewport.width}x${viewport.height}.png`),

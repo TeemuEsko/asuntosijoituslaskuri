@@ -1,22 +1,42 @@
-import { FileText } from "lucide-react";
+import { useState } from "react";
+import { FileText, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { brandName } from "@/core/i18n/display-values";
+import { printCurrentReport } from "@/core/reports/print-current-report";
 
 export function WorkspaceHeader({
   title,
   location,
   reportsAvailable,
+  reportAddress,
 }: {
   title: string;
   location?: string;
   reportsAvailable: boolean;
+  reportAddress?: string;
 }) {
-  const scrollToReports = () => {
-    document
-      .getElementById("raportit")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string>();
+
+  const createReport = async () => {
+    if (reportLoading) return;
+    setReportLoading(true);
+    setReportError(undefined);
+
+    try {
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => resolve());
+      });
+      printCurrentReport(reportAddress);
+    } catch {
+      setReportError(
+        "PDF-raportin muodostaminen epäonnistui. Yritä uudelleen.",
+      );
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   return (
@@ -47,21 +67,38 @@ export function WorkspaceHeader({
           <p className="truncate text-xs text-muted-foreground">{location}</p>
         ) : null}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-        <Button
-          type="button"
-          size="lg"
-          className="min-h-12 px-6 font-semibold shadow-md shadow-primary/15"
-          disabled={!reportsAvailable}
-          title={
-            reportsAvailable
-              ? undefined
-              : "Täydennä analyysin kriittiset tiedot raporttia varten."
-          }
-          onClick={scrollToReports}
-        >
-          <FileText data-icon="inline-start" /> Luo raportti
-        </Button>
+      <div className="flex shrink-0 flex-col items-stretch gap-1 sm:items-end">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <Button
+            type="button"
+            size="lg"
+            className="min-h-12 px-6 font-semibold shadow-md shadow-primary/15"
+            disabled={!reportsAvailable || reportLoading}
+            title={
+              reportsAvailable
+                ? undefined
+                : "Täydennä analyysin kriittiset tiedot raporttia varten."
+            }
+            onClick={() => void createReport()}
+            aria-describedby={reportError ? "report-error" : undefined}
+          >
+            {reportLoading ? (
+              <LoaderCircle className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <FileText data-icon="inline-start" />
+            )}
+            {reportLoading ? "Muodostetaan PDF…" : "Luo raportti"}
+          </Button>
+        </div>
+        {reportError ? (
+          <p
+            id="report-error"
+            role="alert"
+            className="max-w-sm text-sm text-destructive sm:text-right"
+          >
+            {reportError}
+          </p>
+        ) : null}
       </div>
     </header>
   );

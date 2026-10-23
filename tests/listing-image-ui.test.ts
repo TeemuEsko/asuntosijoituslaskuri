@@ -17,15 +17,15 @@ test("käsinlataus on tuloksen jälkeen avattava lisätoiminto tai hallittu vara
   assert.doesNotMatch(source, /Myynti-ilmoituksen kuvia ei haeta automaattisesti/);
 });
 
-test("visuaalinen kunto sijoittuu raporttien ja asiantuntija-arvion jälkeen ennen korjaushistoriaa", async () => {
+test("visuaalinen kunto sijoittuu asiantuntija-arvion jälkeen ennen korjaushistoriaa", async () => {
   const source = await readFile(new URL("../src/components/property/property-workspace.tsx", import.meta.url), "utf8");
   const score = source.lastIndexOf("<InvestmentOverallScore");
   const risks = source.lastIndexOf("<AnalysisHighlights");
   const visual = source.lastIndexOf("<VisualConditionCard");
   const repairs = source.lastIndexOf("<HousingCompanyRenovationsCard");
-  const reports = source.lastIndexOf("<ReportsCard");
   const evaluation = source.lastIndexOf("<ProfessionalEvaluationCard");
-  assert.ok(score < risks && risks < reports && reports < evaluation && evaluation < visual && visual < repairs);
+  assert.ok(score < risks && risks < evaluation && evaluation < visual && visual < repairs);
+  assert.doesNotMatch(source, /ReportsCard|reports-card/);
   assert.match(source, /listingImageAnalysis\?\.status === "completed"/);
   assert.match(source, /listingImageAnalysis\?\.status === "partial"/);
   assert.equal(source.lastIndexOf("<OfferPriceCard"), -1);

@@ -71,20 +71,25 @@ test("julkinen tunnistus käyttää muistirajoitusta ilman Neon- tai sessioriipp
   assert.doesNotMatch(route, /leadRepository|SESSION_SECRET|DATABASE_URL/);
 });
 
-test("Kajabi-linkki on keskitetty ja kaikki kolme CTA-sijoittelua käyttävät sitä", async () => {
-  const [config, component, workspace, printReport, env] = await Promise.all([
+test("koulutuksen ja asiantuntija-arvion linkit ovat keskitettyjä ja turvallisia", async () => {
+  const [config, component, expert, workspace, printReport, env] = await Promise.all([
     read("../src/config/marketing.ts"),
     read("../src/components/property/training-cta.tsx"),
+    read("../src/components/property/professional-evaluation-card.tsx"),
     read("../src/components/property/property-workspace.tsx"),
     read("../src/components/property/investment-analysis-print-report.tsx"),
     read("../.env.example"),
   ]);
   assert.match(config, /NEXT_PUBLIC_KAJABI_TRAINING_URL/);
   assert.match(config, /https:\/\/www\.teemuesko\.fi\/asuntosijoittajan-kasvuloikka-maksuton-koulutus/);
+  assert.match(config, /NEXT_PUBLIC_PROFESSIONAL_EVALUATION_URL/);
+  assert.match(config, /https:\/\/www\.teemuesko\.fi\/offers\/oQURChtb/);
   assert.match(component, /Haluatko kasvattaa asuntosalkkuasi suunnitelmallisesti/);
   assert.match(component, /Haluatko kehittyä asuntosijoittajana/);
   assert.match(component, /target="_blank"/);
   assert.match(component, /rel="noopener noreferrer"/);
+  assert.match(component, /bg-emerald-700/);
+  assert.equal(component.match(/button: "Katso maksuton koulutus"/g)?.length, 2);
   assert.match(component, /w-full[\s\S]*sm:w-auto/);
   assert.equal(workspace.match(/<TrainingCta/g)?.length, 2);
   assert.match(workspace, /<TrainingCta placement="analysis"/);
@@ -93,13 +98,18 @@ test("Kajabi-linkki on keskitetty ja kaikki kolme CTA-sijoittelua käyttävät s
   assert.match(printReport, /<a href=\{kajabiTrainingUrl\}>Katso maksuton koulutus<\/a>/);
   assert.match(printReport, /<small>\{kajabiTrainingUrl\}<\/small>/);
   assert.match(env, /NEXT_PUBLIC_KAJABI_TRAINING_URL=/);
+  assert.match(expert, /href=\{professionalEvaluationUrl\}/);
+  assert.match(expert, /target="_blank"/);
+  assert.match(expert, /rel="noopener noreferrer"/);
+  assert.match(expert, /bg-blue-900/);
+  assert.match(env, /NEXT_PUBLIC_PROFESSIONAL_EVALUATION_URL=/);
 });
 
 test("julkinen käyttöpolku ei kutsu vanhaa liidi- tai funnel-APIa", async () => {
   const files = await Promise.all([
     read("../src/components/property/property-application.tsx"),
     read("../src/components/property/listing-import.tsx"),
-    read("../src/components/property/reports-card.tsx"),
+    read("../src/components/property/workspace-header.tsx"),
     read("../src/components/property/property-workspace.tsx"),
   ]);
   for (const source of files)
