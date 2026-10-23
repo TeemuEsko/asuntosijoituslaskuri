@@ -184,7 +184,7 @@ test("canonical analyysi säilyttää laskentakaavan ja käyttää uutta luokitu
   );
 });
 
-test("heikko nettovuokratuotto säilyttää sijoitusscoren turvarajan", () => {
+test("heikko nettovuokratuotto vaikuttaa osa-alueeseen ilman vanhaa pistekattoa", () => {
   const weak = calculateInvestmentAnalysis({
     ...analysisInput(1_200),
     debtFreePrice: 300_000,
@@ -197,7 +197,8 @@ test("heikko nettovuokratuotto säilyttää sijoitusscoren turvarajan", () => {
     resaleLiquidity: 5,
   });
   assert.equal(weak.netRentalYieldClassification, "Heikko");
-  assert.ok(weak.score <= 59);
+  assert.ok((weak.subScores?.yield?.score ?? 100) < 40);
+  assert.equal(weak.appliedScoreCap, undefined);
 });
 
 test("nykyinen raportti ja analyysidata käyttävät samaa canonical luokitusta kuin web-analyysi", async () => {

@@ -19,7 +19,9 @@ export type InvestmentSubScores = {
   yield?: RatingSubScore;
   cashFlow?: RatingSubScore;
   housingCompanyRisk?: RatingSubScore;
+  valueCreation?: RatingSubScore;
   financing?: RatingSubScore;
+  market?: RatingSubScore;
 };
 
 export type InvestmentOverallScoreData = {
@@ -32,6 +34,9 @@ export type InvestmentOverallScoreData = {
   positiveFactors?: string[];
   warningFactors?: string[];
   missingFactors?: string[];
+  reliability?: "preliminary" | "moderate" | "good";
+  severeRisks?: Array<{ id: string; label: string; cap: number }>;
+  appliedScoreCap?: number;
 };
 
 const summaries: Record<InvestmentGrade, string> = {

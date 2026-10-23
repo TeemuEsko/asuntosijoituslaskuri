@@ -23,6 +23,11 @@ import {
   evaluateInvestmentObservations,
   type InvestmentObservation,
 } from "../rules/investment-observations.ts";
+import {
+  calculateOpportunityScoreV2,
+  type CollateralValueSource,
+  type ValueEstimateSource,
+} from "../scoring/opportunity-score-v2.ts";
 
 export type RepaymentType =
   | "annuity"
@@ -71,6 +76,24 @@ export type InvestmentAnalysisInput = {
     | "poor"
     | "very_poor"
     | "unknown";
+  futureRepairCost?: number;
+  technicalConditionScore?: number;
+  companyLoanAnnualInterestRate?: number;
+  companyLoanRemainingTermYears?: number;
+  companyLoanInterestOnlyEndYear?: number;
+  projectedFinancingFeeMonthly?: number;
+  housingCompanyLiquidityMonths?: number;
+  apartmentCount?: number;
+  landOwnership?: string;
+  landLeaseEndDate?: string;
+  plotShareRedeemed?: boolean;
+  currentMarketValue?: number;
+  currentMarketValueSource?: ValueEstimateSource;
+  postRenovationMarketValue?: number;
+  postRenovationMarketValueSource?: ValueEstimateSource;
+  collateralValueSource?: CollateralValueSource;
+  verifiedLongTermRentalProhibition?: boolean;
+  verifiedLandLeaseNonRenewal?: boolean;
 };
 
 export type InvestmentAnalysisResult = InvestmentOverallScoreData & {
@@ -105,6 +128,13 @@ export type InvestmentAnalysisResult = InvestmentOverallScoreData & {
   estimatedExitPrice?: number;
   estimatedExitProfit?: number;
   visualConditionScoreImpact?: number;
+  opportunityScoreVersion: 2;
+  riskAdjustedNetRentalYield?: number;
+  requiredNetRentalYieldFor80?: number;
+  currentFreeCollateral?: number;
+  purchaseDiscount?: number;
+  renovationNetValue?: number;
+  totalValueCreation?: number;
   observations: InvestmentObservation[];
 };
 
@@ -484,63 +514,56 @@ export function calculateInvestmentAnalysis(
     if (!missingFactors.includes(item.description))
       missingFactors.push(item.description);
 
-  const yieldComponent =
-    netYield === undefined
-      ? grossYield === undefined
-        ? 35
-        : grossYieldScore(grossYield) * 0.7
-      : netYieldScore(netYield);
-  const cashFlowComponent =
-    afterLoan === undefined ? 30 : clampInvestmentScore(50 + afterLoan / 4);
-  const financingComponent = !loanKnown
-    ? 30
-    : leverage === undefined
-      ? 40
-      : clampInvestmentScore(
-          95 - leverage * 70 - Math.max(0, input.annualInterestRate! - 4) * 5,
-        );
-  const repairComponent = input.repairRiskScore ?? 50;
-  const demandComponent = clampInvestmentScore(
-    20 +
-      weightedRentalDemand * 15 -
-      vacancy.vacancyMonths * 4 -
-      Math.max(0, weightedLocationRisk - 3) * 8 +
-      (weightedResaleLiquidity - 3) * 5,
-  );
-  const collateralPositionRatio =
-    price && valid(input.collateralValue) && valid(input.bankLoanAmount)
-      ? (input.collateralValue - input.bankLoanAmount) / price
-      : undefined;
-  const collateralComponent =
-    collateralPositionRatio === undefined
-      ? 40
-      : clampInvestmentScore(50 + collateralPositionRatio * 100);
-  let score = Math.round(
-    cashFlowComponent * 0.25 +
-      yieldComponent * 0.2 +
-      financingComponent * 0.2 +
-      repairComponent * 0.2 +
-      demandComponent * 0.1 +
-      collateralComponent * 0.05,
-  );
-  score = Math.round(
-    clampInvestmentScore(
-      score +
-        observations.reduce((sum, item) => sum + item.scoreImpact, 0) * 0.25,
-    ),
-  );
-  const visualConditionScoreImpact = Math.max(
-    -4,
-    Math.min(4, Math.round(input.visualConditionScoreImpact ?? 0)),
-  );
-  score = Math.round(clampInvestmentScore(score + visualConditionScoreImpact));
-  if (!loanKnown) score = Math.min(score, 59);
-  if ((grossYield ?? 0) < 5 && netYieldClassification === "Heikko")
-    score = Math.min(score, 59);
-  if (afterLoan !== undefined && afterLoan < 0) score = Math.min(score, 54);
+  const preliminary = !loanKnown || missingFactors.length > 0;
+  const opportunity = calculateOpportunityScoreV2({
+    debtFreePrice: price,
+    renovationCost: renovationReserve,
+    transferTax,
+    transactionCosts,
+    effectiveAnnualRent: annualRent,
+    annualOperatingCosts: annualOperating,
+    monthlyCashFlowAfterDebtService: afterLoan,
+    bankLoanAmount: input.bankLoanAmount,
+    companyLoanShare: input.companyLoanShare,
+    annualInterestRate: input.annualInterestRate,
+    loanTermYears: input.loanTermYears,
+    repaymentType: input.repaymentType,
+    annualBankLoanPrincipal: annualBankPrincipal,
+    annualCompanyLoanPrincipal: input.annualCompanyLoanPrincipal,
+    maintenanceFeeMonthly: maintenance,
+    financingFeeMonthly: financing,
+    otherCostsMonthly: input.otherCostsMonthly,
+    repairHistoryScore: input.repairRiskScore,
+    futureRepairCost: input.futureRepairCost,
+    technicalConditionScore: input.technicalConditionScore,
+    companyLoanAnnualInterestRate: input.companyLoanAnnualInterestRate,
+    companyLoanRemainingTermYears: input.companyLoanRemainingTermYears,
+    companyLoanInterestOnlyEndYear: input.companyLoanInterestOnlyEndYear,
+    projectedFinancingFeeMonthly: input.projectedFinancingFeeMonthly,
+    housingCompanyLiquidityMonths: input.housingCompanyLiquidityMonths,
+    apartmentCount: input.apartmentCount,
+    landOwnership: input.landOwnership,
+    landLeaseEndDate: input.landLeaseEndDate,
+    plotShareRedeemed: input.plotShareRedeemed,
+    collateralValue: input.collateralValue,
+    collateralValueSource: input.collateralValueSource,
+    currentMarketValue: input.currentMarketValue,
+    currentMarketValueSource: input.currentMarketValueSource,
+    postRenovationMarketValue: input.postRenovationMarketValue,
+    postRenovationMarketValueSource: input.postRenovationMarketValueSource,
+    rentalDemand: weightedRentalDemand,
+    locationRisk: weightedLocationRisk,
+    resaleLiquidity: weightedResaleLiquidity,
+    vacancyMonths: vacancy.vacancyMonths,
+    preliminary,
+    missingData: missingFactors,
+    verifiedLongTermRentalProhibition: input.verifiedLongTermRentalProhibition,
+    verifiedLandLeaseNonRenewal: input.verifiedLandLeaseNonRenewal,
+  });
+  const score = opportunity.score;
   return {
     score,
-    preliminary: !loanKnown || missingFactors.length > 0,
+    preliminary,
     grossRentalYield: grossYield,
     netRentalYield: netYield,
     netRentalYieldClassification: netYieldClassification,
@@ -570,26 +593,44 @@ export function calculateInvestmentAnalysis(
     returnOnEquity,
     estimatedExitPrice: exitPrice,
     estimatedExitProfit: exitProfit,
+    opportunityScoreVersion: 2,
+    riskAdjustedNetRentalYield: opportunity.riskAdjustedNetYield,
+    requiredNetRentalYieldFor80: opportunity.requiredNetYieldFor80,
+    currentFreeCollateral: opportunity.currentFreeCollateral,
+    purchaseDiscount: opportunity.purchaseDiscount,
+    renovationNetValue: opportunity.renovationNetValue,
+    totalValueCreation: opportunity.totalValueCreation,
     observations,
     positiveFactors,
     warningFactors,
     missingFactors,
+    reliability: opportunity.reliability,
+    severeRisks: opportunity.severeRisks,
+    appliedScoreCap: opportunity.appliedCap,
     subScores: {
       yield: sub(
-        yieldComponent,
-        "Nettovuokratuotto painottaa toteutuvaa vuokraa ja jatkuvia kuluja.",
+        opportunity.subScores.riskAdjustedYield,
+        "Riskikorjattu nettovuokratuotto suhteutetaan kokonaisinvestointiin.",
       ),
       cashFlow: sub(
-        cashFlowComponent,
-        "Kassavirta huomioi pankkilainan kuukausierän.",
+        opportunity.subScores.cashFlow,
+        "Kassavirta huomioidaan sekä euroina että suhteessa kokonaisinvestointiin.",
       ),
       housingCompanyRisk: sub(
-        repairComponent,
-        "Arvio perustuu tunnistettuun korjaushistoriaan.",
+        opportunity.subScores.housingCompanyRisk,
+        "Arvio yhdistää remontit, teknisen kunnon, talouden, koon ja tontin.",
+      ),
+      valueCreation: sub(
+        opportunity.subScores.valueCreation,
+        "Arvio huomioi vakuusaseman ja lähteistetyn arvonluontipotentiaalin.",
       ),
       financing: sub(
-        financingComponent,
-        "Arvio huomioi velkavivun, koron ja laina-ajan.",
+        opportunity.subScores.financing,
+        "Arvio huomioi korkostressin, velkavivun, lyhennykset ja jälleenrahoitusriskin.",
+      ),
+      market: sub(
+        opportunity.subScores.market,
+        "Arvio huomioi kysynnän, jälleenmyytävyyden, sijaintiriskin ja tyhjäkäynnin.",
       ),
     },
   };

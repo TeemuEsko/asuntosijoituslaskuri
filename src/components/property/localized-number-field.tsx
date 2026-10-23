@@ -63,7 +63,7 @@ export function LocalizedNumberField({
       return;
     }
     const minimum = stepConfig?.min ?? (typeof props.min === "number" ? props.min : Number(props.min ?? Number.NEGATIVE_INFINITY));
-    const maximum = stepConfig && "max" in stepConfig
+    const maximum = stepConfig && "max" in stepConfig && typeof stepConfig.max === "number"
       ? stepConfig.max
       : typeof props.max === "number" ? props.max : Number(props.max ?? Number.POSITIVE_INFINITY);
     const bounded = Math.min(maximum, Math.max(minimum, parsed));
@@ -79,7 +79,7 @@ export function LocalizedNumberField({
       value={draft}
       disabled={disabled}
       min={stepConfig?.min ?? props.min}
-      max={stepConfig && "max" in stepConfig ? stepConfig.max : props.max}
+      max={stepConfig && "max" in stepConfig && typeof stepConfig.max === "number" ? stepConfig.max : props.max}
       step={stepConfig?.step ?? props.step}
       placeholder={allowUnknown && value === undefined ? "Ei tiedossa" : props.placeholder}
       onFocus={() => { focused.current = true; }}
