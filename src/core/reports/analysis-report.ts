@@ -25,7 +25,7 @@ function reportSummary(input: InvestmentAnalysisInput, analysis: InvestmentAnaly
   const collateralPosition = analysis.collateralShortfall === undefined || analysis.collateralBuffer === undefined
     ? "Ei laskettavissa"
     : analysis.collateralShortfall > 0
-      ? `Vakuuksien tai oman rahan osuus ${formatFinnishNumber(analysis.collateralShortfall)} €`
+      ? `Tarvittava lisävakuus ${formatFinnishNumber(analysis.collateralShortfall)} €`
       : analysis.collateralBuffer > 0
         ? `Vakuuspuskuri ${formatFinnishNumber(analysis.collateralBuffer)} €`
         : "Vakuustilanne tasapainossa";

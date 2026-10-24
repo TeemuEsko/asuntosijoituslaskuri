@@ -1,20 +1,20 @@
 import { parseFinnishInputNumber } from "../parser/normalization.ts";
 
 export const ANALYSIS_NUMERIC_INPUT_CONFIG = {
-  annualInterestRate: { step: 0.1, min: 0, precision: 1, fallback: 0 },
-  loanTermYears: { step: 1, min: 1, precision: 0, fallback: 1 },
-  equity: { step: 1_000, min: 0, precision: 0, fallback: 0 },
-  collateralValue: { step: 1_000, min: 0, precision: 0, fallback: 0 },
-  monthlyRent: { step: 10, min: 0, precision: 0, fallback: 0 },
-  maintenanceFeeMonthly: { step: 10, min: 0, precision: 0, fallback: 0 },
-  financingFeeMonthly: { step: 10, min: 0, precision: 0, fallback: 0 },
-  otherCostsMonthly: { step: 10, min: 0, precision: 0, fallback: 0 },
-  vacancyMonths: { step: 0.5, min: 0, max: 12, precision: 1, fallback: 0 },
+  annualInterestRate: { step: 0.1, min: 0, precision: 1, fallback: 0, showControls: true },
+  loanTermYears: { step: 1, min: 1, precision: 0, fallback: 1, showControls: true },
+  equity: { step: 1_000, min: 0, precision: 0, fallback: 0, showControls: false },
+  collateralValue: { step: 1_000, min: 0, precision: 0, fallback: 0, showControls: false },
+  monthlyRent: { step: 5, min: 0, precision: 0, fallback: 0, showControls: true },
+  maintenanceFeeMonthly: { step: 5, min: 0, precision: 0, fallback: 0, showControls: true },
+  financingFeeMonthly: { step: 5, min: 0, precision: 0, fallback: 0, showControls: true },
+  otherCostsMonthly: { step: 5, min: 0, precision: 0, fallback: 0, showControls: true },
+  vacancyMonths: { step: 0.5, min: 0, max: 12, precision: 1, fallback: 0, showControls: true },
   debtFreePrice: { step: 1_000, min: 0, precision: 0, fallback: 0 },
   salePrice: { step: 1_000, min: 0, precision: 0, fallback: 0 },
   renovationReserve: { step: 1_000, min: 0, precision: 0, fallback: 0 },
   transactionCosts: { step: 100, min: 0, precision: 0, fallback: 0 },
-  transferTaxRate: { step: 0.1, min: 0, precision: 1, fallback: 0 },
+  transferTaxRate: { step: 0.1, min: 0, precision: 1, fallback: 0, showControls: true },
 } as const;
 
 export type AnalysisNumericInputKey = keyof typeof ANALYSIS_NUMERIC_INPUT_CONFIG;

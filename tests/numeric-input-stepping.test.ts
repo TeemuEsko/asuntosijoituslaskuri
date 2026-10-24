@@ -14,20 +14,20 @@ const step = (key: AnalysisNumericInputKey, value: string, direction: 1 | -1, cu
 
 test("numeeristen analyysikenttien askeleet ja rajat ovat keskitetysti määritelty", () => {
   assert.deepEqual(ANALYSIS_NUMERIC_INPUT_CONFIG, {
-    annualInterestRate: { step: 0.1, min: 0, precision: 1, fallback: 0 },
-    loanTermYears: { step: 1, min: 1, precision: 0, fallback: 1 },
-    equity: { step: 1_000, min: 0, precision: 0, fallback: 0 },
-    collateralValue: { step: 1_000, min: 0, precision: 0, fallback: 0 },
-    monthlyRent: { step: 10, min: 0, precision: 0, fallback: 0 },
-    maintenanceFeeMonthly: { step: 10, min: 0, precision: 0, fallback: 0 },
-    financingFeeMonthly: { step: 10, min: 0, precision: 0, fallback: 0 },
-    otherCostsMonthly: { step: 10, min: 0, precision: 0, fallback: 0 },
-    vacancyMonths: { step: 0.5, min: 0, max: 12, precision: 1, fallback: 0 },
+    annualInterestRate: { step: 0.1, min: 0, precision: 1, fallback: 0, showControls: true },
+    loanTermYears: { step: 1, min: 1, precision: 0, fallback: 1, showControls: true },
+    equity: { step: 1_000, min: 0, precision: 0, fallback: 0, showControls: false },
+    collateralValue: { step: 1_000, min: 0, precision: 0, fallback: 0, showControls: false },
+    monthlyRent: { step: 5, min: 0, precision: 0, fallback: 0, showControls: true },
+    maintenanceFeeMonthly: { step: 5, min: 0, precision: 0, fallback: 0, showControls: true },
+    financingFeeMonthly: { step: 5, min: 0, precision: 0, fallback: 0, showControls: true },
+    otherCostsMonthly: { step: 5, min: 0, precision: 0, fallback: 0, showControls: true },
+    vacancyMonths: { step: 0.5, min: 0, max: 12, precision: 1, fallback: 0, showControls: true },
     debtFreePrice: { step: 1_000, min: 0, precision: 0, fallback: 0 },
     salePrice: { step: 1_000, min: 0, precision: 0, fallback: 0 },
     renovationReserve: { step: 1_000, min: 0, precision: 0, fallback: 0 },
     transactionCosts: { step: 100, min: 0, precision: 0, fallback: 0 },
-    transferTaxRate: { step: 0.1, min: 0, precision: 1, fallback: 0 },
+    transferTaxRate: { step: 0.1, min: 0, precision: 1, fallback: 0, showControls: true },
   });
 });
 
@@ -47,8 +47,8 @@ test("laina-aika, oma pääoma, vakuusarvo ja kuukausivuokra käyttävät kentt�
   assert.equal(step("equity", "0", 1), 1_000);
   assert.equal(step("collateralValue", "36 400", 1), 37_400);
   assert.equal(step("collateralValue", "37 400", -1), 36_400);
-  assert.equal(step("monthlyRent", "970", 1), 980);
-  assert.equal(step("monthlyRent", "970", -1), 960);
+  assert.equal(step("monthlyRent", "970", 1), 975);
+  assert.equal(step("monthlyRent", "970", -1), 965);
 });
 
 test("tyhjäkäynti askeltaa puolella kuukaudella ja pysyy sallituissa rajoissa", () => {
@@ -61,7 +61,7 @@ test("tyhjäkäynti askeltaa puolella kuukaudella ja pysyy sallituissa rajoissa"
 
 test("tyhjä tai virheellinen luonnos käyttää turvallista nyky- tai oletusarvoa", () => {
   assert.equal(step("annualInterestRate", "", 1, 4.5), 4.6);
-  assert.equal(step("monthlyRent", "ei luku", 1), 10);
+  assert.equal(step("monthlyRent", "ei luku", 1), 5);
   assert.equal(step("loanTermYears", "", -1), 1);
   for (const value of [
     step("annualInterestRate", "", 1),
@@ -117,6 +117,9 @@ test("kaikki nimetyt muokattavat kentät käyttävät yhteistä näppäinkäsitt
   assert.match(field, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);
   assert.match(field, /event\.preventDefault\(\)/);
   assert.match(field, /stepAnalysisNumericValue\(/);
+  assert.match(field, /Kasvata kentän/);
+  assert.match(field, /Pienennä kentän/);
+  assert.match(field, /showControls/);
   assert.match(field, /onValueChange\?\.\(nextValue\)/);
   assert.match(field, /type="text"/);
   assert.match(field, /onChange=\{\(event\) => updateDraft\(event\.currentTarget\.value\)\}/);
@@ -127,4 +130,12 @@ test("kaikki nimetyt muokattavat kentät käyttävät yhteistä näppäinkäsitt
     workspace.indexOf("function updateAssumption"),
   );
   assert.match(updatePurchaseSource, /setStatuses\(\(current\) => \(\{[\s\S]*?\[key\]: "user"/);
+  assert.equal("showControls" in ANALYSIS_NUMERIC_INPUT_CONFIG.debtFreePrice, false);
+  assert.equal("showControls" in ANALYSIS_NUMERIC_INPUT_CONFIG.salePrice, false);
+});
+
+test("muiden kuukausikulujen ohje näkyy suoraan eikä salli vastikkeiden tuplakirjausta", async () => {
+  const assumptions = await readFile(new URL("../src/components/property/assumptions-card.tsx", import.meta.url), "utf8");
+  assert.match(assumptions, /Esimerkiksi asunnon vakuutus, vuokranantajalle jäävät sähkö- ja vesikulut sekä muut säännölliset kulut/);
+  assert.match(assumptions, /Älä sisällytä hoito- tai rahoitusvastiketta uudelleen/);
 });

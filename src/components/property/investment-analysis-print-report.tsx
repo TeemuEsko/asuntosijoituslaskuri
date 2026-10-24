@@ -174,11 +174,17 @@ export function InvestmentAnalysisPrintReport({
   const collateralValue = collateralIsGap ? analysis.collateralShortfall : analysis.collateralBuffer;
   const completedRenovations = (data.renovations ?? []).filter((item) => ["completed", "ongoing"].includes(item.status));
   const plannedRenovations = (data.renovations ?? []).filter((item) => !["completed", "ongoing"].includes(item.status));
+  const analysisChecks = analysis.missingFactors ?? [];
+  const hasRepairHistoryCheck = analysisChecks.some((item) => /korjaushistoria|putkisto/i.test(item));
+  const hasPipeHistoryCheck = analysisChecks.some((item) => /putkisto/i.test(item));
   const reviewCandidates = [
-    ...(analysis.missingFactors ?? []),
+    ...analysisChecks,
     ...(data.documentWarnings ?? []),
-    ...(repairHistory.sourceLimitation ? [repairHistory.sourceLimitation] : []),
-    ...repairHistory.relevantSystems.slice(0, 4).map((item) => `${item.label}: ${item.reason}`),
+    ...(repairHistory.sourceLimitation && !hasRepairHistoryCheck ? [repairHistory.sourceLimitation] : []),
+    ...repairHistory.relevantSystems
+      .filter((item) => !(hasPipeHistoryCheck && item.system === "plumbing"))
+      .slice(0, 4)
+      .map((item) => `${item.label}: ${item.reason}`),
   ];
   const reviewItems = reviewCandidates.filter((item, index) => {
     const identity = item
@@ -238,14 +244,14 @@ export function InvestmentAnalysisPrintReport({
             ["Nettovuokratuotto", percent(analysis.netRentalYield, 2)],
             ["Kassavirta", money(analysis.cashFlowAfterBankLoan, "€/kk")],
             ["Arvioitu kuukausivuokra", money(rentEstimate.effectiveMonthlyRent, "€/kk")],
-            [collateralIsGap ? "Vakuuksien tai oman rahan osuus" : collateralKnown ? "Vakuuspuskuri" : "Vakuustilanne", money(collateralValue)],
+            [collateralIsGap ? "Tarvittava lisävakuus" : collateralKnown ? "Vakuuspuskuri" : "Vakuustilanne", money(collateralValue)],
           ].map(([label, value]) => (
             <section key={label} className="print-kpi-card print-avoid-break"><p>{label}</p><strong>{value}</strong></section>
           ))}
         </div>
         <div className="print-highlight-grid">
-          <HighlightList title="Tärkeimmät vahvuudet" items={analysis.positiveFactors ?? []} tone="positive" />
           <HighlightList title="Huomioitavat riskit" items={analysis.warningFactors ?? []} tone="risk" />
+          <HighlightList title="Tärkeimmät vahvuudet" items={analysis.positiveFactors ?? []} tone="positive" />
         </div>
       </section>
 
@@ -276,23 +282,23 @@ export function InvestmentAnalysisPrintReport({
             ["Rahoitusvastike", money(effectiveFinancingFee, "€/kk")],
             ["Muut kuukausikulut", money(assumptions.otherCostsMonthly, "€/kk")],
             ["Tyhjäkäynti", `${formatFinnishNumber(assumptions.vacancyMonths, 1)} kk/v`],
-            ["Bruttovuokratuotto", percent(analysis.grossRentalYield)],
-            ["Nettovuokratuotto", percent(analysis.netRentalYield, 2)],
+            ["Nettovuokratuotto · Ensisijainen tuottomittari", percent(analysis.netRentalYield, 2)],
+            ["Bruttovuokratuotto · Vertailuluku", percent(analysis.grossRentalYield)],
           ]} />
           <FinancialGroup title="Vakuudet" rows={[
             ["Vakuusarvoprosentti", `${assumptions.collateralPercentage} %`],
             ["Arvioitu vakuusarvo", money(assumptions.collateralValue)],
             ["Vakuusarvon lähde", assumptions.collateralValueSource === "bank" ? "Pankin vahvistama" : assumptions.collateralValueSource === "user" ? "Käyttäjän arvio" : "Laskennallinen arvio"],
             ["Pankkilaina", money(analysis.bankLoanAmount)],
-            [collateralIsGap ? "Vakuuksien tai oman rahan osuus" : "Vakuuspuskuri", money(collateralValue)],
+            [collateralIsGap ? "Tarvittava lisävakuus" : "Vakuuspuskuri", money(collateralValue)],
             ["Velkavipu", percent(typeof analysis.leverageRatio === "number" ? analysis.leverageRatio * 100 : undefined)],
           ]} />
         </div>
-        {assumptions.vacancyMonths === 0 ? (
-          <p className="print-assumption-note print-avoid-break">
-            Laskelma perustuu täyteen 12 kuukauden vuokrausasteeseen.
-          </p>
-        ) : null}
+        <div className="print-assumption-note print-avoid-break">
+          <p><strong>Nettovuokratuotto:</strong> Huomioi tyhjäkäynnin ja jatkuvat kulut, kuten hoitovastikkeen. Kuvaa vuokraustoiminnan tuottoa ennen rahoituskuluja ja veroja.</p>
+          <p><strong>Bruttovuokratuotto:</strong> Vuokratuotto ennen vastikkeita ja muita kuluja.</p>
+          {assumptions.vacancyMonths === 0 ? <p>Laskelma perustuu täyteen 12 kuukauden vuokrausasteeseen.</p> : null}
+        </div>
       </section>
 
       <section className="print-report-page">

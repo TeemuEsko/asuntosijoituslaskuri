@@ -4,8 +4,8 @@ import { METRIC_CARD_ORDER, metricCardState } from "../src/core/analysis/metric-
 
 test("tunnuslukukorttien järjestys painottaa päätöksenteon tärkeimpiä lukuja", () => {
   assert.deepEqual(METRIC_CARD_ORDER, [
-    "cashFlowAfterBankLoan",
     "netRentalYield",
+    "cashFlowAfterBankLoan",
     "grossRentalYield",
     "equity",
     "returnOnEquity",

@@ -64,7 +64,7 @@ test("raportti näyttää score-heron, neljä KPI:tä ja vain valitut markkina-a
     "Nettovuokratuotto",
     "Kassavirta",
     "Arvioitu kuukausivuokra",
-    "Vakuuksien tai oman rahan osuus",
+    "Tarvittava lisävakuus",
     "Vuokrakysyntä",
     "Sijaintiriski",
     "Jälleenmyytävyys",
@@ -108,6 +108,9 @@ test("PDF:n lähtötiedot etenevät järjestyksessä A hankinta, B pankkirahoitu
   assert.ok(financing < rental);
   assert.match(report.slice(financing, rental), /Pankkilaina[\s\S]*Oma pääoma[\s\S]*Korko[\s\S]*Laina-aika/);
   assert.match(report.slice(rental), /Kuukausivuokra[\s\S]*Hoitovastike[\s\S]*Rahoitusvastike[\s\S]*Muut kuukausikulut[\s\S]*Tyhjäkäynti/);
+  assert.match(report.slice(rental), /Nettovuokratuotto · Ensisijainen tuottomittari[\s\S]*Bruttovuokratuotto · Vertailuluku/);
+  assert.match(report, /Huomioi tyhjäkäynnin ja jatkuvat kulut, kuten hoitovastikkeen/);
+  assert.match(report, /Vuokratuotto ennen vastikkeita ja muita kuluja/);
 });
 
 test("raportti erottaa markkina-arvion oletuksen, käyttäjävalinnan ja todellisen lähteen", async () => {
@@ -133,6 +136,8 @@ test("raportin tarkistettavat tiedot poistavat myös välimerkistä johtuvat kak
     "../src/components/property/investment-analysis-print-report.tsx",
   );
   assert.match(report, /const reviewCandidates =/);
+  assert.match(report, /hasPipeHistoryCheck/);
+  assert.match(report, /item\.system === "plumbing"/);
   assert.match(report, /replace\(\/\[\.!\?\]\+\$\/g, ""\)/);
   assert.match(report, /findIndex/);
 });

@@ -21,6 +21,7 @@ import {
   evaluateInvestmentObservations,
   type InvestmentObservation,
 } from "../rules/investment-observations.ts";
+import type { RepairHistoryAssessment } from "../rules/repair-history.ts";
 import {
   calculateOpportunityScoreV2,
   type CollateralValueSource,
@@ -52,6 +53,7 @@ export type InvestmentAnalysisInput = {
   rentalDemand?: number;
   repairRiskScore?: number;
   repairHistoryKnown?: boolean;
+  repairHistory?: RepairHistoryAssessment;
   monthlyBankLoanPayment?: number;
   renovationReserve?: number;
   transferTaxRate?: number;
@@ -77,6 +79,8 @@ export type InvestmentAnalysisInput = {
   apartmentCount?: number;
   landOwnership?: string;
   landLeaseEndDate?: string;
+  landRentAnnual?: number;
+  plotFeeMonthly?: number;
   plotShareRedeemed?: boolean;
   collateralValueSource?: CollateralValueSource;
   verifiedLongTermRentalProhibition?: boolean;
@@ -410,10 +414,6 @@ export function calculateInvestmentAnalysis(
     missingFactors.push(
       "Pankkilainan tiedot puuttuvat – kassavirta ja arvio ovat alustavia",
     );
-  if (!input.repairHistoryKnown)
-    missingFactors.push(
-      "Taloyhtiön korjaushistoria kannattaa varmistaa taloyhtiöltä tai isännöitsijältä",
-    );
   if (grossYield !== undefined && grossYield < 5.5)
     warningFactors.push("Bruttovuokratuotto on nykyisellä hinnalla matala.");
   if (afterLoan !== undefined && afterLoan < 0)
@@ -466,6 +466,12 @@ export function calculateInvestmentAnalysis(
     collateralShortfall,
     repairRiskScore: input.repairRiskScore,
     repairHistoryKnown: Boolean(input.repairHistoryKnown),
+    repairHistory: input.repairHistory,
+    landOwnership: input.landOwnership,
+    landLeaseEndDate: input.landLeaseEndDate,
+    landRentAnnual: input.landRentAnnual,
+    plotFeeMonthly: input.plotFeeMonthly,
+    verifiedLandLeaseNonRenewal: input.verifiedLandLeaseNonRenewal,
     locationRisk: weightedLocationRisk,
     resaleLiquidity: weightedResaleLiquidity,
     loanKnown,
@@ -493,7 +499,13 @@ export function calculateInvestmentAnalysis(
     if (!missingFactors.includes(item.description))
       missingFactors.push(item.description);
 
-  const preliminary = !loanKnown || missingFactors.length > 0;
+  const preliminary =
+    !loanKnown ||
+    !price ||
+    !rent ||
+    maintenance === undefined ||
+    financing === undefined ||
+    !input.repairHistoryKnown;
   const opportunity = calculateOpportunityScoreV2({
     debtFreePrice: price,
     renovationCost: renovationReserve,

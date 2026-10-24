@@ -14,6 +14,15 @@ test("positiivinen vakuusvaje näyttää toimintaohjeen", () => {
   assert.equal(getCollateralGapGuidance(analysis.collateralShortfall), COLLATERAL_GAP_GUIDANCE);
 });
 
+test("lisävakuus perustuu vain pankkilainan ja hyväksytyn vakuusarvon erotukseen", () => {
+  const first = calculateInvestmentAnalysis({ bankLoanAmount: 100_000, collateralValue: 70_000, equity: 20_000, companyLoanShare: 45_000 });
+  const moreEquity = calculateInvestmentAnalysis({ bankLoanAmount: 100_000, collateralValue: 70_000, equity: 50_000, companyLoanShare: 0 });
+  assert.equal(first.collateralShortfall, 30_000);
+  assert.equal(moreEquity.collateralShortfall, 30_000);
+  assert.match(COLLATERAL_GAP_GUIDANCE, /Lisävakuuden tarve suunnitellulle pankkilainalle/);
+  assert.doesNotMatch(COLLATERAL_GAP_GUIDANCE, /sijoitettu oma pääoma/i);
+});
+
 test("nolla tai negatiivinen vakuusvaje ei näytä toimintaohjetta", () => {
   assert.equal(getCollateralGapGuidance(0), undefined);
   assert.equal(getCollateralGapGuidance(-1), undefined);

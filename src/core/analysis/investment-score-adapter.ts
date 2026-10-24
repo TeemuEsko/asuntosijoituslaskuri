@@ -1,9 +1,9 @@
 import type { RepairHistoryAssessment } from "../rules/repair-history";
 import { calculateInvestmentAnalysis, type InvestmentAnalysisInput, type InvestmentAnalysisResult } from "../calculations/investment-analysis.ts";
 
-export type InvestmentScoreSource = Omit<InvestmentAnalysisInput, "repairRiskScore" | "repairHistoryKnown"> & { currentRentMonthly?: number; repairHistory?: RepairHistoryAssessment };
+export type InvestmentScoreSource = Omit<InvestmentAnalysisInput, "repairRiskScore" | "repairHistoryKnown" | "repairHistory"> & { currentRentMonthly?: number; repairHistory?: RepairHistoryAssessment };
 
 export function adaptInvestmentScore(source: InvestmentScoreSource): InvestmentAnalysisResult {
   const repairRiskScore = source.repairHistory?.technicalRiskScore ?? 50;
-  return calculateInvestmentAnalysis({ ...source, monthlyRent: source.monthlyRent ?? source.currentRentMonthly, repairRiskScore, repairHistoryKnown: Boolean(source.repairHistory && source.repairHistory.confidence !== "low") });
+  return calculateInvestmentAnalysis({ ...source, monthlyRent: source.monthlyRent ?? source.currentRentMonthly, repairRiskScore, repairHistoryKnown: Boolean(source.repairHistory && source.repairHistory.confidence !== "low"), repairHistory: source.repairHistory });
 }

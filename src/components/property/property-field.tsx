@@ -1,5 +1,6 @@
 import { Info } from "lucide-react";
 import type { ComponentProps } from "react";
+import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -14,9 +15,10 @@ type PropertyFieldProps = ComponentProps<typeof Input> & {
   suffix?: string;
   help?: string;
   description?: string;
+  endAdornment?: ReactNode;
 };
 
-export function PropertyField({ label, status, sourceLabel, suffix, help, description, className, ...props }: PropertyFieldProps) {
+export function PropertyField({ label, status, sourceLabel, suffix, help, description, endAdornment, className, ...props }: PropertyFieldProps) {
   return (
     <div className="min-w-0 space-y-2">
       <div className="flex min-h-10 min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
@@ -35,8 +37,9 @@ export function PropertyField({ label, status, sourceLabel, suffix, help, descri
       </div>
       {description ? <p className="min-h-8 text-xs leading-4 text-muted-foreground">{description}</p> : null}
       <div className="relative">
-        <Input className={cn("h-11 text-right tabular-nums", suffix ? suffix.length > 4 ? "pr-20" : "pr-12" : "pr-3", className)} {...props} />
-        {suffix ? <span className="pointer-events-none absolute inset-y-0 right-3 flex max-w-16 items-center whitespace-nowrap text-sm text-muted-foreground">{suffix}</span> : null}
+        <Input className={cn("h-11 text-right tabular-nums", endAdornment ? suffix ? "pr-28" : "pr-12" : suffix ? suffix.length > 4 ? "pr-20" : "pr-12" : "pr-3", className)} {...props} />
+        {suffix ? <span className={cn("pointer-events-none absolute inset-y-0 flex max-w-16 items-center whitespace-nowrap text-sm text-muted-foreground", endAdornment ? "right-11" : "right-3")}>{suffix}</span> : null}
+        {endAdornment ? <span className="absolute inset-y-1 right-1 flex w-8 flex-col overflow-hidden rounded-md border bg-background">{endAdornment}</span> : null}
       </div>
     </div>
   );

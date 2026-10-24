@@ -33,7 +33,7 @@ export function FinancialOverviewCard({
   analysis: InvestmentAnalysisResult;
 }) {
   const collateralKnown = analysis.collateralShortfall !== undefined && analysis.collateralBuffer !== undefined;
-  const collateralTitle = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Vakuuksien tai oman rahan osuus" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
+  const collateralTitle = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Tarvittava lisävakuus" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
   const collateralAmount = !collateralKnown ? undefined : analysis.collateralShortfall! > 0 ? analysis.collateralShortfall : analysis.collateralBuffer;
   const collateralNote = getCollateralGapGuidance(analysis.collateralShortfall);
   const companyLoanNote = purchaseStatuses.companyLoanShare === "document"

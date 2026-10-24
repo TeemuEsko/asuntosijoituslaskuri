@@ -549,6 +549,10 @@ export function PropertyWorkspace({
       typeof data.landLeaseEndDate === "string"
         ? data.landLeaseEndDate
         : undefined,
+    landRentAnnual:
+      typeof data.landRentAnnual === "number" ? data.landRentAnnual : undefined,
+    plotFeeMonthly:
+      typeof data.plotFeeMonthly === "number" ? data.plotFeeMonthly : undefined,
     plotShareRedeemed: data.opportunityScoreInputs?.plotShareRedeemed,
     collateralValueSource: assumptions.collateralValueSource,
     verifiedLongTermRentalProhibition:

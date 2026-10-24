@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   ANALYSIS_NUMERIC_INPUT_CONFIG,
   stepAnalysisNumericValue,
@@ -71,6 +72,20 @@ export function LocalizedNumberField({
     updateDraft(formatValue(bounded, maximumFractionDigits, minimumFractionDigits));
   }
 
+  function stepValue(direction: 1 | -1) {
+    if (disabled || !numericInputKey) return;
+    const nextValue = stepAnalysisNumericValue(numericInputKey, draft, direction, value);
+    updateDraft(formatValue(nextValue, maximumFractionDigits, minimumFractionDigits));
+    onValueChange?.(nextValue);
+  }
+
+  const stepControls = numericInputKey && stepConfig && "showControls" in stepConfig && stepConfig.showControls
+    ? <>
+        <button type="button" className="grid min-h-0 flex-1 place-items-center border-b text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Kasvata kentän ${props.label} arvoa`} onMouseDown={(event) => event.preventDefault()} onClick={() => stepValue(1)} disabled={disabled}><ChevronUp className="size-3.5" /></button>
+        <button type="button" className="grid min-h-0 flex-1 place-items-center text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Pienennä kentän ${props.label} arvoa`} onMouseDown={(event) => event.preventDefault()} onClick={() => stepValue(-1)} disabled={disabled}><ChevronDown className="size-3.5" /></button>
+      </>
+    : undefined;
+
   return (
     <PropertyField
       {...props}
@@ -81,6 +96,7 @@ export function LocalizedNumberField({
       min={stepConfig?.min ?? props.min}
       max={stepConfig && "max" in stepConfig && typeof stepConfig.max === "number" ? stepConfig.max : props.max}
       step={stepConfig?.step ?? props.step}
+      endAdornment={stepControls}
       placeholder={allowUnknown && value === undefined ? "Ei tiedossa" : props.placeholder}
       onFocus={() => { focused.current = true; }}
       onChange={(event) => updateDraft(event.currentTarget.value)}
@@ -88,9 +104,7 @@ export function LocalizedNumberField({
       onKeyDown={(event) => {
         if (!disabled && numericInputKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
           event.preventDefault();
-          const nextValue = stepAnalysisNumericValue(numericInputKey, draft, event.key === "ArrowUp" ? 1 : -1, value);
-          updateDraft(formatValue(nextValue, maximumFractionDigits, minimumFractionDigits));
-          onValueChange?.(nextValue);
+          stepValue(event.key === "ArrowUp" ? 1 : -1);
         }
         if (event.key === "Enter") event.currentTarget.blur();
         props.onKeyDown?.(event);

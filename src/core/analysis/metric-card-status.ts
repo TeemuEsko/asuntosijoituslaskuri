@@ -31,8 +31,8 @@ export type MetricCardContext = {
 };
 
 export const METRIC_CARD_ORDER: readonly MetricCardKey[] = [
-  "cashFlowAfterBankLoan",
   "netRentalYield",
+  "cashFlowAfterBankLoan",
   "grossRentalYield",
   "equity",
   "returnOnEquity",
@@ -128,7 +128,7 @@ export function metricCardState(key: MetricCardKey, value: number | null | undef
     const shortfallRatio = isKnown(loanAmount) && loanAmount > 0 ? Math.abs(value) / loanAmount : 1;
     return shortfallRatio >= METRIC_THRESHOLDS.collateralShortfall.negativeRatio
       ? state("negative", "Merkittävä vakuusvaje", "error")
-      : state("warning", "Vakuuksien tai oman rahan osuus", "warning");
+      : state("warning", "Lisävakuus tarvitaan", "warning");
   }
 
   return unknown();

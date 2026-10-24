@@ -17,6 +17,8 @@ type MetricCardData = {
   formattedValue: string;
   description: string;
   secondary?: boolean;
+  emphasis?: "primary" | "secondary";
+  roleLabel?: string;
 };
 
 const statusIcons: Record<MetricStatusIcon, LucideIcon> = {
@@ -30,9 +32,9 @@ const statusIcons: Record<MetricStatusIcon, LucideIcon> = {
 export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult }) {
   const collateralKnown = analysis.collateralShortfall !== undefined && analysis.collateralBuffer !== undefined;
   const collateralPosition = !collateralKnown ? undefined : analysis.collateralShortfall! > 0 ? -analysis.collateralShortfall! : analysis.collateralBuffer!;
-  const collateralLabel = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Vakuuksien tai oman rahan osuus" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
+  const collateralLabel = !collateralKnown ? "Vakuustilanne" : analysis.collateralShortfall! > 0 ? "Tarvittava lisävakuus" : analysis.collateralBuffer! > 0 ? "Vakuuspuskuri" : "Vakuustilanne";
   const collateralDescription = analysis.collateralShortfall! > 0
-    ? "Summa, joka jää katettavaksi muilla vakuuksilla tai omalla rahalla, kun pankin hyväksymä vakuusarvo ei yksin riitä suunniteltuun rahoitukseen."
+    ? "Lisävakuuden tarve suunnitellulle pankkilainalle. Voidaan kattaa muilla vakuuksilla tai pienentämällä lainaa omalla rahalla."
     : analysis.collateralBuffer! > 0
       ? "Kohteen vakuusarvo ylittää pankkilainan määrän."
       : "Kohteen vakuusarvo ja pankkilainan määrä ovat samalla tasolla.";
@@ -44,8 +46,8 @@ export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult })
       : "Pankkilainan ensimmäisen kuukauden lyhennys.";
   const byKey: Record<MetricCardKey, MetricCardData> = {
     cashFlowAfterBankLoan: { key: "cashFlowAfterBankLoan", label: "Kassavirta pankkilainan jälkeen", value: analysis.cashFlowAfterBankLoan, formattedValue: money(analysis.cashFlowAfterBankLoan), description: analysis.cashFlowAfterBankLoan === undefined ? "Lisää pankkilainan ja kulujen tiedot." : "Vuokra vähennettynä kuluilla ja pankkilainan kuukausierällä." },
-    netRentalYield: { key: "netRentalYield", label: "Nettovuokratuotto", value: analysis.netRentalYield, formattedValue: percent(analysis.netRentalYield, 2), description: "Huomioi tyhjäkäynnin ja jatkuvat kuukausikulut." },
-    grossRentalYield: { key: "grossRentalYield", label: "Bruttovuokratuotto", value: analysis.grossRentalYield, formattedValue: percent(analysis.grossRentalYield), description: "Efektiivinen vuosivuokra suhteessa velattomaan hintaan." },
+    netRentalYield: { key: "netRentalYield", label: "Nettovuokratuotto", value: analysis.netRentalYield, formattedValue: percent(analysis.netRentalYield, 2), description: "Huomioi tyhjäkäynnin ja jatkuvat kulut, kuten hoitovastikkeen. Kuvaa vuokraustoiminnan tuottoa ennen rahoituskuluja ja veroja.", emphasis: "primary", roleLabel: "Ensisijainen tuottomittari" },
+    grossRentalYield: { key: "grossRentalYield", label: "Bruttovuokratuotto", value: analysis.grossRentalYield, formattedValue: percent(analysis.grossRentalYield), description: "Vuokratuotto ennen vastikkeita ja muita kuluja.", secondary: true, emphasis: "secondary", roleLabel: "Vertailuluku" },
     equity: { key: "equity", label: "Oma pääoma", value: analysis.equity, formattedValue: money(analysis.equity, "€"), description: analysis.equitySource === "user" ? "Käyttäjän määrittämä sijoitettava oma pääoma." : "Oletus on 0 €. Lisää sijoitettava oma pääoma tarvittaessa. Oletus ei ole pankin hyväksymä rahoitusratkaisu." },
     returnOnEquity: { key: "returnOnEquity", label: "Oman pääoman tuotto", value: analysis.returnOnEquity, formattedValue: percent(analysis.returnOnEquity), description: analysis.equity === 0 ? equityReturnDescription : "Kassavirta ja lainan lyheneminen suhteessa omaan pääomaan." },
     cashOnCashReturn: { key: "cashOnCashReturn", label: "Oman pääoman kassatuotto", value: analysis.cashOnCashReturn, formattedValue: percent(analysis.cashOnCashReturn), description: equityReturnDescription },
@@ -58,7 +60,7 @@ export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult })
   return <Card><CardContent><dl className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{metrics.map((metric) => {
     const status = metricCardState(metric.key, metric.value, { monthlyCashFlow: analysis.cashFlowAfterBankLoan, bankLoanAmount: analysis.bankLoanAmount, equitySource: analysis.equitySource });
     const StatusIcon = statusIcons[status.icon];
-    return <div key={metric.key} data-metric={metric.key} data-status={status.status} className={cn("flex h-full min-w-0 flex-col rounded-xl border p-4", metric.secondary ? SECONDARY_METRIC_CARD_STATUS_CLASSES[status.status] : METRIC_CARD_STATUS_CLASSES[status.status])}><div className="flex min-w-0 items-start justify-between gap-3"><dt className="min-w-0 text-sm font-medium text-muted-foreground">{metric.label}</dt><span aria-label={`Tila: ${status.statusLabel}`} className={cn("inline-flex shrink-0 items-center gap-1 rounded-full border bg-background/70 px-2 py-1 text-[0.6875rem] font-medium", METRIC_CARD_STATUS_TEXT_CLASSES[status.status])}><StatusIcon aria-hidden="true" className="size-3.5" />{status.statusLabel}</span></div><dd className="mt-3 break-words text-2xl font-semibold tracking-tight">{metric.formattedValue}</dd><p className="mt-3 text-xs leading-relaxed text-muted-foreground">{metric.description}</p></div>;
+    return <div key={metric.key} data-metric={metric.key} data-status={status.status} data-emphasis={metric.emphasis} className={cn("flex h-full min-w-0 flex-col rounded-xl border p-4", metric.secondary ? SECONDARY_METRIC_CARD_STATUS_CLASSES[status.status] : METRIC_CARD_STATUS_CLASSES[status.status], metric.emphasis === "primary" && "sm:col-span-2 xl:col-span-2 ring-1 ring-success/20", metric.emphasis === "secondary" && "opacity-90")}><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><dt className="text-sm font-medium text-muted-foreground">{metric.label}</dt>{metric.roleLabel ? <span className={cn("mt-1 inline-flex rounded-full border px-2 py-0.5 text-[0.6875rem] font-semibold", metric.emphasis === "primary" ? "border-success/30 bg-success-soft text-success" : "border-border bg-background/70 text-muted-foreground")}>{metric.roleLabel}</span> : null}</div><span aria-label={`Tila: ${status.statusLabel}`} className={cn("inline-flex shrink-0 items-center gap-1 rounded-full border bg-background/70 px-2 py-1 text-[0.6875rem] font-medium", METRIC_CARD_STATUS_TEXT_CLASSES[status.status])}><StatusIcon aria-hidden="true" className="size-3.5" />{status.statusLabel}</span></div><dd className={cn("mt-3 break-words font-semibold tracking-tight", metric.emphasis === "primary" ? "text-3xl" : metric.emphasis === "secondary" ? "text-xl" : "text-2xl")}>{metric.formattedValue}</dd><p className="mt-3 text-xs leading-relaxed text-muted-foreground">{metric.description}</p></div>;
   })}</dl></CardContent></Card>;
 }
 

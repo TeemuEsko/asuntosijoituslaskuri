@@ -11,6 +11,11 @@ test("tunnuslukukortit ovat responsiivisia, saavutettavia ja käyttävät semant
   assert.match(source, /METRIC_CARD_STATUS_CLASSES/);
   assert.match(source, /min-w-0/);
   assert.doesNotMatch(source, /Infinity|NaN/);
+  assert.match(source, /Ensisijainen tuottomittari/);
+  assert.match(source, /Vertailuluku/);
+  assert.match(source, /data-emphasis=\{metric\.emphasis\}/);
+  assert.match(source, /Huomioi tyhjäkäynnin ja jatkuvat kulut, kuten hoitovastikkeen/);
+  assert.match(source, /Vuokratuotto ennen vastikkeita ja muita kuluja/);
 });
 
 test("oman pääoman käyttöliittymä näyttää oletuslähteen ja tarjoaa palautuksen", async () => {
@@ -26,5 +31,5 @@ test("oman pääoman käyttöliittymä näyttää oletuslähteen ja tarjoaa pala
 
 test("korttien vakuustekstit ja nollan oman pääoman ohje ovat käyttäjälle yksiselitteisiä", async () => {
   const source = await readFile(new URL("../src/components/property/analysis-summary.tsx", import.meta.url), "utf8");
-  for (const text of ["Vakuuksien tai oman rahan osuus", "Vakuuspuskuri", "Vakuustilanne", "Lisää sijoitettava oma pääoma.", "Ei laskettavissa"]) assert.match(source, new RegExp(text));
+  for (const text of ["Tarvittava lisävakuus", "Vakuuspuskuri", "Vakuustilanne", "Lisää sijoitettava oma pääoma.", "Ei laskettavissa"]) assert.match(source, new RegExp(text));
 });

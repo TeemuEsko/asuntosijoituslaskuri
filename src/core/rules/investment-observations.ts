@@ -2,6 +2,8 @@ import {
   NET_RENTAL_YIELD_THRESHOLDS,
   classifyNetRentalYield,
 } from "../analysis/net-rental-yield.ts";
+import { formatFinnishNumber } from "../parser/normalization.ts";
+import type { RepairHistoryAssessment } from "./repair-history.ts";
 
 export type InvestmentObservation = {
   id: string;
@@ -33,6 +35,12 @@ export type ObservationInput = {
   collateralShortfall?: number;
   repairRiskScore?: number;
   repairHistoryKnown: boolean;
+  repairHistory?: RepairHistoryAssessment;
+  landOwnership?: string;
+  landLeaseEndDate?: string;
+  landRentAnnual?: number;
+  plotFeeMonthly?: number;
+  verifiedLandLeaseNonRenewal?: boolean;
   locationRisk?: number;
   resaleLiquidity?: number;
   loanKnown: boolean;
@@ -62,7 +70,7 @@ export function evaluateInvestmentObservations(
       description:
         "Kassavirtaa pankkilainan jälkeen ei voida laskea ja arvio on alustava.",
     });
-  if (!input.repairHistoryKnown)
+  if (!input.repairHistoryKnown && !input.repairHistory)
     add({
       id: "missing-repair-history",
       category: "dataCompleteness",
@@ -72,6 +80,154 @@ export function evaluateInvestmentObservations(
       description:
         "Taloyhtiön korjaushistoria kannattaa varmistaa taloyhtiöltä tai isännöitsijältä.",
     });
+
+  const repairs = input.repairHistory?.repairs ?? [];
+  const reliableCompletedMajor = repairs.filter(
+    (repair) =>
+      repair.scale === "major" &&
+      ["completed", "ongoing"].includes(repair.status) &&
+      (repair.verifiedByDocuments || repair.source === "document" || repair.source === "user"),
+  );
+  const listingOnlyCompletedMajor = repairs.filter(
+    (repair) =>
+      repair.scale === "major" &&
+      ["completed", "ongoing"].includes(repair.status) &&
+      !reliableCompletedMajor.includes(repair),
+  );
+  if (reliableCompletedMajor.length) {
+    const titles = [...new Set(reliableCompletedMajor.map((repair) => repair.title))].slice(0, 3);
+    add({
+      id: "documented-major-renovations",
+      category: "renovation",
+      type: "strength",
+      severity: "info",
+      title: "Merkittäviä korjauksia on tehty",
+      description: `Taloyhtiössä on lähdetietojen perusteella tehty merkittäviä korjauksia (${titles.join(", ")}). Tämä pienentää kyseisiin rakenteisiin liittyvää korjausriskiä, mutta ei poista muiden korjausten tarvetta.`,
+    });
+  } else if (listingOnlyCompletedMajor.length) {
+    add({
+      id: "listing-major-renovations-check",
+      category: "renovation",
+      type: "missingData",
+      severity: "medium",
+      title: "Ilmoituksessa mainitut suuret korjaukset tarkistettava",
+      description: "Myynti-ilmoituksessa mainitaan merkittäviä tehtyjä korjauksia, mutta niiden laajuutta ei ole vahvistettu taloyhtiöasiakirjoista.",
+    });
+  }
+
+  const futureRepairs = repairs.filter(
+    (repair) =>
+      repair.scale === "major" &&
+      ["decided", "planned", "estimated", "proposed", "under_investigation", "preparing"].includes(repair.status),
+  );
+  for (const repair of futureRepairs.slice(0, 3)) {
+    const authoritative = repair.verifiedByDocuments || repair.source === "document" || repair.source === "user";
+    const timing = repair.yearFrom && repair.yearTo
+      ? ` vuosille ${repair.yearFrom}–${repair.yearTo}`
+      : repair.year ? ` vuodelle ${repair.year}` : "";
+    const status = repair.status === "decided"
+      ? "päätetty"
+      : repair.status === "planned" || repair.status === "estimated"
+        ? "suunniteltu"
+        : "mahdollinen tai valmistelussa";
+    const confirmedDecision = repair.status === "decided" && authoritative;
+    add({
+      id: `future-renovation-${repair.id}`,
+      category: "renovation",
+      type: confirmedDecision || authoritative && ["planned", "estimated"].includes(repair.status) ? "risk" : "notice",
+      severity: confirmedDecision ? "high" : "medium",
+      title: confirmedDecision ? "Päätetty suuri korjaus" : "Tuleva suuri korjaus tarkistettava",
+      description: `${repair.title} on ${authoritative ? "lähdetietojen perusteella" : "myynti-ilmoituksen mukaan"} ${status}${timing}. Huoneistokohtaista kustannusta ei ole saatavilla, joten varmista hankkeen päätös, aikataulu ja kustannus taloyhtiöltä.`,
+    });
+  }
+
+  if (input.repairHistory?.relevantSystems.some((item) => item.system === "plumbing")) {
+    add({
+      id: "pipe-history-check",
+      category: "renovation",
+      type: "missingData",
+      severity: "medium",
+      title: "Putkistojen korjaushistoria tarkistettava",
+      description: "Putkistojen kattavasta uusimisesta ei löytynyt riittävää tietoa. Tämä ei tarkoita, että putkiremontti olisi tekemättä; varmista järjestelmien tila taloyhtiöltä.",
+    });
+  }
+
+  const landOwnership = input.landOwnership?.toLocaleLowerCase("fi");
+  const leasedLand = landOwnership === "leased" || landOwnership === "optional_leasehold";
+  if (landOwnership === "owned") {
+    add({
+      id: "owned-land",
+      category: "housingCompany",
+      type: "strength",
+      severity: "info",
+      title: "Oma tontti",
+      description: "Taloyhtiö sijaitsee omalla tontilla, joten vuokratontin sopimus- ja korotusriskiä ei ole tunnistettu.",
+    });
+  }
+  if (leasedLand) {
+    const leaseYearMatch = input.landLeaseEndDate?.match(/(?:19|20)\d{2}/);
+    const leaseYear = leaseYearMatch ? Number(leaseYearMatch[0]) : undefined;
+    const yearsRemaining = leaseYear === undefined ? undefined : leaseYear - new Date().getFullYear();
+    if (input.verifiedLandLeaseNonRenewal) {
+      add({
+        id: "verified-land-lease-non-renewal",
+        category: "housingCompany",
+        type: "risk",
+        severity: "critical",
+        title: "Tontin vuokrasopimuksen jatkumattomuus vahvistettu",
+        description: "Lähdeaineiston perusteella tontin vuokrasopimusta ei jatketa. Arvioi vaikutus kohteen käyttöön, rahoitettavuuteen ja jälleenmyyntiin ennen päätöstä.",
+      });
+    } else if (yearsRemaining !== undefined && yearsRemaining <= 10) {
+      add({
+        id: "land-lease-expiry-soon",
+        category: "housingCompany",
+        type: "risk",
+        severity: "high",
+        title: "Tontin vuokrasopimus päättyy pian",
+        description: `Tontin vuokrasopimus päättyy vuonna ${leaseYear}. Jatkosta ei ole vahvistettua tietoa, joten tarkista uusimisehdot ja taloudellinen vaikutus taloyhtiöltä.`,
+      });
+    } else if (yearsRemaining !== undefined && yearsRemaining <= 20) {
+      add({
+        id: "land-lease-expiry-check",
+        category: "housingCompany",
+        type: "notice",
+        severity: "medium",
+        title: "Tontin vuokrasopimuksen päättyminen lähestyy",
+        description: `Tontin vuokrasopimus päättyy vuonna ${leaseYear}. Tarkista jatko- ja korotusehdot taloyhtiöltä.`,
+      });
+    } else if (leaseYear === undefined) {
+      add({
+        id: "missing-land-lease-end-date",
+        category: "dataCompleteness",
+        type: "missingData",
+        severity: "medium",
+        title: "Tontin vuokrasopimuksen päättymisaika puuttuu",
+        description: "Vuokratontin sopimuksen päättymisaika ja jatkoehdot kannattaa varmistaa taloyhtiöltä.",
+      });
+    }
+    if ((input.plotFeeMonthly ?? 0) > 0) {
+      add({
+        id: "current-plot-fee",
+        category: "housingCompany",
+        type: "notice",
+        severity: "low",
+        title: "Tonttivastike vaikuttaa kuukausikuluihin",
+        description: `Nykyinen huoneistokohtainen tonttivastike on ${formatFinnishNumber(input.plotFeeMonthly!)} €/kk ja se sisältyy laskelman muihin kuukausikuluihin.`,
+        value: input.plotFeeMonthly,
+        unit: "€/kk",
+      });
+    }
+    add({
+      id: "land-rent-increase-terms-check",
+      category: "housingCompany",
+      type: "missingData",
+      severity: "medium",
+      title: "Tontinvuokran korotusehdot tarkistettava",
+      description: input.landRentAnnual && input.landRentAnnual > 0
+        ? `Taloyhtiön nykyinen tontin vuosivuokra on ${formatFinnishNumber(input.landRentAnnual)} €. Tulevan korotuksen huoneistokohtaista kuukausivaikutusta ei voida laskea ilman korotusehtoa ja jakoperustetta.`
+        : "Tulevan tontinvuokran korotuksen huoneistokohtaista vaikutusta ei voida laskea ilman korotusehtoa ja jakoperustetta.",
+    });
+  }
   if (input.cashFlowAfterLoan !== undefined && input.cashFlowAfterLoan < 0)
     add({
       id: "negative-cash-flow-after-loan",
@@ -168,9 +324,9 @@ export function evaluateInvestmentObservations(
       category: "financing",
       type: "risk",
       severity: "medium",
-      title: "Vakuuksien tai oman rahan osuus",
+      title: "Tarvittava lisävakuus",
       description:
-        "Summa, joka jää katettavaksi muilla vakuuksilla tai omalla rahalla, kun pankin hyväksymä vakuusarvo ei yksin riitä suunniteltuun rahoitukseen.",
+        "Lisävakuuden tarve suunnitellulle pankkilainalle. Voidaan kattaa muilla vakuuksilla tai pienentämällä lainaa omalla rahalla.",
       value: input.collateralShortfall,
       unit: "€",
     });
@@ -274,5 +430,16 @@ export function evaluateInvestmentObservations(
       description:
         "Kuvissa näkyvät pinnat vaikuttavat pääosin siisteiltä. Havainto ei sulje pois kuvien ulkopuolisia tai piileviä vaurioita.",
     });
-  return findings;
+  const severityRank = { critical: 0, high: 1, medium: 2, low: 3, info: 4 } as const;
+  const typeRank = { risk: 0, notice: 1, strength: 2, missingData: 3 } as const;
+  const topicRank = (finding: InvestmentObservation) =>
+    finding.id.startsWith("future-renovation-") || finding.id === "verified-land-lease-non-renewal" || finding.id === "land-lease-expiry-soon"
+      ? 0
+      : ["cashFlow", "yield", "financing"].includes(finding.category) ? 1
+        : finding.type === "strength" ? 2 : 3;
+  const unique = findings.filter((finding, index) => {
+    const identity = finding.description.toLocaleLowerCase("fi").replace(/[.!?]+$/g, "").replace(/\s+/g, " ").trim();
+    return findings.findIndex((candidate) => candidate.description.toLocaleLowerCase("fi").replace(/[.!?]+$/g, "").replace(/\s+/g, " ").trim() === identity) === index;
+  });
+  return unique.sort((left, right) => topicRank(left) - topicRank(right) || typeRank[left.type] - typeRank[right.type] || severityRank[left.severity] - severityRank[right.severity]);
 }
