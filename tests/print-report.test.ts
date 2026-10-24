@@ -106,6 +106,18 @@ test("raportti käyttää suoraan työtilan canonical- ja analyysiarvoja", async
   assert.match(report, /Laskelma perustuu täyteen 12 kuukauden vuokrausasteeseen/);
 });
 
+test("käyttöliittymä ja PDF käyttävät samoja analyysin havaintolistoja", async () => {
+  const [report, highlights] = await Promise.all([
+    read("../src/components/property/investment-analysis-print-report.tsx"),
+    read("../src/components/property/analysis-summary.tsx"),
+  ]);
+  for (const field of ["warningFactors", "positiveFactors", "missingFactors"])
+    assert.match(highlights, new RegExp(`rating\\.${field}`));
+  for (const field of ["warningFactors", "positiveFactors", "missingFactors"])
+    assert.match(report, new RegExp(`analysis\\.${field}`));
+  assert.doesNotMatch(report, /evaluateInvestmentObservations|calculateInvestmentAnalysis/);
+});
+
 test("PDF:n lähtötiedot etenevät järjestyksessä A hankinta, B pankkirahoitus ja C vuokraus", async () => {
   const report = await read("../src/components/property/investment-analysis-print-report.tsx");
   const purchase = report.indexOf('title="A. Hinta ja hankinta"');

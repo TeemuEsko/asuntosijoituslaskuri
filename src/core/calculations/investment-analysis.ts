@@ -547,6 +547,8 @@ export function calculateInvestmentAnalysis(
     rentalDemand: weightedRentalDemand,
     vacancyMonths: vacancy.vacancyMonths,
     collateralShortfall,
+    collateralBuffer,
+    collateralValueSource: input.collateralValueSource,
     financingGap: acquisitionFinancing?.financingGap,
     repairRiskScore: input.repairRiskScore,
     repairHistoryKnown: Boolean(input.repairHistoryKnown),

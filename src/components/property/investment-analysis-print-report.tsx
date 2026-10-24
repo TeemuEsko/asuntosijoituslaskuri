@@ -86,7 +86,7 @@ function HighlightList({
   items: string[];
   tone: "positive" | "risk";
 }) {
-  const visibleItems = items.length ? items.slice(0, 4) : ["Ei erillisiä havaintoja käytettävissä olevilla tiedoilla."];
+  const visibleItems = items.length ? items.slice(0, 5) : ["Ei erillisiä havaintoja käytettävissä olevilla tiedoilla."];
   return (
     <section className={`print-report-highlight print-report-highlight-${tone} print-avoid-break`}>
       <h3>{title}</h3>
@@ -202,7 +202,7 @@ export function InvestmentAnalysisPrintReport({
         .replace(/\s+/g, " ")
         .trim() === identity,
     ) === index;
-  });
+  }).slice(0, 5);
   const rentAreaNotice = rentEstimate.sourceAreaLevel && !["postal_code", "municipality"].includes(rentEstimate.sourceAreaLevel)
     ? "Vuokra-arvio perustuu kuntaa laajempaan vertailualueeseen."
     : undefined;

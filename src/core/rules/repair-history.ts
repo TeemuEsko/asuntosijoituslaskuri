@@ -244,7 +244,7 @@ export function assessRepairHistory(input: {
     ? input.documentKinds
     : ["listing"];
   const repairs = input.renovations
-    .filter((repair) => repair.scope !== "apartment")
+    .filter((repair) => repair.scope === "housing_company")
     .map(classifyRepair);
   const implemented = repairs.filter((repair) =>
     ["completed", "ongoing"].includes(repair.status),

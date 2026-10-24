@@ -67,9 +67,9 @@ export function KeyMetrics({ analysis }: { analysis: InvestmentAnalysisResult })
 
 export function AnalysisHighlights({ rating }: { rating: InvestmentAnalysisResult }) {
   const groups = [
-    { title: "Huomioitavat riskit", icon: AlertTriangle, items: rating.warningFactors ?? [], color: "text-orange-600", border: "border-orange-400", empty: "Nykyisillä tiedoilla ei tunnistettu erityisiä riskejä." },
-    { title: "Kohteen vahvuudet", icon: CheckCircle2, items: rating.positiveFactors ?? [], color: "text-emerald-600", border: "border-emerald-500", empty: "Nykyisillä tiedoilla ei tunnistettu erityisiä vahvuuksia." },
-    { title: "Puuttuvat tai tarkistettavat tiedot", icon: FileQuestion, items: rating.missingFactors ?? [], color: "text-amber-600", border: "border-amber-400", empty: "Ei puuttuvia kriittisiä tietoja." },
+    { title: "Huomioitavat riskit", icon: AlertTriangle, items: (rating.warningFactors ?? []).slice(0, 5), color: "text-orange-600", border: "border-orange-400", empty: "Nykyisillä tiedoilla ei tunnistettu erityisiä riskejä." },
+    { title: "Kohteen vahvuudet", icon: CheckCircle2, items: (rating.positiveFactors ?? []).slice(0, 5), color: "text-emerald-600", border: "border-emerald-500", empty: "Nykyisillä tiedoilla ei tunnistettu erityisiä vahvuuksia." },
+    { title: "Puuttuvat tai tarkistettavat tiedot", icon: FileQuestion, items: (rating.missingFactors ?? []).slice(0, 5), color: "text-amber-600", border: "border-amber-400", empty: "Ei puuttuvia kriittisiä tietoja." },
   ];
   return <Card><CardHeader className="border-b"><CardTitle>Analyysin tärkeimmät huomiot</CardTitle></CardHeader><CardContent><div className="grid gap-6 md:grid-cols-3">{groups.map(({ title, icon: Icon, items, color, border, empty }) => <section key={title}><div className="flex items-center gap-2"><Icon className={`size-4 ${color}`} /><h3 className="font-medium">{title}</h3></div>{items.length ? <ul className="mt-3 space-y-2 text-sm text-muted-foreground">{items.map((item) => <li key={item} className={`border-l-2 pl-3 ${border}`}>{item}</li>)}</ul> : <p className="mt-3 text-sm text-muted-foreground">{empty}</p>}</section>)}</div></CardContent></Card>;
 }

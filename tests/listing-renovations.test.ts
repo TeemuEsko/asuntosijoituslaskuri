@@ -82,6 +82,101 @@ test("epävarma yleinen vuosialue jätetään pois yksittäiseltä remontilta", 
   assert.equal(doors?.yearTo, null);
 });
 
+test("välimerkittömän remonttiluettelon toimenpiteet ja vuodet kohdistuvat oikein", () => {
+  const source = "Viemärikaivot sukitettu 24 Ilmanvaihtokanavat puhdistettu 2008 Ikkunat ja ulko-ovet uusittu 12/2013 Julkisivu uusittu 10/2019";
+  const renovations = parseListingText(`Tehdyt remontit\n${source}`).renovations;
+  const byComponent = new Map(renovations.map((repair) => [repair.component, repair]));
+  assert.equal(byComponent.get("drain_lining")?.year, 2024);
+  assert.equal(byComponent.get("ventilation")?.year, 2008);
+  assert.equal(byComponent.get("windows")?.year, 2013);
+  assert.equal(byComponent.get("exterior_doors")?.year, 2013);
+  assert.equal(byComponent.get("facade")?.year, 2019);
+  assert.equal(byComponent.has("doors"), false);
+  assert.equal(byComponent.get("drain_lining")?.description, "Viemärikaivot sukitettu 24");
+  assert.equal(byComponent.get("facade")?.description, "Julkisivu uusittu 10/2019");
+  assert.ok(renovations.every((repair) => repair.rawText === source));
+});
+
+test("kaksinumeroiset määrät ja kestot eivät muutu remonttivuosiksi", () => {
+  const cases = [
+    "Ikkunat uusittu 24 kpl",
+    "Viemärit korjattu 24 metriä",
+    "Julkisivu korjattu 24 000 euroa",
+    "Ilmanvaihto huollettu 24 kk",
+  ];
+  for (const text of cases) {
+    const repair = parseListingText(`Tehdyt remontit\n${text}`).renovations[0];
+    assert.equal(repair?.year, null, text);
+  }
+  assert.equal(
+    parseListingText("Taloyhtiössä on 24 asuntoa").renovations.length,
+    0,
+  );
+});
+
+test("vahvat lyhyet vuosi- ja kuukausivuosimerkinnät tulkitaan remonttikontekstissa", () => {
+  const cases = [
+    ["Julkisivu uusittu -19", 2019],
+    ["Ikkunat vaihdettu 12/13", 2013],
+    ["Ikkunat vaihdettu 12/2013", 2013],
+    ["Julkisivu uusittu 10/2019", 2019],
+  ] as const;
+  for (const [text, year] of cases)
+    assert.equal(
+      parseListingText(`Tehdyt remontit\n${text}`).renovations[0]?.year,
+      year,
+      text,
+    );
+});
+
+test("sama remontti ja vuosi yhdistyvät mutta eri vuosien korjaukset säilyvät erillään", () => {
+  const duplicate = parseListingText(
+    "Tehdyt remontit\nIkkunat uusittu 2013\nIkkunat ja ulko-ovet uusittu 12/2013",
+  ).renovations.filter((repair) => repair.component === "windows");
+  assert.equal(duplicate.length, 1);
+  assert.equal(duplicate[0]?.supportingExcerpts.length, 2);
+
+  const separate = parseListingText(
+    "Tehdyt remontit\nIkkunat uusittu 2013\nIkkunat uusittu 2021",
+  ).renovations.filter((repair) => repair.component === "windows");
+  assert.deepEqual(
+    separate.map((repair) => repair.year).sort(),
+    [2013, 2021],
+  );
+});
+
+test("osakorjaus, järjestelmäuusinta ja tutkimus pysyvät eri havaintoina", () => {
+  const renovations = parseListingText(
+    "Tehdyt remontit\nViemärit sukitettu 2015 Täydellinen linjasaneeraus tehty 2020 Putkiston kuntotutkimus tehty 2023",
+  ).renovations;
+  assert.ok(renovations.some((repair) => repair.component === "drain_lining"));
+  assert.ok(renovations.some((repair) => repair.component === "full_line"));
+  assert.ok(
+    renovations.some(
+      (repair) =>
+        repair.component === "pipe_unspecified" &&
+        repair.status === "investigated",
+    ),
+  );
+});
+
+test("taloyhtiön, huoneiston ja epäselvän laajuuden remontit erotetaan", () => {
+  assert.equal(
+    parseListingText("Taloyhtiössä tehty julkisivuremontti 2019").renovations[0]
+      ?.scope,
+    "housing_company",
+  );
+  assert.equal(
+    parseListingText("Huoneiston kylpyhuone uusittu 2021").renovations[0]
+      ?.scope,
+    "apartment",
+  );
+  assert.notEqual(
+    parseListingText("Kylpyhuone uusittu 2021").renovations[0]?.scope,
+    "housing_company",
+  );
+});
+
 test("huoneistokohtainen kylpyhuoneremontti ei muutu taloyhtiön peruskorjaukseksi", () => {
   const parsed = parseListingText("Huoneistossa kylpyhuone remontoitu 2021");
   const bathroom = parsed.renovations.find((repair) => repair.component === "bathrooms");

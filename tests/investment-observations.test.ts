@@ -106,3 +106,71 @@ test("rahoitusvaje on eri havainto kuin lisävakuustarve", () => {
   assert.equal(cashGap?.value, 397.5);
   assert.equal(collateralGap?.title, "Tarvittava lisävakuus");
 });
+
+test("välimerkittömän remonttihistorian olennaiset faktat nousevat oikeisiin sarakkeisiin", () => {
+  const repairHistory = assessRepairHistory({
+    renovations: parseListingText(
+      "Tehdyt remontit\nViemärikaivot sukitettu 24 Ilmanvaihtokanavat puhdistettu 2008 Ikkunat ja ulko-ovet uusittu 12/2013 Julkisivu uusittu 10/2019",
+    ).renovations,
+    constructionYear: 1980,
+    documentKinds: ["listing"],
+  });
+  const observations = evaluateInvestmentObservations({ ...base, repairHistory });
+  const strengths = observations.filter((item) => item.type === "strength");
+  const checks = observations.filter((item) => item.type === "missingData");
+  assert.ok(strengths.some((item) => /Julkisivu.*2019/i.test(item.description)));
+  assert.ok(strengths.some((item) => /Ikkunat.*2013/i.test(item.description)));
+  assert.ok(checks.some((item) => /sukitus.*2024.*ei yksin osoita/i.test(item.description)));
+  assert.ok(checks.some((item) => /puhdistettu.*2008.*uusimisesta ei ole tietoa/i.test(item.description)));
+});
+
+test("tuleva merkittävä remontti on riski ja välitön rahoitusvaje priorisoituu sen edelle", () => {
+  const repairHistory = documentedAssessment(
+    "Tulevat remontit\nTäydellinen linjasaneeraus päätetty 2028",
+  );
+  const observations = evaluateInvestmentObservations({
+    ...base,
+    repairHistory,
+    financingGap: 2_000,
+  });
+  const financingIndex = observations.findIndex(
+    (item) => item.id === "acquisition-financing-gap",
+  );
+  const renovationIndex = observations.findIndex((item) =>
+    item.id.startsWith("future-renovation-"),
+  );
+  assert.ok(financingIndex >= 0 && renovationIndex > financingIndex);
+  assert.equal(observations[renovationIndex]?.type, "risk");
+});
+
+test("havaintojen kuvaukset eivät sisällä päällekkäisiä rivejä", () => {
+  const repairHistory = documentedAssessment(
+    "Tehdyt remontit\nIkkunat uusittu 2013\nIkkunat ja ulko-ovet uusittu 12/2013",
+  );
+  const observations = evaluateInvestmentObservations({ ...base, repairHistory });
+  assert.equal(
+    new Set(observations.map((item) => item.description)).size,
+    observations.length,
+  );
+  assert.equal(
+    observations.filter(
+      (item) => item.type === "strength" && /Ikkunat.*2013/i.test(item.description),
+    ).length,
+    1,
+  );
+});
+
+test("vahvistettu ja käyttäjän arvioima vakuuspuskuri erotetaan", () => {
+  const bank = evaluateInvestmentObservations({
+    ...base,
+    collateralBuffer: 12_000,
+    collateralValueSource: "bank",
+  });
+  const user = evaluateInvestmentObservations({
+    ...base,
+    collateralBuffer: 12_000,
+    collateralValueSource: "user",
+  });
+  assert.match(bank.find((item) => item.id === "collateral-buffer")?.description ?? "", /Pankin vahvistamaan/);
+  assert.match(user.find((item) => item.id === "collateral-buffer")?.description ?? "", /ei ole pankin vahvistama/);
+});

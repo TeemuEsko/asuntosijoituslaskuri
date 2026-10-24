@@ -33,6 +33,8 @@ export type ObservationInput = {
   rentalDemand?: number;
   vacancyMonths: number;
   collateralShortfall?: number;
+  collateralBuffer?: number;
+  collateralValueSource?: "calculated" | "bank" | "user" | "unknown";
   financingGap?: number;
   repairRiskScore?: number;
   repairHistoryKnown: boolean;
@@ -87,38 +89,74 @@ export function evaluateInvestmentObservations(
     });
 
   const repairs = input.repairHistory?.repairs ?? [];
-  const reliableCompletedMajor = repairs.filter(
-    (repair) =>
-      repair.scale === "major" &&
-      ["completed", "ongoing"].includes(repair.status) &&
-      (repair.verifiedByDocuments || repair.source === "document" || repair.source === "user"),
+  const completed = repairs.filter((repair) =>
+    ["completed", "ongoing"].includes(repair.status),
   );
-  const listingOnlyCompletedMajor = repairs.filter(
+  const importantCompleted = completed.filter(
     (repair) =>
-      repair.scale === "major" &&
-      ["completed", "ongoing"].includes(repair.status) &&
-      !reliableCompletedMajor.includes(repair),
+      repair.scale === "major" ||
+      ["windows", "exterior_doors", "water_pipes"].includes(
+        repair.component,
+      ),
   );
-  if (reliableCompletedMajor.length) {
-    const titles = [...new Set(reliableCompletedMajor.map((repair) => repair.title))].slice(0, 3);
+  const completedGroups = importantCompleted.filter((repair, index, all) => {
+    const identity = `${repair.sourceExcerpt.toLocaleLowerCase("fi")}:${repair.year ?? ""}:${repair.yearFrom ?? ""}:${repair.yearTo ?? ""}`;
+    return all.findIndex((candidate) =>
+      `${candidate.sourceExcerpt.toLocaleLowerCase("fi")}:${candidate.year ?? ""}:${candidate.yearFrom ?? ""}:${candidate.yearTo ?? ""}` === identity,
+    ) === index;
+  });
+  for (const [index, repair] of completedGroups.slice(0, 4).entries()) {
+    const sameSource = importantCompleted.filter(
+      (candidate) =>
+        candidate.sourceExcerpt === repair.sourceExcerpt &&
+        candidate.year === repair.year,
+    );
+    const titles = [...new Set(sameSource.map((candidate) => candidate.title))];
+    const titleText = titles
+      .map((title, titleIndex) =>
+        titleIndex === 0
+          ? title
+          : `${title.charAt(0).toLocaleLowerCase("fi")}${title.slice(1)}`,
+      )
+      .join(" ja ");
+    const authoritative =
+      repair.verifiedByDocuments ||
+      repair.source === "document" ||
+      repair.source === "user";
+    const timing = repair.year
+      ? ` vuonna ${repair.year}`
+      : repair.yearFrom && repair.yearTo
+        ? ` vuosina ${repair.yearFrom}–${repair.yearTo}`
+        : "";
+    const major = sameSource.some((candidate) => candidate.scale === "major");
     add({
-      id: "documented-major-renovations",
+      id:
+        authoritative && index === 0
+          ? "documented-major-renovations"
+          : `completed-renovation-${repair.id}`,
       category: "renovation",
       type: "strength",
       severity: "info",
-      title: "Merkittäviä korjauksia on tehty",
-      description: `Taloyhtiössä on lähdetietojen perusteella tehty merkittäviä korjauksia (${titles.join(", ")}). Tämä pienentää kyseisiin rakenteisiin liittyvää korjausriskiä, mutta ei poista muiden korjausten tarvetta.`,
+      title: "Tehty taloyhtiökorjaus",
+      description: `${titleText}: ${authoritative ? "lähdetietojen perusteella" : "myynti-ilmoituksen mukaan"} tehty korjaus${timing}. ${major ? "Merkittävä rakennusosan korjaus pienentää kyseisen osan korjausriskiä" : "Korjaus tukee rakennusosan kuntoa"}, mutta ei poista muiden korjausten tarvetta.`,
     });
-  } else if (listingOnlyCompletedMajor.length) {
+  }
+  const listingOnlyCompletedMajor = importantCompleted.filter(
+    (repair) =>
+      repair.scale === "major" &&
+      !repair.verifiedByDocuments &&
+      repair.source === "listing",
+  );
+  if (listingOnlyCompletedMajor.length)
     add({
       id: "listing-major-renovations-check",
       category: "renovation",
       type: "missingData",
       severity: "medium",
       title: "Ilmoituksessa mainitut suuret korjaukset tarkistettava",
-      description: "Myynti-ilmoituksessa mainitaan merkittäviä tehtyjä korjauksia, mutta niiden laajuutta ei ole vahvistettu taloyhtiöasiakirjoista.",
+      description:
+        "Myynti-ilmoituksessa mainitaan merkittäviä tehtyjä korjauksia, mutta niiden laajuus ja sisältö on vielä varmistettava taloyhtiöasiakirjoista.",
     });
-  }
 
   const futureRepairs = repairs.filter(
     (repair) =>
@@ -146,7 +184,43 @@ export function evaluateInvestmentObservations(
     });
   }
 
-  if (input.repairHistory?.relevantSystems.some((item) => item.system === "plumbing")) {
+  const drainLining = completed.find(
+    (repair) => repair.component === "drain_lining",
+  );
+  if (drainLining) {
+    const timing = drainLining.year ? ` vuonna ${drainLining.year}` : "";
+    add({
+      id: "drain-lining-scope-check",
+      category: "renovation",
+      type: "missingData",
+      severity: "medium",
+      title: "Viemärikorjauksen laajuus tarkistettava",
+      description: `Viemärikaivojen tai viemärien sukitus${timing} ei yksin osoita koko viemäriverkoston uusimista. Tarkista putkiston korjaushistoria ja työn laajuus.`,
+    });
+  }
+  const ventilationMaintenance = completed.find(
+    (repair) =>
+      repair.component === "ventilation" && repair.method === "maintenance",
+  );
+  if (ventilationMaintenance) {
+    const timing = ventilationMaintenance.year
+      ? ` vuonna ${ventilationMaintenance.year}`
+      : "";
+    add({
+      id: "ventilation-maintenance-scope-check",
+      category: "renovation",
+      type: "missingData",
+      severity: "low",
+      title: "Ilmanvaihdon uusiminen tarkistettava",
+      description: `Ilmanvaihtokanavat on puhdistettu${timing}, mutta ilmanvaihtojärjestelmän uusimisesta ei ole tietoa.`,
+    });
+  }
+  if (
+    !drainLining &&
+    input.repairHistory?.relevantSystems.some(
+      (item) => item.system === "plumbing",
+    )
+  ) {
     add({
       id: "pipe-history-check",
       category: "renovation",
@@ -376,6 +450,22 @@ export function evaluateInvestmentObservations(
       value: input.collateralShortfall,
       unit: "€",
     });
+  else if (
+    input.collateralBuffer !== undefined &&
+    input.collateralBuffer > 0 &&
+    (input.collateralValueSource === "bank" ||
+      input.collateralValueSource === "user")
+  )
+    add({
+      id: "collateral-buffer",
+      category: "financing",
+      type: "strength",
+      severity: "info",
+      title: "Vakuuspuskuria käytettävissä",
+      description: `${input.collateralValueSource === "bank" ? "Pankin vahvistamaan" : "Käyttäjän arvioimaan"} vakuusarvoon perustuva vakuuspuskuri on ${formatFinnishNumber(input.collateralBuffer)} euroa. ${input.collateralValueSource === "user" ? "Arvio ei ole pankin vahvistama." : "Puskuri voi tukea rahoitettavuutta."}`,
+      value: input.collateralBuffer,
+      unit: "€",
+    });
   if (input.financingGap !== undefined && input.financingGap > 0)
     add({
       id: "acquisition-financing-gap",
@@ -489,11 +579,29 @@ export function evaluateInvestmentObservations(
     });
   const severityRank = { critical: 0, high: 1, medium: 2, low: 3, info: 4 } as const;
   const typeRank = { risk: 0, notice: 1, strength: 2, missingData: 3 } as const;
-  const topicRank = (finding: InvestmentObservation) =>
-    finding.id.startsWith("future-renovation-") || finding.id === "verified-land-lease-non-renewal" || finding.id === "land-lease-expiry-soon" || finding.id === "documented-land-rent-increase"
-      ? 0
-      : ["cashFlow", "yield", "financing"].includes(finding.category) ? 1
-        : finding.type === "strength" ? 2 : 3;
+  const topicRank = (finding: InvestmentObservation) => {
+    if (
+      [
+        "verified-land-lease-non-renewal",
+        "land-lease-expiry-soon",
+        "documented-land-rent-increase",
+        "acquisition-financing-gap",
+        "negative-cash-flow-after-loan",
+      ].includes(finding.id)
+    )
+      return 0;
+    if (finding.id.startsWith("future-renovation-")) return 1;
+    if (
+      ["financing", "cashFlow", "yield"].includes(finding.category) &&
+      finding.type !== "strength"
+    )
+      return 2;
+    if (finding.type === "strength" && finding.category === "renovation")
+      return 4;
+    if (finding.id === "collateral-buffer") return 5;
+    if (finding.type === "strength") return 3;
+    return 6;
+  };
   const unique = findings.filter((finding, index) => {
     const identity = finding.description.toLocaleLowerCase("fi").replace(/[.!?]+$/g, "").replace(/\s+/g, " ").trim();
     return findings.findIndex((candidate) => candidate.description.toLocaleLowerCase("fi").replace(/[.!?]+$/g, "").replace(/\s+/g, " ").trim() === identity) === index;

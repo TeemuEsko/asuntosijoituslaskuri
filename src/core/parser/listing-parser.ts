@@ -1021,7 +1021,10 @@ const renovationTerms: ReadonlyArray<[RenovationComponent, RegExp]> = [
   ["full_line", /täydellinen linjasaneeraus/i],
   ["plot_water_line", /tonttivesijoht|tontin vesijoht/i],
   ["water_pipes", /käyttövesi(?:putkien|johtojen)|käyttövesiputket/i],
-  ["drain_lining", /viemärien sukitus|viemärit sukitettu/i],
+  [
+    "drain_lining",
+    /viemärien sukitus|viemärit sukitettu|viemärikaivo(?:t|jen)?\s+sukitettu/i,
+  ],
   ["drains", /viemärisaneeraus|viemärit|viemärikuvaus/i],
   ["electrical", /sähköjärjestelm|sähköpääkesk|nousujoht/i],
   ["bathrooms", /kylpyhuone|märkätila/i],
@@ -1073,6 +1076,47 @@ const renovationTerms: ReadonlyArray<[RenovationComponent, RegExp]> = [
 ];
 const actionExpression =
   /uusittu|uusiminen|saneerattu|remontoitu|korjattu|korjaus|kunnostettu|pinnoitettu|sukitettu|vaihdettu|peruskorjattu|toteutettu|toteutetaan|tehty|valmistunut|aloitettu|käynnissä|käynnistyy|päätetty|päättänyt|suunniteltu|suunnitteilla|suunnitelmissa|arvioitu|ehdotettu|tutkitaan|selvitetään|tarkastellaan|harkitaan|puhdistettu|huollettu|tarkastettu|kuntotutkimus|kuntoarvio|kartoitus|hankesuunnittelu|korjaussuunnitelma|kilpailutus|kilpailutettu|kunnossapitotarve|ei\s+(?:ole\s+)?tehty|ei tiedossa/i;
+
+function expressionMatches(expression: RegExp, text: string) {
+  const flags = expression.flags.includes("g")
+    ? expression.flags
+    : `${expression.flags}g`;
+  return [...text.matchAll(new RegExp(expression.source, flags))];
+}
+
+/** Pilkkoo välimerkittömän luettelon vain vahvoista kohde + toimenpide -rajoista. */
+function splitRenovationEntries(text: string): string[] {
+  const actions = expressionMatches(actionExpression, text);
+  if (actions.length < 2) return [text.trim()];
+
+  const starts: number[] = [];
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index]!;
+    const searchFrom = index === 0
+      ? 0
+      : actions[index - 1]!.index! + actions[index - 1]![0].length;
+    const componentStarts = renovationTerms.flatMap(([, pattern]) =>
+      expressionMatches(pattern, text)
+        .map((match) => match.index!)
+        .filter(
+          (position) => position >= searchFrom && position < action.index!,
+        ),
+    );
+    if (!componentStarts.length) return [text.trim()];
+    starts.push(Math.min(...componentStarts));
+  }
+
+  const uniqueStarts = [...new Set(starts)];
+  if (uniqueStarts.length < 2) return [text.trim()];
+  return uniqueStarts
+    .map((start, index) =>
+      text
+        .slice(start, uniqueStarts[index + 1] ?? text.length)
+        .replace(/^[,;.\s]+|[,;.\s]+$/g, "")
+        .trim(),
+    )
+    .filter(Boolean);
+}
 
 const renovationTitles: Record<RenovationComponent, string> = {
   pipe_unspecified: "Putkiremontti",
@@ -1259,6 +1303,34 @@ function renovationTiming(text: string, section: ListingSection) {
           ? "planned"
           : "unknown"
       : parsed.status;
+  const currentYear = new Date().getFullYear();
+  const shortYear = (() => {
+    if (parsed.years.length) return null;
+    if (
+      /\b\d{2}\s*(?:asuntoa?|metriä|m\b|kpl\b|kk\b|000\b|euroa?\b)/i.test(
+        text,
+      )
+    )
+      return null;
+    const slash = text.match(/\b(?:0?[1-9]|1[0-2])\/(\d{2})\b/);
+    const trailing = text.match(/(?:^|\s)-?(\d{2})(?=\s*[,;.]?\s*$)/);
+    const token = slash?.[1] ?? trailing?.[1];
+    if (!token || !actionExpression.test(text)) return null;
+    const twoDigit = Number(token);
+    const thisCentury = Math.floor(currentYear / 100) * 100 + twoDigit;
+    const candidate = thisCentury > currentYear + 10
+      ? thisCentury - 100
+      : thisCentury;
+    if (candidate < currentYear - 100 || candidate > currentYear + 30)
+      return null;
+    if (status === "completed" && candidate > currentYear) return null;
+    return candidate;
+  })();
+  const years = parsed.years.length
+    ? parsed.years
+    : shortYear === null
+      ? []
+      : [shortYear];
   const timeHorizon: RenovationTimeHorizon | undefined =
     /seuraavan viiden vuoden/i.test(text)
       ? "next_five_years"
@@ -1269,8 +1341,9 @@ function renovationTiming(text: string, section: ListingSection) {
           : undefined;
   return {
     ...parsed,
+    years,
     status,
-    year: parsed.years.length === 1 ? parsed.years[0]! : null,
+    year: years.length === 1 ? years[0]! : null,
     yearFrom: range ? Number(range[1]) : null,
     yearTo: range ? Number(range[2]) : null,
     timeHorizon,
@@ -1282,6 +1355,7 @@ function createRenovation(
   line: string,
   section: ListingSection,
   index: number,
+  rawSource = line,
 ): RenovationFinding {
   const context = renovationContext(component, line);
   const colonIndex = line.indexOf(":");
@@ -1290,11 +1364,14 @@ function createRenovation(
     ? line
     : context;
   const timing = renovationTiming(timingSource, section);
-  const apartmentSpecific = /\b(?:huoneistossa|huoneiston|huoneistokohtainen|asunnossa|asunnon)\b/i.test(context)
+  const apartmentSpecific = /\b(?:huoneistossa|huoneiston|huoneistokohtainen|asunnossa|asunnon)\b/i.test(line)
     || /\b(?:kylpyhuone|keittiö|sauna)\w*\s+(?:remontoitu|uusittu|saneerattu)\b/i.test(context) && section === "unknown";
+  const housingCompanySpecific = /(?:^|\s)(?:taloyhtiössä|taloyhtiön|yhtiössä|yhtiön)(?=\s|$)/i.test(
+    line,
+  );
   const scope = apartmentSpecific
     ? "apartment"
-    : ["completed_renovations", "future_renovations", "maintenance_plan"].includes(section)
+    : housingCompanySpecific || ["completed_renovations", "future_renovations", "maintenance_plan"].includes(section)
       ? "housing_company"
       : "unknown";
   const vagueFuture =
@@ -1321,7 +1398,7 @@ function createRenovation(
     {
       source: "listing",
       sourceName: "Myynti-ilmoitus",
-      rawText: line,
+      rawText: rawSource,
       confidence,
     },
   ];
@@ -1334,11 +1411,11 @@ function createRenovation(
     ...timing,
     source: "listing",
     sourceName: "Myynti-ilmoitus",
-    rawText: line,
+    rawText: rawSource,
     verifiedByDocuments: false,
     sourceHistory,
     conflicts: [],
-    sourceExcerpt: line,
+    sourceExcerpt: context,
     supportingExcerpts: [line],
     section,
     confidence,
@@ -1382,8 +1459,15 @@ export function parseRenovations(text: string): RenovationFinding[] {
     if (candidates.some((item) => item.line === line)) continue;
     if (actionExpression.test(line)) candidates.push({ line, section });
   }
-  const raw = candidates.flatMap(
-    ({ line, section: candidateSection }, candidateIndex) => {
+  const entries = candidates.flatMap(({ line, section: candidateSection }) =>
+    splitRenovationEntries(line).map((entry) => ({
+      line: entry,
+      rawSource: line,
+      section: candidateSection,
+    })),
+  );
+  const raw = entries.flatMap(
+    ({ line, rawSource, section: candidateSection }, candidateIndex) => {
       const matched = renovationTerms.filter(([, pattern]) =>
         pattern.test(line),
       );
@@ -1393,6 +1477,12 @@ export function parseRenovations(text: string): RenovationFinding[] {
               !(
                 component === "drains" &&
                 matched.some(([candidate]) => candidate === "drain_lining")
+              ) &&
+              !(
+                component === "doors" &&
+                matched.some(([candidate]) =>
+                  ["exterior_doors", "garage_doors"].includes(candidate),
+                )
               ),
           )
         : [
@@ -1408,6 +1498,7 @@ export function parseRenovations(text: string): RenovationFinding[] {
           line,
           candidateSection,
           candidateIndex * 100 + componentIndex,
+          rawSource,
         ),
       );
     },
