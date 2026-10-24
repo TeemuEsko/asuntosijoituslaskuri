@@ -85,6 +85,10 @@ export type InvestmentAnalysisInput = {
   collateralValueSource?: CollateralValueSource;
   verifiedLongTermRentalProhibition?: boolean;
   verifiedLandLeaseNonRenewal?: boolean;
+  documentedLandRentIncrease?: boolean;
+  landRentIncreaseDescription?: string;
+  heatingType?: string;
+  heatingCostResponsibility?: "tenant" | "landlord" | "included" | "unknown";
 };
 
 export type InvestmentAnalysisResult = InvestmentOverallScoreData & {
@@ -229,10 +233,23 @@ export function calculateBankLoanPayment(
       ? amount
       : 0;
   const principalDueAtMaturity = repaymentType === "bullet" ? amount : 0;
+  let balance = amount;
+  let annualPrincipal = 0;
+  for (let month = 0; month < Math.min(12, months) && balance > 0; month += 1) {
+    const monthlyInterest = balance * monthlyRate;
+    const monthlyPrincipal = repaymentType === "equal_principal"
+      ? Math.min(balance, amount / months)
+      : repaymentType === "annuity" || repaymentType === "fixed_payment"
+        ? Math.min(balance, Math.max(0, payment - monthlyInterest))
+        : 0;
+    annualPrincipal += monthlyPrincipal;
+    balance = Math.max(0, balance - monthlyPrincipal);
+  }
   return {
     payment,
     interest,
     principal,
+    annualPrincipal,
     remainingPrincipalAtEnd,
     principalDueAtMaturity,
   };
@@ -298,29 +315,32 @@ export function calculateInvestmentAnalysis(
     valid(input.monthlyBankLoanPayment) && input.monthlyBankLoanPayment >= 0
       ? input.monthlyBankLoanPayment
       : undefined;
-  const loanKnown =
-    explicitPayment !== undefined ||
-    (valid(input.bankLoanAmount) &&
-      valid(input.annualInterestRate) &&
-      valid(input.loanTermYears) &&
-      Boolean(input.repaymentType));
-  const loan =
-    explicitPayment !== undefined
+  const scheduleKnown =
+    valid(input.bankLoanAmount) &&
+    valid(input.annualInterestRate) &&
+    valid(input.loanTermYears) &&
+    Boolean(input.repaymentType);
+  const loanKnown = explicitPayment !== undefined || scheduleKnown;
+  const calculatedLoan = scheduleKnown
+    ? calculateBankLoanPayment(
+        input.bankLoanAmount!,
+        input.annualInterestRate!,
+        input.loanTermYears!,
+        input.repaymentType!,
+      )
+    : undefined;
+  const loan = calculatedLoan
+    ? { ...calculatedLoan, payment: explicitPayment ?? calculatedLoan.payment }
+    : explicitPayment !== undefined
       ? {
           payment: explicitPayment,
-          interest: 0,
-          principal: explicitPayment,
+          interest: undefined,
+          principal: undefined,
+          annualPrincipal: undefined,
           remainingPrincipalAtEnd: undefined,
           principalDueAtMaturity: undefined,
         }
-      : loanKnown
-        ? calculateBankLoanPayment(
-            input.bankLoanAmount!,
-            input.annualInterestRate!,
-            input.loanTermYears!,
-            input.repaymentType!,
-          )
-        : undefined;
+      : undefined;
   const afterLoan =
     beforeLoan !== undefined && loan ? beforeLoan - loan.payment : undefined;
 
@@ -366,7 +386,7 @@ export function calculateInvestmentAnalysis(
       ? totalDebt / adjustedAcquisitionPrice
       : undefined;
   const annualCashFlow = afterLoan === undefined ? undefined : afterLoan * 12;
-  const annualBankPrincipal = loan ? loan.principal * 12 : undefined;
+  const annualBankPrincipal = loan?.annualPrincipal;
   const explicitNonPositiveEquity = valid(input.equity) && input.equity <= 0;
   const equityBase = valid(input.equity)
     ? input.equity > 0
@@ -472,6 +492,10 @@ export function calculateInvestmentAnalysis(
     landRentAnnual: input.landRentAnnual,
     plotFeeMonthly: input.plotFeeMonthly,
     verifiedLandLeaseNonRenewal: input.verifiedLandLeaseNonRenewal,
+    documentedLandRentIncrease: input.documentedLandRentIncrease,
+    landRentIncreaseDescription: input.landRentIncreaseDescription,
+    heatingType: input.heatingType,
+    heatingCostResponsibility: input.heatingCostResponsibility,
     locationRisk: weightedLocationRisk,
     resaleLiquidity: weightedResaleLiquidity,
     loanKnown,
@@ -540,6 +564,7 @@ export function calculateInvestmentAnalysis(
     missingData: missingFactors,
     verifiedLongTermRentalProhibition: input.verifiedLongTermRentalProhibition,
     verifiedLandLeaseNonRenewal: input.verifiedLandLeaseNonRenewal,
+    documentedLandRentIncrease: input.documentedLandRentIncrease,
   });
   const score = opportunity.score;
   return {

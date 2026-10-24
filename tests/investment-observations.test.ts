@@ -78,3 +78,22 @@ test("oma tontti näkyy vahvuutena ilman uutta pisteytyssääntöä", () => {
   const observations = evaluateInvestmentObservations({ ...base, landOwnership: "owned" });
   assert.equal(observations.find((item) => item.id === "owned-land")?.type, "strength");
 });
+
+test("dokumentoitu maanvuokran korotus nousee vahvistetuksi riskiksi", () => {
+  const observations = evaluateInvestmentObservations({ ...base, landOwnership: "leased", landLeaseEndDate: "2055", documentedLandRentIncrease: true, landRentIncreaseDescription: "vuokra nousee vuonna 2028" });
+  const finding = observations.find((item) => item.id === "documented-land-rent-increase");
+  assert.equal(finding?.type, "risk");
+  assert.equal(finding?.severity, "high");
+  assert.match(finding?.description ?? "", /vuokra nousee vuonna 2028/);
+});
+
+test("sähkölämmitys erottaa kustannusvastuun ilman automaattista oletusta", () => {
+  const unknown = evaluateInvestmentObservations({ ...base, heatingType: "electric" });
+  const tenant = evaluateInvestmentObservations({ ...base, heatingType: "electric", heatingCostResponsibility: "tenant" });
+  const included = evaluateInvestmentObservations({ ...base, heatingType: "electric", heatingCostResponsibility: "included" });
+  const landlord = evaluateInvestmentObservations({ ...base, heatingType: "electric", heatingCostResponsibility: "landlord" });
+  assert.equal(unknown.find((item) => item.id === "electric-heating-responsibility-check")?.type, "missingData");
+  assert.equal(tenant.find((item) => item.id === "tenant-paid-electric-heating")?.type, "risk");
+  assert.equal(included.some((item) => /electric-heating|tenant-paid-electric/.test(item.id)), false);
+  assert.match(landlord.find((item) => item.id === "landlord-paid-electric-heating-check")?.description ?? "", /muihin kuukausikuluihin vain kerran/);
+});

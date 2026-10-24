@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   analysisFacts,
+  analysisSubtitle,
   analysisTitle,
 } from "@/core/analysis/analysis-presentation";
 import { missingCriticalAnalysisFields } from "@/core/analysis/analysis-entry";
@@ -108,6 +109,9 @@ export type ImportedPropertyData = Partial<
     | "plotShareRedeemed"
     | "verifiedLongTermRentalProhibition"
     | "verifiedLandLeaseNonRenewal"
+    | "documentedLandRentIncrease"
+    | "landRentIncreaseDescription"
+    | "heatingCostResponsibility"
   >;
 };
 const ANALYSIS_DRAFT_KEY = "asuntosijoituslaskuri:analysis-draft:v1";
@@ -120,6 +124,9 @@ function storedOpportunityInputs(
     plotShareRedeemed: input.plotShareRedeemed,
     verifiedLongTermRentalProhibition: input.verifiedLongTermRentalProhibition,
     verifiedLandLeaseNonRenewal: input.verifiedLandLeaseNonRenewal,
+    documentedLandRentIncrease: input.documentedLandRentIncrease,
+    landRentIncreaseDescription: input.landRentIncreaseDescription,
+    heatingCostResponsibility: input.heatingCostResponsibility,
   };
 }
 type ImportedPurchaseField = Exclude<PurchaseFieldKey, "renovationReserve">;
@@ -559,6 +566,14 @@ export function PropertyWorkspace({
       data.opportunityScoreInputs?.verifiedLongTermRentalProhibition,
     verifiedLandLeaseNonRenewal:
       data.opportunityScoreInputs?.verifiedLandLeaseNonRenewal,
+    documentedLandRentIncrease:
+      data.opportunityScoreInputs?.documentedLandRentIncrease,
+    landRentIncreaseDescription:
+      data.opportunityScoreInputs?.landRentIncreaseDescription,
+    heatingType:
+      typeof data.heatingType === "string" ? data.heatingType : undefined,
+    heatingCostResponsibility:
+      data.opportunityScoreInputs?.heatingCostResponsibility,
   };
   const overallScore = adaptInvestmentScore(scoreSource);
   const presentationData = {
@@ -568,6 +583,7 @@ export function PropertyWorkspace({
       (title && title !== "Uusi kohde" ? title : undefined),
   };
   const pageTitle = analysisTitle(presentationData);
+  const pageSubtitle = analysisSubtitle(presentationData);
   const facts = analysisFacts(presentationData);
   const missingCriticalFields = missingCriticalAnalysisFields({
     debtFreePrice: purchase.debtFreePrice,
@@ -1106,7 +1122,7 @@ export function PropertyWorkspace({
         <div className="min-w-0 min-[1100px]:pl-18 min-[1600px]:pl-60">
           <WorkspaceHeader
             title={pageTitle}
-            location={typeof data.city === "string" ? data.city : ""}
+            location={pageSubtitle}
             reportsAvailable={analysisReady}
             reportAddress={
               pageTitle === "Analysoitu sijoituskohde" ? undefined : pageTitle
@@ -1302,6 +1318,7 @@ export function PropertyWorkspace({
         reportAddress={
           pageTitle === "Analysoitu sijoituskohde" ? undefined : pageTitle
         }
+        propertySubtitle={pageSubtitle}
         facts={facts}
         data={data}
         purchase={purchase}

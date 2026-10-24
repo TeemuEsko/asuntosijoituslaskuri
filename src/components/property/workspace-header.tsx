@@ -58,7 +58,7 @@ export function WorkspaceHeader({
           </Badge>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="min-w-0 max-w-full truncate text-lg font-semibold tracking-tight">
+          <h1 className="min-w-0 max-w-full break-words text-lg font-semibold tracking-tight">
             {title}
           </h1>
           <Badge variant="outline" className="shrink-0 bg-muted/70">
@@ -66,7 +66,7 @@ export function WorkspaceHeader({
           </Badge>
         </div>
         {location ? (
-          <p className="truncate text-xs text-muted-foreground">{location}</p>
+          <p className="break-words text-xs text-muted-foreground">{location}</p>
         ) : null}
       </div>
       <div className="flex shrink-0 flex-col items-stretch gap-1 sm:items-end">

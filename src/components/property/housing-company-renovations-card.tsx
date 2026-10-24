@@ -90,11 +90,12 @@ export function HousingCompanyRenovationsCard({
   )
     return null;
   const completed = renovations.filter((repair) =>
-    completedStatuses.has(repair.status),
+    repair.scope !== "apartment" && completedStatuses.has(repair.status),
   );
   const planned = renovations.filter(
-    (repair) => !completedStatuses.has(repair.status),
+    (repair) => repair.scope !== "apartment" && !completedStatuses.has(repair.status),
   );
+  const apartmentRepairs = renovations.filter((repair) => repair.scope === "apartment");
   return (
     <Card id="taloyhtion-remontit" className="scroll-mt-24">
       <CardHeader className="border-b">
@@ -113,6 +114,11 @@ export function HousingCompanyRenovationsCard({
           title="Suunnitellut remontit"
           icon={<CalendarClock className="size-5 text-warning" />}
           repairs={planned}
+        />
+        <RepairList
+          title="Huoneistokohtaiset remontit"
+          icon={<CheckCircle2 className="size-5 text-muted-foreground" />}
+          repairs={apartmentRepairs}
         />
         <div className="rounded-lg border border-warning/30 bg-warning-soft p-4 text-sm">
           <p className="font-medium">Varmista remonttitietojen ajantasaisuus</p>

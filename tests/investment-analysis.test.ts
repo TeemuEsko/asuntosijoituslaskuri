@@ -67,6 +67,26 @@ test("kaikki viisi lyhennystapaa erittelevät maksun, koron, lyhennyksen ja lopp
   assert.equal(bullet.principal, 0);
   assert.equal(bullet.remainingPrincipalAtEnd, 120_000);
   assert.equal(bullet.principalDueAtMaturity, 120_000);
+  assert.ok(annuity.annualPrincipal > annuity.principal * 12);
+  assert.equal(equal.annualPrincipal, equal.principal * 12);
+  assert.equal(interestOnly.annualPrincipal, 0);
+  assert.equal(bullet.annualPrincipal, 0);
+});
+
+test("ensimmäisten 12 kuukauden lyhennys perustuu todelliseen maksuaikatauluun", () => {
+  const result = calculateInvestmentAnalysis(complete);
+  const schedule = calculateBankLoanPayment(80_000, 4.5, 20, "annuity")!;
+  assert.equal(result.monthlyBankLoanInterest, schedule.interest);
+  assert.equal(result.monthlyBankLoanPrincipal, schedule.principal);
+  assert.equal(result.annualBankLoanPrincipal, schedule.annualPrincipal);
+  assert.notEqual(result.annualBankLoanPrincipal, result.monthlyBankLoanPrincipal! * 12);
+});
+
+test("erikseen annettu kuukausierä ei muutu kokonaan pääomalyhennykseksi", () => {
+  const result = calculateInvestmentAnalysis({ ...complete, monthlyBankLoanPayment: 500 });
+  assert.equal(result.monthlyBankLoanPayment, 500);
+  assert.ok(result.monthlyBankLoanInterest! > 0);
+  assert.ok(result.monthlyBankLoanPrincipal! < 500);
 });
 
 test("pankkilaina reagoi käyttäjän omaan pääomaan muuttamatta hinnan käsitteitä", () => {

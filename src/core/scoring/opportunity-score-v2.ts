@@ -57,6 +57,9 @@ export type OpportunityScoreV2Input = {
   missingData?: string[];
   verifiedLongTermRentalProhibition?: boolean;
   verifiedLandLeaseNonRenewal?: boolean;
+  documentedLandRentIncrease?: boolean;
+  landRentIncreaseDescription?: string;
+  heatingCostResponsibility?: "tenant" | "landlord" | "included" | "unknown";
   asOfYear?: number;
 };
 
@@ -123,10 +126,12 @@ function landScore(input: OpportunityScoreV2Input, asOfYear: number): number {
   if (ownership === "owned" || ownership === "oma tontti") return 100;
   if (input.plotShareRedeemed) return 90;
   if (!ownership || ownership === "unknown") return 50;
-  if (ownership === "optional_lease" || ownership.includes("valinnainen")) return 60;
+  const increasePenalty = input.documentedLandRentIncrease ? 15 : 0;
+  if (ownership === "optional_lease" || ownership === "optional_leasehold" || ownership.includes("valinnainen"))
+    return Math.max(20, 60 - increasePenalty);
   const years = yearsUntil(input.landLeaseEndDate, asOfYear);
-  if (!known(years)) return 50;
-  return interpolateScore(years, [[0, 15], [5, 40], [15, 65], [30, 80]]);
+  if (!known(years)) return Math.max(20, 50 - increasePenalty);
+  return Math.max(10, interpolateScore(years, [[0, 15], [5, 40], [15, 65], [30, 80]]) - increasePenalty);
 }
 
 function housingCompanyScore(input: OpportunityScoreV2Input, asOfYear: number): number {

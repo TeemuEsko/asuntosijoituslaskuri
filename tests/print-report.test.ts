@@ -87,12 +87,19 @@ test("raportti käyttää suoraan työtilan canonical- ja analyysiarvoja", async
     "rentEstimate={rentEstimate}",
     "marketAssessments={marketAssessments}",
     "repairHistory={repairHistory}",
+    "propertySubtitle={pageSubtitle}",
   ])
     assert.ok(workspace.includes(prop), prop);
   assert.doesNotMatch(report, /calculateInvestmentAnalysis|adaptInvestmentScore|calculateBankLoan/);
   assert.match(report, /analysis\.netRentalYield/);
   assert.match(report, /analysis\.cashFlowAfterBankLoan/);
   assert.match(report, /analysis\.monthlyBankLoanPayment/);
+  assert.match(report, /analysis\.monthlyBankLoanPrincipal/);
+  assert.match(report, /analysis\.annualBankLoanPrincipal/);
+  assert.match(report, /Pääomalyhennys, ensimmäinen kuukausi/);
+  assert.match(report, /Pääomalyhennys, ensimmäiset 12 kuukautta/);
+  assert.match(report, /propertySubtitle/);
+  assert.match(report, /Huoneistokohtaiset remontit/);
   for (const label of ["Yhtiölainaosuus", "Remonttivara", "Oikaistu hankintahinta", "Vakuusarvoprosentti", "Arvioitu vakuusarvo"]) assert.match(report, new RegExp(label));
   assert.match(report, /Laskelma perustuu täyteen 12 kuukauden vuokrausasteeseen/);
 });

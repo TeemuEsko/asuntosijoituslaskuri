@@ -34,7 +34,8 @@ function renovationFingerprint(repair: RenovationFinding): string {
 }
 
 function sameRenovation(left: RenovationFinding, right: RenovationFinding): boolean {
-  const sameComponentAndMethod = left.component === right.component && (!left.method || !right.method || left.method === right.method);
+  const sameScope = (left.scope ?? "unknown") === (right.scope ?? "unknown");
+  const sameComponentAndMethod = sameScope && left.component === right.component && (!left.method || !right.method || left.method === right.method);
   return sameComponentAndMethod && (timeCompatible(left, right) || (left.source !== right.source && renovationFingerprint(left) === renovationFingerprint(right)));
 }
 

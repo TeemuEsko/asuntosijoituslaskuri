@@ -10,12 +10,17 @@ test("tunnuslukukortit ovat responsiivisia, saavutettavia ja käyttävät semant
   assert.match(source, /StatusIcon aria-hidden="true"/);
   assert.match(source, /METRIC_CARD_STATUS_CLASSES/);
   assert.match(source, /min-w-0/);
+  assert.match(source, /flex-wrap items-start/);
+  assert.match(source, /max-w-full whitespace-normal/);
+  assert.match(source, /break-words text-sm font-medium/);
   assert.doesNotMatch(source, /Infinity|NaN/);
   assert.match(source, /Ensisijainen tuottomittari/);
   assert.match(source, /Vertailuluku/);
   assert.match(source, /data-emphasis=\{metric\.emphasis\}/);
   assert.match(source, /Huomioi tyhjäkäynnin ja jatkuvat kulut, kuten hoitovastikkeen/);
   assert.match(source, /Vuokratuotto ennen vastikkeita ja muita kuluja/);
+  assert.match(source, /analysis\.annualBankLoanPrincipal/);
+  assert.match(source, /ensimmäiset 12 kk/);
 });
 
 test("oman pääoman käyttöliittymä näyttää oletuslähteen ja tarjoaa palautuksen", async () => {

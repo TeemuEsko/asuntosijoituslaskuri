@@ -41,6 +41,10 @@ export type ObservationInput = {
   landRentAnnual?: number;
   plotFeeMonthly?: number;
   verifiedLandLeaseNonRenewal?: boolean;
+  documentedLandRentIncrease?: boolean;
+  landRentIncreaseDescription?: string;
+  heatingType?: string;
+  heatingCostResponsibility?: "tenant" | "landlord" | "included" | "unknown";
   locationRisk?: number;
   resaleLiquidity?: number;
   loanKnown: boolean;
@@ -227,6 +231,47 @@ export function evaluateInvestmentObservations(
         ? `Taloyhtiön nykyinen tontin vuosivuokra on ${formatFinnishNumber(input.landRentAnnual)} €. Tulevan korotuksen huoneistokohtaista kuukausivaikutusta ei voida laskea ilman korotusehtoa ja jakoperustetta.`
         : "Tulevan tontinvuokran korotuksen huoneistokohtaista vaikutusta ei voida laskea ilman korotusehtoa ja jakoperustetta.",
     });
+    if (input.documentedLandRentIncrease) {
+      add({
+        id: "documented-land-rent-increase",
+        category: "housingCompany",
+        type: "risk",
+        severity: "high",
+        title: "Maanvuokran merkittävä korotus",
+        description: input.landRentIncreaseDescription?.trim()
+          ? `Lähdeaineistossa on dokumentoitu maanvuokran korotus: ${input.landRentIncreaseDescription.trim()} Huoneistokohtainen vaikutus tulee varmistaa taloyhtiöltä.`
+          : "Lähdeaineistossa on dokumentoitu merkittävä maanvuokran korotus. Huoneistokohtainen vaikutus tulee varmistaa taloyhtiöltä.",
+      });
+    }
+  }
+  if (input.heatingType?.toLocaleLowerCase("fi") === "electric") {
+    if (input.heatingCostResponsibility === "tenant")
+      add({
+        id: "tenant-paid-electric-heating",
+        category: "rentalDemand",
+        type: "risk",
+        severity: "medium",
+        title: "Vuokralainen maksaa lämmityssähkön",
+        description: "Asunnossa on sähkölämmitys, jonka vuokralainen maksaa erikseen. Huomioi vaikutus vuokralaisen kokonaisasumiskustannuksiin ja vuokrattavuuteen.",
+      });
+    else if (input.heatingCostResponsibility === "landlord")
+      add({
+        id: "landlord-paid-electric-heating-check",
+        category: "dataCompleteness",
+        type: "missingData",
+        severity: "medium",
+        title: "Lämmityssähkö sisällytettävä kuluihin",
+        description: "Vuokranantaja vastaa sähkölämmityksen kustannuksesta. Varmista, että todellinen lämmityskulu sisältyy muihin kuukausikuluihin vain kerran.",
+      });
+    else if (!input.heatingCostResponsibility || input.heatingCostResponsibility === "unknown")
+      add({
+        id: "electric-heating-responsibility-check",
+        category: "dataCompleteness",
+        type: "missingData",
+        severity: "medium",
+        title: "Sähkölämmityksen kustannusvastuu tarkistettava",
+        description: "Asunnossa on sähkölämmitys. Tarkista lämmityskustannusten maksaja ja vaikutus vuokralaisen kokonaisasumiskustannuksiin.",
+      });
   }
   if (input.cashFlowAfterLoan !== undefined && input.cashFlowAfterLoan < 0)
     add({
@@ -433,7 +478,7 @@ export function evaluateInvestmentObservations(
   const severityRank = { critical: 0, high: 1, medium: 2, low: 3, info: 4 } as const;
   const typeRank = { risk: 0, notice: 1, strength: 2, missingData: 3 } as const;
   const topicRank = (finding: InvestmentObservation) =>
-    finding.id.startsWith("future-renovation-") || finding.id === "verified-land-lease-non-renewal" || finding.id === "land-lease-expiry-soon"
+    finding.id.startsWith("future-renovation-") || finding.id === "verified-land-lease-non-renewal" || finding.id === "land-lease-expiry-soon" || finding.id === "documented-land-rent-increase"
       ? 0
       : ["cashFlow", "yield", "financing"].includes(finding.category) ? 1
         : finding.type === "strength" ? 2 : 3;

@@ -1,6 +1,6 @@
 import { formatArea } from "../parser/normalization.ts";
 
-export type AnalysisPresentationData = Partial<Record<"address" | "city" | "listingTitle" | "roomDescription" | "areaSqm" | "buildingType" | "constructionYear" | "floor" | "condition", number | string>>;
+export type AnalysisPresentationData = Partial<Record<"address" | "city" | "postalCode" | "housingCompanyName" | "listingTitle" | "roomDescription" | "areaSqm" | "buildingType" | "constructionYear" | "floor" | "condition", number | string>>;
 
 export const buildingTypeLabels: Record<string, string> = { apartment: "Kerrostalo", terraced: "Rivitalo", loft: "Luhtitalo", semi_detached: "Paritalo", detached_unit: "Erillistalo", detached_house: "Omakotitalo", wooden_apartment: "Puutalo-osake", other: "Muu" };
 
@@ -17,6 +17,14 @@ export function analysisTitle(data: AnalysisPresentationData): string {
 export function analysisFacts(data: AnalysisPresentationData): string[] {
   const building = displayBuildingType(data.buildingType); const floor = text(data.floor);
   return [text(data.roomDescription), typeof data.areaSqm === "number" ? formatArea(data.areaSqm) : undefined, building, typeof data.constructionYear === "number" ? `Rakennusvuosi ${Math.trunc(data.constructionYear)}` : undefined, floor && (building === "Kerrostalo" || building === "Luhtitalo") ? `Kerros ${floor}` : undefined].filter((value): value is string => Boolean(value));
+}
+
+export function analysisSubtitle(data: AnalysisPresentationData): string | undefined {
+  const company = text(data.housingCompanyName);
+  const postalCode = text(data.postalCode);
+  const city = text(data.city);
+  const location = postalCode ? [postalCode, city].filter(Boolean).join(" ") : undefined;
+  return [company, location || undefined].filter(Boolean).join(" · ") || undefined;
 }
 
 export function showFloor(buildingType: unknown, floor: unknown): boolean { const building = displayBuildingType(buildingType); return Boolean(text(floor) && (building === "Kerrostalo" || building === "Luhtitalo")); }

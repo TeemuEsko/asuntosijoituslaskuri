@@ -121,6 +121,7 @@ export type RenovationComponent =
   | "windows"
   | "doors"
   | "exterior_doors"
+  | "garage_doors"
   | "drainage"
   | "elevator"
   | "ventilation"
@@ -198,6 +199,7 @@ export type RenovationFinding = {
   confidence: ConfidenceLevel;
   confidenceScore: number;
   confidenceReasons: string[];
+  scope?: "housing_company" | "apartment" | "unknown";
 };
 
 export type RejectedCandidate = {
@@ -1043,6 +1045,7 @@ const renovationTerms: ReadonlyArray<[RenovationComponent, RegExp]> = [
   ],
   ["windows", /ikkuna(?:t|n|remont|-|\b)/i],
   ["exterior_doors", /ulko-ov|ulko ov/i],
+  ["garage_doors", /autotallien?\s+ov|autotallinov/i],
   ["doors", /ovet|ovien|parvekeov/i],
   ["drainage", /salaoja(?:t|n|remont|-)|sadevesijärjestelm/i],
   [
@@ -1091,6 +1094,7 @@ const renovationTitles: Record<RenovationComponent, string> = {
   windows: "Ikkunat",
   doors: "Ovet",
   exterior_doors: "Ulko-ovet",
+  garage_doors: "Autotallien ovet",
   drainage: "Salaojat",
   elevator: "Hissi",
   ventilation: "Ilmanvaihto",
@@ -1225,6 +1229,7 @@ function renovationContext(
     text.lastIndexOf(",", match.index),
     text.lastIndexOf(".", match.index),
     text.lastIndexOf(";", match.index),
+    text.lastIndexOf(":", match.index),
   );
   const afterCandidates = [
     text.indexOf(",", match.index),
@@ -1278,8 +1283,20 @@ function createRenovation(
   section: ListingSection,
   index: number,
 ): RenovationFinding {
-  const timing = renovationTiming(line, section);
   const context = renovationContext(component, line);
+  const colonIndex = line.indexOf(":");
+  const timingPrefix = colonIndex >= 0 ? line.slice(0, colonIndex) : "";
+  const timingSource = context !== line && /suunnitteilla|suunniteltu|päätetty|arviolta|arvioitu|ehdotettu|valmistelussa|selvitetään/i.test(timingPrefix)
+    ? line
+    : context;
+  const timing = renovationTiming(timingSource, section);
+  const apartmentSpecific = /\b(?:huoneistossa|huoneiston|huoneistokohtainen|asunnossa|asunnon)\b/i.test(context)
+    || /\b(?:kylpyhuone|keittiö|sauna)\w*\s+(?:remontoitu|uusittu|saneerattu)\b/i.test(context) && section === "unknown";
+  const scope = apartmentSpecific
+    ? "apartment"
+    : ["completed_renovations", "future_renovations", "maintenance_plan"].includes(section)
+      ? "housing_company"
+      : "unknown";
   const vagueFuture =
     timing.status === "proposed" ||
     timing.timeHorizon !== undefined ||
@@ -1341,6 +1358,7 @@ function createRenovation(
         ? ["Tulevan hankkeen ajankohta tai toteutus on epävarma"]
         : []),
     ],
+    scope,
   };
 }
 
@@ -1396,7 +1414,7 @@ export function parseRenovations(text: string): RenovationFinding[] {
   );
   const groups = new Map<string, RenovationFinding[]>();
   for (const item of raw) {
-    const key = `${item.component}:${item.method ?? ""}:${item.status}:${item.yearFrom ?? item.year ?? ""}:${item.yearTo ?? ""}`;
+    const key = `${item.scope ?? "unknown"}:${item.component}:${item.method ?? ""}:${item.status}:${item.yearFrom ?? item.year ?? ""}:${item.yearTo ?? ""}`;
     groups.set(key, [...(groups.get(key) ?? []), item]);
   }
   return [...groups.values()].map((group, index) => {

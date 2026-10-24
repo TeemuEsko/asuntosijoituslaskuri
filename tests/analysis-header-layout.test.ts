@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   analysisFacts,
+  analysisSubtitle,
   analysisTitle,
   showFloor,
 } from "../src/core/analysis/analysis-presentation.ts";
@@ -23,6 +24,13 @@ test("otsikko käyttää osoitetta, ilmoitusotsikkoa ja turvallista fallbackia",
     "Kolmio keskustassa",
   );
   assert.equal(analysisTitle({}), "Analysoitu sijoituskohde");
+});
+test("otsikon alarivi käyttää taloyhtiön nimeä sekä postinumeroa ilman kaupungin turhaa toistoa", () => {
+  assert.equal(analysisSubtitle({ housingCompanyName: "As Oy Gerbyn Länsimetsäntie 27 Bost Ab", postalCode: "65280", city: "Vaasa" }), "As Oy Gerbyn Länsimetsäntie 27 Bost Ab · 65280 Vaasa");
+  assert.equal(analysisSubtitle({ postalCode: "65280", city: "Vaasa" }), "65280 Vaasa");
+  assert.equal(analysisSubtitle({ housingCompanyName: "Asunto Oy Erittäin Pitkä Taloyhtiön Nimi" }), "Asunto Oy Erittäin Pitkä Taloyhtiön Nimi");
+  assert.equal(analysisSubtitle({ city: "Vaasa" }), undefined);
+  assert.equal(analysisSubtitle({}), undefined);
 });
 test("perustietorivi sisältää vain saatavilla olevat arvot", () => {
   assert.deepEqual(

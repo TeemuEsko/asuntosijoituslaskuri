@@ -145,6 +145,7 @@ function propertyValue(data: ImportedPropertyData, key: keyof ImportedPropertyDa
 
 export function InvestmentAnalysisPrintReport({
   reportAddress,
+  propertySubtitle,
   facts,
   data,
   purchase,
@@ -157,6 +158,7 @@ export function InvestmentAnalysisPrintReport({
   repairHistory,
 }: {
   reportAddress?: string;
+  propertySubtitle?: string;
   facts: string[];
   data: ImportedPropertyData;
   purchase: Record<PurchaseFieldKey, number>;
@@ -172,8 +174,9 @@ export function InvestmentAnalysisPrintReport({
   const collateralKnown = analysis.collateralShortfall !== undefined && analysis.collateralBuffer !== undefined;
   const collateralIsGap = collateralKnown && (analysis.collateralShortfall ?? 0) > 0;
   const collateralValue = collateralIsGap ? analysis.collateralShortfall : analysis.collateralBuffer;
-  const completedRenovations = (data.renovations ?? []).filter((item) => ["completed", "ongoing"].includes(item.status));
-  const plannedRenovations = (data.renovations ?? []).filter((item) => !["completed", "ongoing"].includes(item.status));
+  const completedRenovations = (data.renovations ?? []).filter((item) => item.scope !== "apartment" && ["completed", "ongoing"].includes(item.status));
+  const plannedRenovations = (data.renovations ?? []).filter((item) => item.scope !== "apartment" && !["completed", "ongoing"].includes(item.status));
+  const apartmentRenovations = (data.renovations ?? []).filter((item) => item.scope === "apartment");
   const analysisChecks = analysis.missingFactors ?? [];
   const hasRepairHistoryCheck = analysisChecks.some((item) => /korjaushistoria|putkisto/i.test(item));
   const hasPipeHistoryCheck = analysisChecks.some((item) => /putkisto/i.test(item));
@@ -223,6 +226,7 @@ export function InvestmentAnalysisPrintReport({
         <div className="print-report-property">
           <p className="print-eyebrow">Sijoitusanalyysi</p>
           <h1>{reportAddress ?? "Analysoitu sijoituskohde"}</h1>
+          {propertySubtitle ? <p>{propertySubtitle}</p> : null}
           {facts.length ? <p>{facts.join(" · ")}</p> : null}
         </div>
 
@@ -274,7 +278,8 @@ export function InvestmentAnalysisPrintReport({
             ["Laina-aika", `${formatFinnishNumber(assumptions.loanTermYears, 1)} vuotta`],
             ["Lyhennystapa", repaymentLabels[assumptions.repaymentType]],
             ["Kuukausierä", money(analysis.monthlyBankLoanPayment, "€/kk")],
-            ["Lainan lyhennys", money(analysis.monthlyBankLoanPrincipal, "€/kk")],
+            ["Pääomalyhennys, ensimmäinen kuukausi", money(analysis.monthlyBankLoanPrincipal, "€/kk")],
+            ["Pääomalyhennys, ensimmäiset 12 kuukautta", money(analysis.annualBankLoanPrincipal, "€/vuosi")],
           ]} />
           <FinancialGroup title="C. Vuokraus ja tuotot" rows={[
             ["Kuukausivuokra", money(rentEstimate.effectiveMonthlyRent, "€/kk")],
@@ -336,10 +341,13 @@ export function InvestmentAnalysisPrintReport({
           <small>Arvion luotettavuus: {confidenceLabels[repairHistory.confidence]}</small>
         </section>
         <div className="print-repair-columns">
-          {[
+          {([
             ["Tehdyt remontit", completedRenovations],
             ["Suunnitellut remontit", plannedRenovations],
-          ].map(([title, renovations]) => (
+            ...(apartmentRenovations.length
+              ? [["Huoneistokohtaiset remontit", apartmentRenovations] as const]
+              : []),
+          ] as const).map(([title, renovations]) => (
             <section key={title as string} className="print-report-panel">
               <h3>{title as string}</h3>
               {(renovations as RenovationFinding[]).length ? (

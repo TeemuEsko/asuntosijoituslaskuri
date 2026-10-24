@@ -64,6 +64,32 @@ test("suunniteltu kattoremontti säilyttää tilan ja vuosivälin", () => {
   assert.equal(result.housingCompanyRenovations.plannedRawText, plannedText);
 });
 
+test("yleinen vuosialue ei ylikirjoita yksittäisten remonttien omia vuosia", () => {
+  const result = parseListingText("Tehdyt remontit\n2023–2024: Ulko-ovet uusittu 2009, autotallien ovet uusittu 2006, palovaroittimet uusittu 2025");
+  const byComponent = new Map(result.renovations.map((repair) => [repair.component, repair]));
+  assert.equal(byComponent.get("exterior_doors")?.year, 2009);
+  assert.equal(byComponent.get("garage_doors")?.year, 2006);
+  assert.equal(byComponent.get("fire_safety")?.year, 2025);
+  assert.equal(byComponent.get("exterior_doors")?.yearFrom, null);
+  assert.equal(byComponent.get("garage_doors")?.yearFrom, null);
+});
+
+test("epävarma yleinen vuosialue jätetään pois yksittäiseltä remontilta", () => {
+  const result = parseListingText("Tehdyt remontit\n2023–2024: Ulko-ovet uusittu");
+  const doors = result.renovations.find((repair) => repair.component === "exterior_doors");
+  assert.equal(doors?.year, null);
+  assert.equal(doors?.yearFrom, null);
+  assert.equal(doors?.yearTo, null);
+});
+
+test("huoneistokohtainen kylpyhuoneremontti ei muutu taloyhtiön peruskorjaukseksi", () => {
+  const parsed = parseListingText("Huoneistossa kylpyhuone remontoitu 2021");
+  const bathroom = parsed.renovations.find((repair) => repair.component === "bathrooms");
+  assert.equal(bathroom?.scope, "apartment");
+  const assessment = assessRepairHistory({ renovations: parsed.renovations, constructionYear: 1970, documentKinds: ["listing"] });
+  assert.equal(assessment.repairs.some((repair) => repair.component === "bathrooms"), false);
+});
+
 test("kaikki sovitut tehdyn ja tulevan remontin otsikot tunnistetaan", () => {
   const completedLabels = [
     "Tehdyt remontit",

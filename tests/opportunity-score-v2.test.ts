@@ -51,6 +51,18 @@ test("taloyhtiöarvio käyttää jäljelle jääviä korjaus-, kunto-, velka-, k
   assert.ok(strong.subScores.housingCompanyRisk > weak.subScores.housingCompanyRisk);
 });
 
+test("muuten identtinen omistustontti saa maltillisesti vuokratonttia paremman tonttiriskin", () => {
+  const owned = calculateOpportunityScoreV2({ ...base, landOwnership: "owned" });
+  const longLease = calculateOpportunityScoreV2({ ...base, landOwnership: "leased", landLeaseEndDate: "2066-12-31" });
+  const shortLease = calculateOpportunityScoreV2({ ...base, landOwnership: "leased", landLeaseEndDate: "2030-12-31" });
+  const increasedRent = calculateOpportunityScoreV2({ ...base, landOwnership: "leased", landLeaseEndDate: "2066-12-31", documentedLandRentIncrease: true });
+  assert.ok(owned.subScores.housingCompanyRisk > longLease.subScores.housingCompanyRisk);
+  assert.ok(longLease.subScores.housingCompanyRisk > shortLease.subScores.housingCompanyRisk);
+  assert.ok(longLease.subScores.housingCompanyRisk > increasedRent.subScores.housingCompanyRisk);
+  assert.equal(longLease.appliedCap, undefined);
+  assert.equal(shortLease.appliedCap, undefined);
+});
+
 test("negatiiviseen kassavirtaan ei sovelleta vanhaa 54 pisteen automaattikattoa", () => {
   const result = calculateOpportunityScoreV2({ ...base, monthlyCashFlowAfterDebtService: -80, effectiveAnnualRent: 13_200, annualOperatingCosts: 3_900 });
   assert.equal(result.appliedCap, undefined);

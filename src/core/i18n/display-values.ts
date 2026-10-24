@@ -125,6 +125,7 @@ export const renovationComponentLabels = {
   windows: "Ikkunat",
   doors: "Ovet",
   exterior_doors: "Ulko-ovet",
+  garage_doors: "Autotallien ovet",
   drainage: "Salaojat",
   elevator: "Hissi",
   ventilation: "Ilmanvaihto",

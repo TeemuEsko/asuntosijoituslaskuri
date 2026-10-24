@@ -108,6 +108,7 @@ const maintenanceComponents = new Set<RenovationComponent>([
   "painting",
   "facade_painting",
   "fire_safety",
+  "garage_doors",
   "fiber_connection",
 ]);
 const partialComponents = new Set<RenovationComponent>([
@@ -242,7 +243,9 @@ export function assessRepairHistory(input: {
   const documents = input.documentKinds?.length
     ? input.documentKinds
     : ["listing"];
-  const repairs = input.renovations.map(classifyRepair);
+  const repairs = input.renovations
+    .filter((repair) => repair.scope !== "apartment")
+    .map(classifyRepair);
   const implemented = repairs.filter((repair) =>
     ["completed", "ongoing"].includes(repair.status),
   );
