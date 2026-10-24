@@ -28,5 +28,6 @@ test("visuaalinen kunto sijoittuu asiantuntija-arvion jälkeen ennen korjaushist
   assert.doesNotMatch(source, /ReportsCard|reports-card/);
   assert.match(source, /listingImageAnalysis\?\.status === "completed"/);
   assert.match(source, /listingImageAnalysis\?\.status === "partial"/);
-  assert.equal(source.lastIndexOf("<OfferPriceCard"), -1);
+  const offerPrice = source.lastIndexOf("<OfferPriceCard");
+  assert.ok(offerPrice < score);
 });

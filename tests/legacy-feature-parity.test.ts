@@ -18,10 +18,17 @@ test("oikaistu hankintahinta sisältää remonttivaran, veron ja kulut", () => {
 });
 
 test("tarjoushintasimulaatio löytää korkeimman tavoitteet täyttävän hinnan", () => {
-  const loose = simulateMaximumOfferPrice(parityFixtures.strongCashFlow, { monthlyCashFlow: 50, netRentalYield: 5 });
-  const strict = simulateMaximumOfferPrice(parityFixtures.strongCashFlow, { monthlyCashFlow: 200, netRentalYield: 7 });
-  assert.ok(loose.maximumDebtFreePrice !== undefined);
-  assert.ok(strict.maximumDebtFreePrice === undefined || strict.maximumDebtFreePrice <= loose.maximumDebtFreePrice!);
+  const loose = simulateMaximumOfferPrice(parityFixtures.strongCashFlow, {
+    mode: "monthly_cash_flow",
+    value: 50,
+  });
+  const strict = simulateMaximumOfferPrice(parityFixtures.strongCashFlow, {
+    mode: "monthly_cash_flow",
+    value: 200,
+  });
+  assert.equal(loose.status, "success");
+  assert.equal(strict.status, "success");
+  assert.ok(strict.maximumSalePrice! <= loose.maximumSalePrice!);
 });
 
 test("keskitetty sääntömoottori tuottaa riskit, vahvuudet ja missingData-havainnot", () => {

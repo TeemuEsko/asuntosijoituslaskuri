@@ -17,7 +17,10 @@ import {
   calculateAutomaticCollateralValue,
   DEFAULT_COLLATERAL_PERCENTAGE,
 } from "@/core/calculations/collateral-value";
-import { calculateAcquisitionFinancing } from "@/core/calculations/investment-analysis";
+import {
+  calculateAcquisitionFinancing,
+  type InvestmentAnalysisInput,
+} from "@/core/calculations/investment-analysis";
 import { DEFAULT_VACANCY_MONTHS } from "@/core/calculations/occupancy";
 import {
   synchronizePrices,
@@ -74,6 +77,7 @@ import { ImportSourceReview } from "./import-source-review";
 import { FinancialOverviewCard } from "./financial-overview-card";
 import { InvestmentOverallScore } from "./investment-overall-score";
 import { InvestmentAnalysisPrintReport } from "./investment-analysis-print-report";
+import { OfferPriceCard } from "./offer-price-card";
 import { ParserAnalysisSummary } from "./parser-analysis-summary";
 import { ProfessionalEvaluationCard } from "./professional-evaluation-card";
 import { PurchaseCard } from "./purchase-card";
@@ -341,6 +345,12 @@ export function PropertyWorkspace({
   const [purchase, setPurchase] = useState<Record<PurchaseFieldKey, number>>(
     () => purchaseFromImport(importedData),
   );
+  const [originalListingSalePrice] = useState<number | undefined>(() =>
+    typeof importedData.salePrice === "number"
+      ? importedData.salePrice
+      : undefined,
+  );
+  const [offerPriceApplied, setOfferPriceApplied] = useState(false);
   const [statuses, setStatuses] = useState<
     Record<PurchaseFieldKey, FieldStatus>
   >({
@@ -515,6 +525,26 @@ export function PropertyWorkspace({
       ? "Ei tiedossa. Lisää huoneistokohtaiseen yhtiölainaan liittyvä kuukausittainen rahoitusvastike."
       : "Huoneistokohtaiseen yhtiölainaan liittyvä kuukausittainen pääoma- tai rahoitusvastike.";
   const effectiveRent = rentEstimate.effectiveMonthlyRent ?? undefined;
+  const offerPriceInput = {
+    debtFreePrice: purchase.debtFreePrice,
+    salePrice: purchase.salePrice,
+    companyLoanShare: companyLoanKnown
+      ? purchase.companyLoanShare
+      : undefined,
+    monthlyRent: effectiveRent,
+    maintenanceFeeMonthly: assumptions.maintenanceFeeMonthly,
+    financingFeeMonthly: effectiveFinancingFee,
+    otherCostsMonthly: assumptions.otherCostsMonthly,
+    vacancyMonths: assumptions.vacancyMonths,
+    bankLoanAmount,
+    annualInterestRate: assumptions.annualInterestRate,
+    loanTermYears: assumptions.loanTermYears,
+    repaymentType: assumptions.repaymentType,
+    equity: assumptions.equity,
+    renovationReserve: purchase.renovationReserve,
+    transferTaxRate: assumptions.transferTaxRate,
+    transactionCosts: assumptions.transactionCosts,
+  } satisfies InvestmentAnalysisInput;
   const scoreSource = {
     debtFreePrice: purchase.debtFreePrice || undefined,
     salePrice: purchase.salePrice || undefined,
@@ -661,6 +691,8 @@ export function PropertyWorkspace({
         }
       : { ...purchase, [key]: value };
     setPurchase(nextPurchase);
+    if (["debtFreePrice", "salePrice", "companyLoanShare"].includes(key))
+      setOfferPriceApplied(false);
     if (
       ["debtFreePrice", "salePrice", "companyLoanShare"].includes(key) &&
       assumptionStatuses.collateralValue !== "user"
@@ -729,6 +761,49 @@ export function PropertyWorkspace({
         };
       });
   }
+  function setSimulatedSalePrice(salePrice: number, applied: boolean) {
+    const safeSalePrice = Math.max(0, salePrice);
+    const nextPurchase = {
+      ...purchase,
+      salePrice: safeSalePrice,
+      debtFreePrice: safeSalePrice + purchase.companyLoanShare,
+    };
+    setPurchase(nextPurchase);
+    setLastEditedPriceField("salePrice");
+    setStatuses((current) => ({
+      ...current,
+      salePrice: applied
+        ? "user"
+        : importedFieldStatus(importedData, "salePrice", "listing"),
+      debtFreePrice: "inferred",
+    }));
+    if (assumptionStatuses.collateralValue !== "user") {
+      setAssumptions((current) => ({
+        ...current,
+        collateralValue: calculateAutomaticCollateralValue({
+          debtFreePrice: nextPurchase.debtFreePrice,
+          companyLoanShare: nextPurchase.companyLoanShare,
+          collateralPercentage: current.collateralPercentage,
+        }),
+        collateralValueSource: "calculated",
+      }));
+      setAssumptionStatuses((current) => ({
+        ...current,
+        collateralValue: "inferred",
+      }));
+    }
+    setOfferPriceApplied(applied);
+  }
+
+  function applyOfferPrice(salePrice: number) {
+    setSimulatedSalePrice(salePrice, true);
+  }
+
+  function restoreOriginalListingPrice() {
+    if (originalListingSalePrice === undefined) return;
+    setSimulatedSalePrice(originalListingSalePrice, false);
+  }
+
   function updateAssumption<K extends AssumptionFieldKey>(
     key: K,
     value: AssumptionValues[K],
@@ -1261,6 +1336,13 @@ export function PropertyWorkspace({
                     </h2>
                     <KeyMetrics analysis={overallScore} />
                   </section>
+                  <OfferPriceCard
+                    input={offerPriceInput}
+                    originalSalePrice={originalListingSalePrice}
+                    priceApplied={offerPriceApplied}
+                    onApply={applyOfferPrice}
+                    onRestore={restoreOriginalListingPrice}
+                  />
                   <InvestmentOverallScore {...overallScore} />
                   <section id="riskit" className="scroll-mt-24">
                     <AnalysisHighlights rating={overallScore} />

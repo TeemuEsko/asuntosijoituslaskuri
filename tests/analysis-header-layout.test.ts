@@ -141,7 +141,7 @@ test("analyysi etenee lähtötiedoista huomioihin, raportteihin ja yksityiskohti
   ])
     assert.ok(workspace.includes(value));
 });
-test("tarjoushintasimulaattori ei näy työtilassa mutta komponentti ja laskentalogiikka säilyvät", async () => {
+test("tarjoushintasimulaattori näkyy juuri ennen sijoitusmahdollisuutta", async () => {
   const workspace = await readFile(
     new URL(
       "../src/components/property/property-workspace.tsx",
@@ -157,8 +157,14 @@ test("tarjoushintasimulaattori ei näy työtilassa mutta komponentti ja laskenta
     new URL("../src/core/calculations/offer-price.ts", import.meta.url),
     "utf8",
   );
-  assert.doesNotMatch(workspace, /OfferPriceCard|offer-price-card/);
+  assert.match(workspace, /import \{ OfferPriceCard \} from "\.\/offer-price-card"/);
+  assert.ok(
+    workspace.indexOf("<OfferPriceCard") <
+      workspace.indexOf("<InvestmentOverallScore"),
+  );
   assert.match(component, /export function OfferPriceCard/);
+  assert.match(component, /Käytä tarjoushintaa laskelmassa/);
+  assert.match(component, /Palauta alkuperäinen hinta/);
   assert.match(calculation, /export function simulateMaximumOfferPrice/);
 });
 test("yläpalkki tarjoaa ainoan PDF-toiminnon ilman erillistä raporttiosiota", async () => {

@@ -248,7 +248,7 @@ test("nykyinen raportti ja analyysidata käyttävät samaa canonical luokitusta 
   assert.doesNotMatch(header, /Tulosta tai tallenna PDF|Lataa analyysidata/);
   assert.match(
     offerPrice,
-    /useState<number>\(NET_RENTAL_YIELD_THRESHOLDS\.good\)/,
+    /NET_RENTAL_YIELD_THRESHOLDS\.good/,
   );
   const summary = await readFile(
     new URL("../src/components/property/analysis-summary.tsx", import.meta.url),
