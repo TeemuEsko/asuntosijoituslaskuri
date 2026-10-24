@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateBankLoanAmount, calculateBankLoanPayment, calculateInvestmentAnalysis, classifyGrossRentalYield } from "../src/core/calculations/investment-analysis.ts";
+import { calculateAcquisitionFinancing, calculateBankLoanAmount, calculateBankLoanPayment, calculateInvestmentAnalysis, classifyGrossRentalYield } from "../src/core/calculations/investment-analysis.ts";
 
 const complete = { debtFreePrice: 120_000, salePrice: 120_000, monthlyRent: 900, maintenanceFeeMonthly: 300, financingFeeMonthly: 100, otherCostsMonthly: 50, vacancyMonths: 0, bankLoanAmount: 80_000, annualInterestRate: 4.5, loanTermYears: 20, repaymentType: "annuity" as const, equity: 40_000, collateralValue: 84_000, rentalDemand: 3, repairRiskScore: 60, repairHistoryKnown: true };
 
@@ -93,7 +93,94 @@ test("pankkilaina reagoi käyttäjän omaan pääomaan muuttamatta hinnan käsit
   assert.equal(calculateBankLoanAmount(120_000, 0), 120_000);
   assert.equal(calculateBankLoanAmount(120_000, 20_000), 100_000);
   assert.equal(calculateBankLoanAmount(120_000, 150_000), 0);
-  assert.equal(calculateBankLoanAmount(120_000, 20_000, 10_000), 110_000);
+  assert.equal(calculateAcquisitionFinancing(120_000, 20_000, 10_000).bankLoanAmount, 100_000);
+});
+
+test("käteisosto ei muodosta pankkilainaa varainsiirtoverosta", () => {
+  const financing = calculateAcquisitionFinancing(25_851, 25_851, 397.5);
+  assert.deepEqual(financing, {
+    bankLoanAmount: 0,
+    acquisitionCashCosts: 397.5,
+    acquisitionCashRequired: 26_248.5,
+    equityAppliedToSalePrice: 25_851,
+    equityAppliedToCosts: 0,
+    financingGap: 397.5,
+    excessEquity: 0,
+  });
+});
+
+test("koko hankinnan käteistarve voidaan kattaa omalla rahalla", () => {
+  const financing = calculateAcquisitionFinancing(25_851, 26_248.5, 397.5);
+  assert.equal(financing.bankLoanAmount, 0);
+  assert.equal(financing.financingGap, 0);
+  assert.equal(financing.equityAppliedToCosts, 397.5);
+});
+
+test("oma pääoma kohdistetaan ensin myyntihintaan ja kulut jäävät erilliseksi käteisvajeeksi", () => {
+  const financing = calculateAcquisitionFinancing(100_000, 25_000, 2_000);
+  assert.equal(financing.bankLoanAmount, 75_000);
+  assert.equal(financing.acquisitionCashRequired, 27_000);
+  assert.equal(financing.financingGap, 2_000);
+});
+
+test("nolla omaa pääomaa rahoittaa vain myyntihinnan pankkilainalla", () => {
+  const financing = calculateAcquisitionFinancing(100_000, 0, 7_000);
+  assert.equal(financing.bankLoanAmount, 100_000);
+  assert.equal(financing.financingGap, 7_000);
+});
+
+test("hankinnan käteistarpeen ylittävä oma pääoma jää käyttämättömäksi", () => {
+  const financing = calculateAcquisitionFinancing(100_000, 120_000, 5_000);
+  assert.equal(financing.bankLoanAmount, 0);
+  assert.equal(financing.financingGap, 0);
+  assert.equal(financing.excessEquity, 15_000);
+});
+
+test("rahoitusvaje ja lisävakuustarve lasketaan toisistaan riippumatta", () => {
+  const result = calculateInvestmentAnalysis({
+    ...complete,
+    debtFreePrice: 120_000,
+    salePrice: 100_000,
+    companyLoanShare: 20_000,
+    bankLoanAmount: 75_000,
+    equity: 25_000,
+    collateralValue: 50_000,
+    transferTaxRate: 1.5,
+    transactionCosts: 500,
+    renovationReserve: 5_000,
+  });
+  assert.equal(result.bankLoanAmount, 75_000);
+  assert.equal(result.acquisitionCashCosts, 7_300);
+  assert.equal(result.acquisitionCashRequired, 32_300);
+  assert.equal(result.financingGap, 7_300);
+  assert.equal(result.collateralShortfall, 25_000);
+  assert.match((result.warningFactors ?? []).join(" "), /Puuttuva oma raha/);
+  assert.match((result.warningFactors ?? []).join(" "), /Lisävakuuden tarve/);
+});
+
+test("yhtiölaina säilyy erillisenä velkana käteisostossa", () => {
+  const result = calculateInvestmentAnalysis({
+    ...complete,
+    debtFreePrice: 26_500,
+    salePrice: 25_851,
+    companyLoanShare: 649,
+    bankLoanAmount: 0,
+    equity: 25_851,
+    transferTaxRate: 1.5,
+    transactionCosts: 0,
+    renovationReserve: 0,
+  });
+  assert.equal(result.bankLoanAmount, 0);
+  assert.equal(result.transferTax, 397.5);
+  assert.equal(result.acquisitionCashRequired, 26_248.5);
+  assert.equal(result.financingGap, 397.5);
+  assert.equal(result.monthlyBankLoanPayment, 0);
+});
+
+test("pankkilaina ei voi ylittää myyntihintaa", () => {
+  const result = calculateInvestmentAnalysis({ ...complete, salePrice: 100_000, bankLoanAmount: 110_000 });
+  assert.equal(result.bankLoanAmount, 100_000);
+  assert.equal(result.collateralShortfall, 16_000);
 });
 
 test("kertaluonteinen remonttivara vaikuttaa hankintaan mutta ei kuukausikassavirtaan", () => {

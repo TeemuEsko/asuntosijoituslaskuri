@@ -33,6 +33,7 @@ export type ObservationInput = {
   rentalDemand?: number;
   vacancyMonths: number;
   collateralShortfall?: number;
+  financingGap?: number;
   repairRiskScore?: number;
   repairHistoryKnown: boolean;
   repairHistory?: RepairHistoryAssessment;
@@ -373,6 +374,17 @@ export function evaluateInvestmentObservations(
       description:
         "Lisävakuuden tarve suunnitellulle pankkilainalle. Voidaan kattaa muilla vakuuksilla tai pienentämällä lainaa omalla rahalla.",
       value: input.collateralShortfall,
+      unit: "€",
+    });
+  if (input.financingGap !== undefined && input.financingGap > 0)
+    add({
+      id: "acquisition-financing-gap",
+      category: "financing",
+      type: "risk",
+      severity: "high",
+      title: "Puuttuva oma raha",
+      description: `Hankinnan varainsiirtovero ja muut kulut tulee kattaa omalla rahalla. Ilmoitettu oma pääoma ei riitä kattamaan kaikkia hankinnan käteiskuluja. Puuttuva oma raha on ${formatFinnishNumber(input.financingGap, 1)} euroa.`,
+      value: input.financingGap,
       unit: "€",
     });
   if ((input.annualInterestRate ?? 0) >= 6)

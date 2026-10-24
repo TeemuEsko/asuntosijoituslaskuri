@@ -54,7 +54,7 @@ test("työtila säilyttää käyttäjän override-arvon ja tarjoaa automaattisen
   assert.deepEqual(options, [50, 60, 70, 80, 90]);
   assert.match(workspace, /collateralPercentage:\s*DEFAULT_COLLATERAL_PERCENTAGE/);
   assert.match(workspace, /collateralPercentage:\s*current\.collateralPercentage/);
-  assert.match(engine, /Math\.max\(0, input\.bankLoanAmount - input\.collateralValue\)/);
+  assert.match(engine, /Math\.max\(0, effectiveBankLoanAmount - input\.collateralValue\)/);
   assert.match(report, /assumptions\.collateralPercentage/);
   assert.match(report, /assumptions\.collateralValue/);
 });

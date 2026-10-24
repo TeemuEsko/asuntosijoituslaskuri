@@ -274,6 +274,8 @@ export function InvestmentAnalysisPrintReport({
           <FinancialGroup title="B. Pankkirahoitus" rows={[
             ["Pankkilaina", money(analysis.bankLoanAmount)],
             ["Oma pääoma", money(assumptions.equity)],
+            ["Hankinnan käteistarve", money(analysis.acquisitionCashRequired)],
+            ["Puuttuva oma raha", money(analysis.financingGap)],
             ["Korko", percent(assumptions.annualInterestRate)],
             ["Laina-aika", `${formatFinnishNumber(assumptions.loanTermYears, 1)} vuotta`],
             ["Lyhennystapa", repaymentLabels[assumptions.repaymentType]],

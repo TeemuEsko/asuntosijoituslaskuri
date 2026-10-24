@@ -97,3 +97,12 @@ test("sähkölämmitys erottaa kustannusvastuun ilman automaattista oletusta", (
   assert.equal(included.some((item) => /electric-heating|tenant-paid-electric/.test(item.id)), false);
   assert.match(landlord.find((item) => item.id === "landlord-paid-electric-heating-check")?.description ?? "", /muihin kuukausikuluihin vain kerran/);
 });
+
+test("rahoitusvaje on eri havainto kuin lisävakuustarve", () => {
+  const observations = evaluateInvestmentObservations({ ...base, financingGap: 397.5, collateralShortfall: 5_000 });
+  const cashGap = observations.find((item) => item.id === "acquisition-financing-gap");
+  const collateralGap = observations.find((item) => item.id === "collateral-shortfall");
+  assert.equal(cashGap?.title, "Puuttuva oma raha");
+  assert.equal(cashGap?.value, 397.5);
+  assert.equal(collateralGap?.title, "Tarvittava lisävakuus");
+});

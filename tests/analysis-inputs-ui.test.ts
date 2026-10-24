@@ -71,9 +71,12 @@ test("oma pääoma on rahoitusosion ensimmäinen koko leveä kenttä ja laina he
   const financing = assumptions.slice(assumptions.indexOf('data-input-group="bank-financing"'), assumptions.indexOf('data-input-group="monthly-income-and-costs"'));
   assert.ok(financing.indexOf("Sijoitettu oma pääoma") < financing.indexOf("Pankkilainan määrä"));
   assert.ok(financing.indexOf("Pankkilainan määrä") < financing.indexOf("Pankkilainan kokonaiskorko"));
+  assert.match(financing, /Hankintaan tarvittava käteinen yhteensä/);
+  assert.match(financing, /Puuttuva oma raha/);
+  assert.match(financing, /Pankkilainalla rahoitetaan vain myyntihintaa/);
   assert.match(financing, /sm:col-span-2/);
   assert.match(financing, /grid-cols-1[\s\S]*sm:grid-cols-2/);
-  assert.match(financing, /Lasketaan automaattisesti hankinnan rahoitustarpeesta vähentämällä sijoitettu oma pääoma/);
+  assert.match(financing, /Lasketaan automaattisesti myyntihinnasta vähentämällä siihen kohdistettu oma pääoma/);
   assert.doesNotMatch(financing, /min-\[1600px\]:grid-cols-3/);
 });
 

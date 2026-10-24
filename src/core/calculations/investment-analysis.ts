@@ -115,6 +115,12 @@ export type InvestmentAnalysisResult = InvestmentOverallScoreData & {
   transferTax?: number;
   totalAcquisitionCosts?: number;
   actualEquityRequired?: number;
+  acquisitionCashCosts?: number;
+  acquisitionCashRequired?: number;
+  equityAppliedToSalePrice?: number;
+  equityAppliedToCosts?: number;
+  financingGap?: number;
+  excessEquity?: number;
   collateralShortfall?: number;
   collateralBuffer?: number;
   leverageRatio?: number;
@@ -128,6 +134,16 @@ export type InvestmentAnalysisResult = InvestmentOverallScoreData & {
   requiredNetRentalYieldFor80?: number;
   currentFreeCollateral?: number;
   observations: InvestmentObservation[];
+};
+
+export type AcquisitionFinancing = {
+  bankLoanAmount: number;
+  acquisitionCashCosts: number;
+  acquisitionCashRequired: number;
+  equityAppliedToSalePrice: number;
+  equityAppliedToCosts: number;
+  financingGap: number;
+  excessEquity: number;
 };
 
 function interpolate(
@@ -187,14 +203,54 @@ export function netYieldScore(value: number): number {
 export function calculateBankLoanAmount(
   salePrice: number,
   equity: number,
-  additionalFinancingNeeds = 0,
 ): number {
+  return calculateAcquisitionFinancing(salePrice, equity, 0).bankLoanAmount;
+}
+
+export function calculateAcquisitionFinancing(
+  salePrice: number,
+  equity: number,
+  acquisitionCashCosts: number,
+): AcquisitionFinancing {
   const safeSalePrice = Number.isFinite(salePrice) ? Math.max(0, salePrice) : 0;
   const safeEquity = Number.isFinite(equity) ? Math.max(0, equity) : 0;
-  const safeAdditionalNeeds = Number.isFinite(additionalFinancingNeeds)
-    ? Math.max(0, additionalFinancingNeeds)
+  const bankLoanAmount = Math.max(0, safeSalePrice - Math.min(safeSalePrice, safeEquity));
+  return calculateAcquisitionFundingPosition(
+    safeSalePrice,
+    bankLoanAmount,
+    safeEquity,
+    acquisitionCashCosts,
+  );
+}
+
+export function calculateAcquisitionFundingPosition(
+  salePrice: number,
+  bankLoanAmount: number,
+  equity: number,
+  acquisitionCashCosts: number,
+): AcquisitionFinancing {
+  const safeSalePrice = Number.isFinite(salePrice) ? Math.max(0, salePrice) : 0;
+  const safeBankLoan = Number.isFinite(bankLoanAmount)
+    ? Math.min(safeSalePrice, Math.max(0, bankLoanAmount))
     : 0;
-  return Math.max(0, safeSalePrice + safeAdditionalNeeds - safeEquity);
+  const safeEquity = Number.isFinite(equity) ? Math.max(0, equity) : 0;
+  const safeCashCosts = Number.isFinite(acquisitionCashCosts)
+    ? Math.max(0, acquisitionCashCosts)
+    : 0;
+  const cashSalePriceShare = Math.max(0, safeSalePrice - safeBankLoan);
+  const equityAppliedToSalePrice = Math.min(cashSalePriceShare, safeEquity);
+  const equityAfterSalePrice = Math.max(0, safeEquity - equityAppliedToSalePrice);
+  const equityAppliedToCosts = Math.min(safeCashCosts, equityAfterSalePrice);
+  const acquisitionCashRequired = cashSalePriceShare + safeCashCosts;
+  return {
+    bankLoanAmount: safeBankLoan,
+    acquisitionCashCosts: safeCashCosts,
+    acquisitionCashRequired,
+    equityAppliedToSalePrice,
+    equityAppliedToCosts,
+    financingGap: Math.max(0, acquisitionCashRequired - safeEquity),
+    excessEquity: Math.max(0, safeEquity - acquisitionCashRequired),
+  };
 }
 
 export function calculateBankLoanPayment(
@@ -311,19 +367,25 @@ export function calculateInvestmentAnalysis(
     annualRent !== undefined && annualOperating !== undefined
       ? (annualRent - annualOperating) / 12
       : undefined;
+  const effectiveBankLoanAmount = valid(input.bankLoanAmount)
+    ? Math.min(
+        Math.max(0, input.bankLoanAmount),
+        valid(input.salePrice) ? Math.max(0, input.salePrice) : Number.POSITIVE_INFINITY,
+      )
+    : undefined;
   const explicitPayment =
     valid(input.monthlyBankLoanPayment) && input.monthlyBankLoanPayment >= 0
       ? input.monthlyBankLoanPayment
       : undefined;
   const scheduleKnown =
-    valid(input.bankLoanAmount) &&
+    effectiveBankLoanAmount !== undefined &&
     valid(input.annualInterestRate) &&
     valid(input.loanTermYears) &&
     Boolean(input.repaymentType);
   const loanKnown = explicitPayment !== undefined || scheduleKnown;
   const calculatedLoan = scheduleKnown
     ? calculateBankLoanPayment(
-        input.bankLoanAmount!,
+        effectiveBankLoanAmount!,
         input.annualInterestRate!,
         input.loanTermYears!,
         input.repaymentType!,
@@ -354,31 +416,32 @@ export function calculateInvestmentAnalysis(
   const transactionCosts = valid(input.transactionCosts)
     ? Math.max(0, input.transactionCosts)
     : 0;
+  const acquisitionCashCosts = renovationReserve + (transferTax ?? 0) + transactionCosts;
+  const acquisitionFinancing =
+    valid(input.salePrice) && effectiveBankLoanAmount !== undefined && valid(input.equity)
+      ? calculateAcquisitionFundingPosition(
+          input.salePrice,
+          effectiveBankLoanAmount,
+          input.equity,
+          acquisitionCashCosts,
+        )
+      : undefined;
   const adjustedAcquisitionPrice =
     price === undefined
       ? undefined
       : price + renovationReserve + (transferTax ?? 0) + transactionCosts;
   const actualEquityRequired =
-    valid(input.salePrice) && valid(input.bankLoanAmount)
-      ? Math.max(
-          0,
-          input.salePrice +
-            renovationReserve +
-            (transferTax ?? 0) +
-            transactionCosts -
-            input.bankLoanAmount,
-        )
-      : undefined;
+    acquisitionFinancing?.acquisitionCashRequired;
   const collateralShortfall =
-    valid(input.bankLoanAmount) && valid(input.collateralValue)
-      ? Math.max(0, input.bankLoanAmount - input.collateralValue)
+    effectiveBankLoanAmount !== undefined && valid(input.collateralValue)
+      ? Math.max(0, effectiveBankLoanAmount - input.collateralValue)
       : undefined;
   const collateralBuffer =
-    valid(input.bankLoanAmount) && valid(input.collateralValue)
-      ? Math.max(0, input.collateralValue - input.bankLoanAmount)
+    effectiveBankLoanAmount !== undefined && valid(input.collateralValue)
+      ? Math.max(0, input.collateralValue - effectiveBankLoanAmount)
       : undefined;
-  const totalDebt = valid(input.bankLoanAmount)
-    ? input.bankLoanAmount +
+  const totalDebt = effectiveBankLoanAmount !== undefined
+    ? effectiveBankLoanAmount +
       (valid(input.companyLoanShare) ? input.companyLoanShare : 0)
     : undefined;
   const leverage =
@@ -484,6 +547,7 @@ export function calculateInvestmentAnalysis(
     rentalDemand: weightedRentalDemand,
     vacancyMonths: vacancy.vacancyMonths,
     collateralShortfall,
+    financingGap: acquisitionFinancing?.financingGap,
     repairRiskScore: input.repairRiskScore,
     repairHistoryKnown: Boolean(input.repairHistoryKnown),
     repairHistory: input.repairHistory,
@@ -529,6 +593,7 @@ export function calculateInvestmentAnalysis(
     !rent ||
     maintenance === undefined ||
     financing === undefined ||
+    (acquisitionFinancing?.financingGap ?? 0) > 0 ||
     !input.repairHistoryKnown;
   const opportunity = calculateOpportunityScoreV2({
     debtFreePrice: price,
@@ -538,7 +603,7 @@ export function calculateInvestmentAnalysis(
     effectiveAnnualRent: annualRent,
     annualOperatingCosts: annualOperating,
     monthlyCashFlowAfterDebtService: afterLoan,
-    bankLoanAmount: input.bankLoanAmount,
+    bankLoanAmount: effectiveBankLoanAmount,
     companyLoanShare: input.companyLoanShare,
     annualInterestRate: input.annualInterestRate,
     loanTermYears: input.loanTermYears,
@@ -583,7 +648,7 @@ export function calculateInvestmentAnalysis(
     annualBankLoanPrincipal: annualBankPrincipal,
     remainingBankLoanPrincipalAtEnd: loan?.remainingPrincipalAtEnd,
     principalDueAtMaturity: loan?.principalDueAtMaturity,
-    bankLoanAmount: input.bankLoanAmount,
+    bankLoanAmount: effectiveBankLoanAmount,
     repaymentType: input.repaymentType,
     equity: input.equity,
     equitySource: input.equitySource,
@@ -592,6 +657,12 @@ export function calculateInvestmentAnalysis(
     transferTax,
     totalAcquisitionCosts: adjustedAcquisitionPrice,
     actualEquityRequired,
+    acquisitionCashCosts: acquisitionFinancing?.acquisitionCashCosts,
+    acquisitionCashRequired: acquisitionFinancing?.acquisitionCashRequired,
+    equityAppliedToSalePrice: acquisitionFinancing?.equityAppliedToSalePrice,
+    equityAppliedToCosts: acquisitionFinancing?.equityAppliedToCosts,
+    financingGap: acquisitionFinancing?.financingGap,
+    excessEquity: acquisitionFinancing?.excessEquity,
     collateralShortfall,
     collateralBuffer,
     leverageRatio: leverage,

@@ -17,7 +17,7 @@ import {
   calculateAutomaticCollateralValue,
   DEFAULT_COLLATERAL_PERCENTAGE,
 } from "@/core/calculations/collateral-value";
-import { calculateBankLoanAmount } from "@/core/calculations/investment-analysis";
+import { calculateAcquisitionFinancing } from "@/core/calculations/investment-analysis";
 import { DEFAULT_VACANCY_MONTHS } from "@/core/calculations/occupancy";
 import {
   synchronizePrices,
@@ -483,13 +483,14 @@ export function PropertyWorkspace({
   });
   const transferTax =
     (purchase.debtFreePrice * Math.max(0, assumptions.transferTaxRate)) / 100;
-  const additionalFinancingNeeds =
+  const acquisitionCashCosts =
     purchase.renovationReserve + transferTax + assumptions.transactionCosts;
-  const bankLoanAmount = calculateBankLoanAmount(
+  const acquisitionFinancing = calculateAcquisitionFinancing(
     purchase.salePrice,
     assumptions.equity,
-    additionalFinancingNeeds,
+    acquisitionCashCosts,
   );
+  const bankLoanAmount = acquisitionFinancing.bankLoanAmount;
   const companyLoanKnown =
     statuses.companyLoanShare !== "missing" &&
     statuses.companyLoanShare !== "unknown";
@@ -1210,6 +1211,8 @@ export function PropertyWorkspace({
                   financingFeeDescription={financingFeeDescription}
                   financingFeeDisabled={financingFeeInferredFromNoLoan}
                   bankLoanAmount={bankLoanAmount}
+                  acquisitionCashRequired={acquisitionFinancing.acquisitionCashRequired}
+                  financingGap={acquisitionFinancing.financingGap}
                   marketAssessments={marketAssessments}
                   onRentOverride={overrideRent}
                   onRentRestore={restoreRent}

@@ -98,6 +98,8 @@ test("raportti käyttää suoraan työtilan canonical- ja analyysiarvoja", async
   assert.match(report, /analysis\.annualBankLoanPrincipal/);
   assert.match(report, /Pääomalyhennys, ensimmäinen kuukausi/);
   assert.match(report, /Pääomalyhennys, ensimmäiset 12 kuukautta/);
+  assert.match(report, /Hankinnan käteistarve/);
+  assert.match(report, /Puuttuva oma raha/);
   assert.match(report, /propertySubtitle/);
   assert.match(report, /Huoneistokohtaiset remontit/);
   for (const label of ["Yhtiölainaosuus", "Remonttivara", "Oikaistu hankintahinta", "Vakuusarvoprosentti", "Arvioitu vakuusarvo"]) assert.match(report, new RegExp(label));

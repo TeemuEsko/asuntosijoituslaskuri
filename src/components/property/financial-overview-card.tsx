@@ -70,6 +70,8 @@ export function FinancialOverviewCard({
       rows: [
         { label: "Lainan määrä", value: money(analysis.bankLoanAmount) },
         { label: "Oma pääoma", value: money(assumptions.equity) },
+        { label: "Hankinnan käteistarve", value: money(analysis.acquisitionCashRequired) },
+        { label: "Puuttuva oma raha", value: money(analysis.financingGap), note: (analysis.financingGap ?? 0) > 0 ? "Eri asia kuin pankkilainan vakuuksiin liittyvä lisävakuustarve." : undefined },
         { label: "Korko", value: `${formatFinnishNumber(assumptions.annualInterestRate, 1)} %` },
         { label: "Laina-aika", value: `${formatFinnishNumber(assumptions.loanTermYears, 1)} vuotta` },
         { label: "Lyhennystapa", value: repaymentLabels[assumptions.repaymentType] },

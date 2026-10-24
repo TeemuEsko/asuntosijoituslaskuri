@@ -140,6 +140,8 @@ export function AssumptionsCard({
   financingFeeDescription,
   financingFeeDisabled,
   bankLoanAmount,
+  acquisitionCashRequired,
+  financingGap,
   marketAssessments,
   onRentOverride,
   onRentRestore,
@@ -161,6 +163,8 @@ export function AssumptionsCard({
   financingFeeDescription: string;
   financingFeeDisabled: boolean;
   bankLoanAmount: number;
+  acquisitionCashRequired: number;
+  financingGap: number;
   marketAssessments: MarketAssessmentSet;
   onRentOverride: (value: number) => void;
   onRentRestore: () => void;
@@ -180,10 +184,14 @@ export function AssumptionsCard({
         <CardHeader className="border-b"><CardTitle>B. Pankkirahoitus</CardTitle><CardDescription>Rahoitusoletukset määrittävät lainan maksuerän, kassavirran ja vakuustilanteen.</CardDescription></CardHeader>
         <CardContent className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2">
           <div className="min-w-0 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:col-span-2">
-            <LocalizedNumberField id="equity" numericInputKey="equity" label="Sijoitettu oma pääoma" status={values.equityUserOverridden ? "user" : "default"} suffix="€" maximumFractionDigits={1} value={values.equity} onValueChange={(value) => onChange("equity", value)} description="Kaupantekoon käytettävä oma raha. Oletusarvo on 0 €." help="Oma pääoma pienentää laskennallista pankkilainan tarvetta. Oletus ei ole pankin hyväksymä rahoitusratkaisu." />
+            <LocalizedNumberField id="equity" numericInputKey="equity" label="Sijoitettu oma pääoma" status={values.equityUserOverridden ? "user" : "default"} suffix="€" maximumFractionDigits={1} value={values.equity} onValueChange={(value) => onChange("equity", value)} description="Koko hankintaan käytettävissä oleva oma raha. Oletusarvo on 0 €." help="Oma pääoma kohdistetaan ensin myyntihintaan ja sen jälkeen varainsiirtoveroon, remonttivaraan ja muihin hankintakuluihin. Oletus ei ole pankin hyväksymä rahoitusratkaisu." />
             {values.equityUserOverridden ? <Button type="button" variant="ghost" size="sm" className="h-auto px-0 text-xs" onClick={onResetEquity}>Palauta 0 € oletus</Button> : null}
           </div>
-          <LocalizedNumberField id="bank-loan-amount" label="Pankkilainan määrä" status="inferred" suffix="€" maximumFractionDigits={1} value={bankLoanAmount} disabled description="Lasketaan automaattisesti hankinnan rahoitustarpeesta vähentämällä sijoitettu oma pääoma." help="Laskettu myyntihinnasta, remonttivarasta, varainsiirtoverosta, muista kaupantekokuluista ja omasta pääomasta." />
+          <LocalizedNumberField id="bank-loan-amount" label="Pankkilainan määrä" status="inferred" suffix="€" maximumFractionDigits={1} value={bankLoanAmount} disabled description="Lasketaan automaattisesti myyntihinnasta vähentämällä siihen kohdistettu oma pääoma." help="Pankkilainalla rahoitetaan vain myyntihintaa. Varainsiirtovero, remonttivara ja muut hankintakulut katetaan omalla rahalla." />
+          <div className={`min-w-0 rounded-xl border p-4 sm:col-span-2 ${financingGap > 0 ? "border-warning/40 bg-warning-soft" : "border-border bg-muted/30"}`}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-medium">Hankintaan tarvittava käteinen yhteensä</span><strong>{formatFinnishNumber(acquisitionCashRequired, 1)} €</strong></div>
+            {financingGap > 0 ? <><div className="mt-2 flex flex-wrap items-baseline justify-between gap-2 text-warning"><span className="text-sm font-semibold">Puuttuva oma raha</span><strong>{formatFinnishNumber(financingGap, 1)} €</strong></div><p className="mt-2 text-xs leading-relaxed text-warning">Hankinnan varainsiirtovero ja muut kulut tulee kattaa omalla rahalla. Ilmoitettu oma pääoma ei riitä kattamaan kaikkia hankinnan käteiskuluja.</p></> : <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Ilmoitettu oma pääoma kattaa myyntihinnan oman rahan osuuden ja hankinnan käteiskulut.</p>}
+          </div>
           <LocalizedNumberField id="interest" numericInputKey="annualInterestRate" label="Pankkilainan kokonaiskorko" status={status("annualInterestRate")} suffix="%" maximumFractionDigits={1} value={values.annualInterestRate} onValueChange={(value) => onChange("annualInterestRate", value)} description="Viitekorko ja pankin marginaali yhteensä." help="Syötä pankkilainan vuotuinen kokonaiskorko prosentteina." />
           <LocalizedNumberField id="loan-term" numericInputKey="loanTermYears" label="Laina-aika" status={status("loanTermYears")} suffix="vuotta" maximumFractionDigits={1} value={values.loanTermYears} onValueChange={(value) => onChange("loanTermYears", value)} description="Pankkilainan takaisinmaksuaika vuosina." help="Laina-aika vaikuttaa kuukausierään ja lyhennyksen määrään." />
           <div className="min-w-0 space-y-2">
